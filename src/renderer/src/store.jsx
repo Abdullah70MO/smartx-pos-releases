@@ -1,0 +1,167 @@
+import { createContext } from 'preact'
+import { useContext, useState, useEffect } from 'preact/hooks'
+import api from './api'
+
+const StoreContext = createContext(null)
+
+export function StoreProvider({ children }) {
+  const [state, setState] = useState({
+    token: null,
+    user: null,
+    settings: null,
+    license: null,
+    page: 'loading',
+    settingsDirty: false,
+    leaveSettingsPrompt: { open: false, targetPage: null },
+    settingsLeaveAction: null
+  })
+
+  function setPage(page) {
+    setState(s => {
+      if (s.page === 'settings' && s.settingsDirty && page !== 'settings') {
+        return { ...s, leaveSettingsPrompt: { open: true, targetPage: page } }
+      }
+      return { ...s, page }
+    })
+  }
+
+  function markSettingsDirty(isDirty = true) {
+    setState(s => ({ ...s, settingsDirty: isDirty }))
+  }
+
+  function registerSettingsLeaveAction(action) {
+    setState(s => ({ ...s, settingsLeaveAction: action }))
+  }
+
+  function closeSettingsPrompt() {
+    setState(s => ({ ...s, leaveSettingsPrompt: { open: false, targetPage: null } }))
+  }
+
+  async function confirmLeaveSettings(choice) {
+    const { leaveSettingsPrompt: prompt, settingsLeaveAction: action } = state
+    const targetPage = prompt?.targetPage
+
+    if (choice === 'save' && typeof action === 'function') {
+      const saved = await action()
+      if (!saved) return
+    }
+
+    if (choice === 'discard' || choice === 'save') {
+      setState(s => ({
+        ...s,
+        page: targetPage,
+        settingsDirty: false,
+        leaveSettingsPrompt: { open: false, targetPage: null }
+      }))
+      return
+    }
+
+    closeSettingsPrompt()
+  }
+
+  async function login(username, password) {
+    const result = await api.login(username, password)
+    let settings = null
+    try {
+      settings = await api.getSettings(result.token)
+      if (settings?.currency) localStorage.setItem('currency', settings.currency)
+      if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
+      if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
+    } catch (e) { console.error('getSettings error:', e) }
+    setState(s => ({ ...s, token: result.token, user: result.user, settings, page: 'dashboard' }))
+    localStorage.setItem('token', result.token)
+    localStorage.setItem('user', JSON.stringify(result.user))
+    return result
+  }
+
+  async function logout() {
+    const token = localStorage.getItem('token')
+    if (token) await api.logout(token)
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setState(s => ({ ...s, token: null, user: null, settings: null, license: null, page: 'login' }))
+  }
+
+  async function updateSettings(newSettings) {
+    const token = localStorage.getItem('token')
+    const updated = await api.saveSettings(token, newSettings)
+    if (updated?.currency) localStorage.setItem('currency', updated.currency)
+    if (updated?.calendarType) localStorage.setItem('calendarType', updated.calendarType)
+    if (updated?.timeFormat) localStorage.setItem('timeFormat', updated.timeFormat)
+    setState(s => ({ ...s, settings: updated }))
+    return updated
+  }
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const license = await api.checkLicense()
+        if (license?.expired) {
+          setState(s => ({ ...s, license, page: 'license' }))
+        } else if (license?.activated || license?.trialUsed) {
+          const savedToken = localStorage.getItem('token')
+          if (savedToken) {
+            const session = await api.getSession(savedToken)
+            if (session) {
+              let settings = null
+              try {
+                settings = await api.getSettings(savedToken)
+                if (settings?.currency) localStorage.setItem('currency', settings.currency)
+                if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
+                if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
+              } catch (e) {}
+              setState(s => ({ ...s, token: savedToken, user: session, settings, license, page: 'dashboard' }))
+              return
+            }
+          }
+          setState(s => ({ ...s, license, page: 'login' }))
+        } else {
+          setState(s => ({ ...s, license, page: 'license' }))
+        }
+      } catch {
+        setState(s => ({ ...s, page: 'login' }))
+      }
+    }
+    init()
+  }, [])
+
+  // Sync theme attribute with state.settings.theme
+  useEffect(() => {
+    const theme = state.settings?.theme || 'dark'
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [state.settings?.theme])
+
+  // Sync timeFormat with localStorage for the global date interceptor
+  useEffect(() => {
+    if (state.settings?.timeFormat) {
+      localStorage.setItem('timeFormat', state.settings.timeFormat)
+    }
+  }, [state.settings?.timeFormat])
+
+  // Sync fontFamily (Google Fonts) with CSS variable
+  useEffect(() => {
+    let font = state.settings?.fontFamily || 'Cairo'
+    if (font === 'dark' || font === 'light') font = 'Cairo' // sanitization
+    document.documentElement.style.setProperty('--font-family', font)
+  }, [state.settings?.fontFamily])
+
+  return (
+    <StoreContext.Provider value={{
+      ...state,
+      login,
+      logout,
+      setPage,
+      updateSettings,
+      markSettingsDirty,
+      registerSettingsLeaveAction,
+      closeSettingsPrompt,
+      confirmLeaveSettings
+    }}>
+      {children}
+    </StoreContext.Provider>
+  )
+}
+
+export function useStore() {
+  return useContext(StoreContext)
+}

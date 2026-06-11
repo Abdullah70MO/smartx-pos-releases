@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700;800&family=El+Messiri:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root, [data-theme="dark"] {
+  --bg: #111318;
+  --bg2: #1e2025; /* Surface Container */
+  --bg3: #2d2f36; /* Surface Container High */
+  --text: #e2e2e9;
+  --text2: #90949f;
+  --accent: #3b82f6; /* Keep primary vibrant or MD3 style */
+  --accent-rgb: 59, 130, 246;
+  --accent-container: #1e3a8a;
+  --on-accent-container: #d6e2ff;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --outline: #2d2f36;
+  --radius: 16px;
+  --radius-sm: 8px;
+  --radius-lg: 24px;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg2: #ffffff; /* Surface Container */
+  --bg3: #f1f5f9; /* Surface Container High */
+  --text: #0f172a;
+  --text2: #64748b;
+  --accent: #2563eb;
+  --accent-rgb: 37, 99, 235;
+  --accent-container: #dbeafe;
+  --on-accent-container: #1e40af;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --outline: #e2e8f0;
+}
+
+body {
+  font-family: var(--font-family, 'Cairo'), Tahoma, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  direction: rtl;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input, select, textarea {
+  font-family: inherit;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th {
+  text-align: center;
+  padding: 12px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  border-bottom: 1px solid var(--outline);
+  background: var(--bg2);
+}
+
+td {
+  text-align: center;
+  padding: 12px 8px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--outline);
+  color: var(--text);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg3);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text2);
+}
+
+/* Material card/section utility style if needed */
+.md3-card {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  border: 1px solid var(--outline);
+  padding: 16px;
+}
+
+.settings-layout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1100px) {
+  .settings-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

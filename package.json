@@ -1,0 +1,77 @@
+{
+  "name": "smartx-pos",
+  "version": "3.0.0",
+  "description": "SMART X POS - Point of Sale and retail management system",
+  "main": "src/main/index.js",
+  "author": "SMART X",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": "Abdullah70MO/smartx-pos",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev:vite": "vite",
+    "dev:electron": "electron .",
+    "build": "vite build && electron-builder build --win",
+    "build:win": "vite build && electron-builder build --win",
+    "publish": "vite build && electron-builder build --win --publish always"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "electron-updater": "^6.8.3",
+    "exceljs": "^4.4.0",
+    "preact": "^10.26.0",
+    "realm": "^12.14.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.0",
+    "concurrently": "^9.1.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "vite": "^6.0.0",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.smartx.pos.v3",
+    "productName": "SMART X POS",
+    "directories": {
+      "output": "build-out"
+    },
+    "files": [
+      "src/main/**/*",
+      "src/preload/**/*",
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/realm",
+        "to": "app.asar.unpacked/node_modules/realm",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Abdullah70MO",
+      "repo": "smartx-pos-releases"
+    }
+  }
+}
