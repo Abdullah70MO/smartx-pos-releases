@@ -79,7 +79,8 @@
     "publish": {
       "provider": "github",
       "owner": "Abdullah70MO",
-      "repo": "smartx-pos-releases"
+      "repo": "smartx-pos-releases",
+      "draft": false
     }
   }
 }
