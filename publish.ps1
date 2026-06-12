@@ -37,27 +37,30 @@ Write-Host "══════════════════════�
 
 $unpackedDir = "build-out\win-unpacked"
 $setupExe = "build-out\SMART X POS Setup $newVersion.exe"
+$buildOk = $true
 
 if ((Test-Path $unpackedDir) -or (Test-Path $setupExe)) {
   Write-Host "⚠️ الـ build موجود مسبقاً، بينشر من غير ما يبني تاني..." -ForegroundColor Yellow
   node scripts/obfuscate.js obfuscate
   if ($LASTEXITCODE -ne 0) { Write-Host "❌ فشل التعتيم" -ForegroundColor Red; exit 1 }
   npx vite build
-  if ($LASTEXITCODE -ne 0) { Write-Host "❌ فشل vite build" -ForegroundColor Red; node scripts/obfuscate.js restore; exit 1 }
+  if ($LASTEXITCODE -ne 0) { $buildOk = $false }
   if (Test-Path $unpackedDir) {
     npx --yes electron-builder build --win --publish always --prepackaged $unpackedDir
   } else {
     npx --yes electron-builder build --win --publish always
   }
+  if ($LASTEXITCODE -ne 0) { $buildOk = $false }
   node scripts/obfuscate.js restore
 } else {
   Write-Host "جاري البناء والنشر..." -ForegroundColor Cyan
   npm run publish
+  if ($LASTEXITCODE -ne 0) { $buildOk = $false }
 }
 
 Write-Host "════════════════════════════════════" -ForegroundColor Cyan
 
-if ($LASTEXITCODE -eq 0) {
+if ($buildOk) {
   Write-Host "════════════════════════════════════" -ForegroundColor Green
   Write-Host "✅ تم بناء ونشر الإصدار $newVersion بنجاح" -ForegroundColor Green
   Write-Host "════════════════════════════════════" -ForegroundColor Green
@@ -82,4 +85,5 @@ if ($LASTEXITCODE -eq 0) {
   Write-Host "✅ تم رفع الإصدار $newVersion إلى GitHub" -ForegroundColor Green
 } else {
   Write-Host "❌ فشل البناء. راجع الأخطاء أعلاه." -ForegroundColor Red
+  exit 1
 }
