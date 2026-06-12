@@ -2,13 +2,18 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
-const { app } = require('electron')
+const { app, BrowserWindow } = require('electron')
 const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
 
 const TRIAL_DAYS = 14
 const GRACE_DAYS = 7
 const XOR_KEY = 'Sx@2024!'
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+const AES_ALGO = 'aes-256-gcm'
+const AES_KEY_LEN = 32
+const AES_IV_LEN = 16
+const AES_TAG_LEN = 16
+const PBKDF2_ITER = 100000
 
 let periodicTimer = null
 
@@ -26,6 +31,35 @@ function generateHwid() {
 
 function getLicenseFilePath() {
   return path.join(app.getPath('appData'), 'SmartX', 'license.dat')
+}
+
+function deriveAesKey(hwid) {
+  return crypto.pbkdf2Sync(XOR_KEY, hwid || 'default', PBKDF2_ITER, AES_KEY_LEN, 'sha256')
+}
+
+function aesEncrypt(data, hwid) {
+  const key = deriveAesKey(hwid)
+  const iv = crypto.randomBytes(AES_IV_LEN)
+  const cipher = crypto.createCipheriv(AES_ALGO, key, iv)
+  let encrypted = cipher.update(data, 'utf8', 'base64')
+  encrypted += cipher.final('base64')
+  const tag = cipher.getAuthTag().toString('base64')
+  return JSON.stringify({ iv: iv.toString('base64'), tag, data: encrypted, v: 2 })
+}
+
+function aesDecrypt(encoded, hwid) {
+  try {
+    const parts = JSON.parse(encoded)
+    if (parts.v !== 2) return null
+    const key = deriveAesKey(hwid)
+    const iv = Buffer.from(parts.iv, 'base64')
+    const tag = Buffer.from(parts.tag, 'base64')
+    const decipher = crypto.createDecipheriv(AES_ALGO, key, iv)
+    decipher.setAuthTag(tag)
+    let decrypted = decipher.update(parts.data, 'base64', 'utf8')
+    decrypted += decipher.final('utf8')
+    return decrypted
+  } catch { return null }
 }
 
 function xorEncode(data, key) {
@@ -72,7 +106,13 @@ function readPersistentLicense() {
   try {
     if (!fs.existsSync(filePath)) return null
     const raw = fs.readFileSync(filePath, 'utf8').trim()
-    const json = xorDecode(raw, XOR_KEY)
+    let json = null
+    if (raw.startsWith('{') && raw.includes('"v"')) {
+      json = aesDecrypt(raw, 'read')
+    }
+    if (!json) {
+      json = xorDecode(raw, XOR_KEY)
+    }
     if (!json) return null
     const data = JSON.parse(json)
     if (!data.hwid || !data.checksum) return null
@@ -92,7 +132,7 @@ function writePersistentLicense(data) {
     const dir = path.dirname(filePath)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     data.checksum = computeChecksum(data)
-    const raw = xorEncode(JSON.stringify(data), XOR_KEY)
+    const raw = aesEncrypt(JSON.stringify(data), data.hwid)
     fs.writeFileSync(filePath, raw, 'utf8')
   } catch {}
 }
@@ -102,7 +142,8 @@ async function checkLicenseWithServer(key, hwid) {
     const response = await fetch(`${LICENSE_API_URL}/api/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, hwid })
+      body: JSON.stringify({ key, hwid }),
+      signal: AbortSignal.timeout(10000)
     })
     return await response.json()
   } catch {
@@ -129,7 +170,8 @@ function checkLicense(realm) {
     trialStartedAt: license?.trialStartedAt?.toISOString() || persistent?.trialStartedAt || null,
     trialUsed: !!(license?.trialStartedAt || persistent?.trialStartedAt),
     remainingDays: null,
-    remainingText: ''
+    remainingText: '',
+    graceWarning: false
   }
 
   let expired = false
@@ -155,6 +197,7 @@ function checkLicense(realm) {
         } else {
           const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
           result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
+          if (graceRemaining <= 2) result.graceWarning = true
         }
       } else {
         result.remainingText = 'مدى الحياة'
@@ -187,6 +230,7 @@ function checkLicense(realm) {
         } else {
           const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
           result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
+          if (graceRemaining <= 2) result.graceWarning = true
         }
       } else {
         result.remainingText = 'مدى الحياة'
@@ -252,7 +296,8 @@ async function activateLicense(realm, key) {
   const response = await fetch(`${LICENSE_API_URL}/api/activate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key, hwid })
+    body: JSON.stringify({ key, hwid }),
+    signal: AbortSignal.timeout(15000)
   })
   const data = await response.json()
 
@@ -282,7 +327,8 @@ async function activateLicense(realm, key) {
     licenseType: data.licenseType || 'lifetime',
     maxDateSeen: now.toISOString(),
     licenseFile: data.licenseFile || '',
-    lastSuccessfulCheck: now.toISOString()
+    lastSuccessfulCheck: now.toISOString(),
+    cachedServerResponse: JSON.stringify(data)
   })
 
   return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType }
@@ -330,9 +376,14 @@ async function periodicCheck(realm) {
   if (serverResult.valid === true) {
     const persistent = readPersistentLicense() || {}
     persistent.lastSuccessfulCheck = new Date().toISOString()
+    persistent.cachedServerResponse = JSON.stringify(serverResult)
     writePersistentLicense(persistent)
+
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:grace-warning', { graceWarning: false })
+    )
   } else if (serverResult.valid === false && !serverResult.networkError) {
-    realm.write(() => {
+    r.write(() => {
       license.activated = false
     })
     writePersistentLicense({
@@ -351,6 +402,11 @@ function startPeriodicCheck(realm) {
   }, CHECK_INTERVAL_MS)
 }
 
+function getGraceWarning(realm) {
+  const result = checkLicense(realm)
+  return result.graceWarning || false
+}
+
 function stopPeriodicCheck() {
   if (periodicTimer) {
     clearInterval(periodicTimer)
@@ -358,4 +414,4 @@ function stopPeriodicCheck() {
   }
 }
 
-module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, startPeriodicCheck, stopPeriodicCheck }
+module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning }

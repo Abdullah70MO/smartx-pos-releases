@@ -118,7 +118,13 @@ const api = {
     const handler = (_event, status) => callback(status)
     ipcRenderer.on('update-status', handler)
     return () => ipcRenderer.removeListener('update-status', handler)
-  }
+  },
+  onGraceWarning: (callback) => {
+    const handler = (_event, data) => callback(data)
+    ipcRenderer.on('license:grace-warning', handler)
+    return () => ipcRenderer.removeListener('license:grace-warning', handler)
+  },
+  getGraceWarning: () => ipcRenderer.invoke('license:getGraceWarning')
 }
 
 contextBridge.exposeInMainWorld('smartx', api)

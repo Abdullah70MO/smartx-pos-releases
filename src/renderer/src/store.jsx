@@ -144,6 +144,14 @@ export function StoreProvider({ children }) {
     init()
   }, [])
 
+  // Listen for grace warning reset from periodic check
+  useEffect(() => {
+    const unsub = window.smartx?.onGraceWarning?.((data) => {
+      if (!data.graceWarning) refreshLicense()
+    })
+    return unsub
+  }, [])
+
   // Sync theme attribute with state.settings.theme
   useEffect(() => {
     const theme = state.settings?.theme || 'dark'

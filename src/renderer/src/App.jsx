@@ -60,7 +60,7 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt } = useStore()
+  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt } = useStore()
 
   if (page === 'loading') {
     return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:'18px',color:'var(--text2)' }}>جاري التحميل...</div>
@@ -87,6 +87,14 @@ function AppContent() {
       <div style={{ display: 'flex', height: '100vh' }}>
         <Sidebar currentPage={safePage} onNavigate={setPage} />
         <div style={{ flex: 1, overflow: 'hidden' }}>
+          {license?.graceWarning && (
+            <div style={{
+              background: '#f97316', color: '#fff', padding: '8px 16px',
+              fontSize: '13px', fontWeight: '600', textAlign: 'center'
+            }}>
+              سيتم تعطيل التطبيق خلال يومين بسبب انقطاع الإنترنت - يرجى الاتصال بالإنترنت لتجديد الترخيص
+            </div>
+          )}
           <PageComponent />
         </div>
       </div>

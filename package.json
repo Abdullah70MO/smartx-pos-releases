@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "smartx-pos",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "SMART X POS - Point of Sale and retail management system",
   "main": "src/main/index.js",
   "author": "SMART X",
