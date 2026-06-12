@@ -136,20 +136,22 @@ function checkLicense(realm) {
   if (license?.activated && license?.expiresAt) {
     const expires = new Date(license.expiresAt)
     expired = expires < now
-    if (!expired) {
+    if (expired) {
+      result.remainingDays = 0
+      result.remainingText = 'منتهي'
+    } else {
       const diffMs = expires - now
       result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
-    if (license.licenseType === 'lifetime') {
+    if (!expired && license.licenseType === 'lifetime') {
       result.remainingText = 'مدى الحياة'
-    } else if (result.remainingDays !== null && result.remainingDays > 30) {
+    } else if (!expired && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
       result.remainingText = `${months} شهر`
-    } else if (result.remainingDays !== null) {
+    } else if (!expired) {
       result.remainingText = `${result.remainingDays} يوم`
-    } else {
-      result.remainingText = 'منتهي'
     }
+    result.expired = expired
     return result
   }
 

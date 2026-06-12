@@ -564,7 +564,8 @@ export default function CashierPage() {
             onInput={e => setEndBalance(e.target.value)}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />
           {endBalance !== '' && endBalance !== undefined && (() => {
-            const diff = Number(endBalance) - shiftSales.total
+            const expected = (activeShift?.startingBalance || 0) + shiftSales.total
+            const diff = Number(endBalance) - expected
             if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
             if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
             return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>

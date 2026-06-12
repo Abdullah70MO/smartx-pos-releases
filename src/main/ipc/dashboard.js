@@ -5,8 +5,8 @@ function dashboardSummary(realm) {
 
   const todaySales = realm.objects('Sale').filtered('createdAt >= $0', startOfDay)
   const monthSales = realm.objects('Sale').filtered('createdAt >= $0', startOfMonth)
-  const todayExpenses = realm.objects('Expense').filtered('createdAt >= $0', startOfDay)
-  const monthExpenses = realm.objects('Expense').filtered('createdAt >= $0', startOfMonth)
+  const todayExpenses = realm.objects('Expense').filtered('date >= $0', startOfDay)
+  const monthExpenses = realm.objects('Expense').filtered('date >= $0', startOfMonth)
   const allProducts = realm.objects('Product')
 
   const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0)

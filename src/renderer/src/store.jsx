@@ -79,7 +79,8 @@ export function StoreProvider({ children }) {
       if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
     } catch (e) { console.error('getSettings error:', e) }
-    setState(s => ({ ...s, token: result.token, user: result.user, settings, page: 'dashboard' }))
+    const license = await api.checkLicense()
+    setState(s => ({ ...s, token: result.token, user: result.user, settings, license, page: 'dashboard' }))
     localStorage.setItem('token', result.token)
     localStorage.setItem('user', JSON.stringify(result.user))
     return result

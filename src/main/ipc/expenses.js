@@ -29,16 +29,24 @@ function saveExpense(realm, session, data) {
   let expense
   realm.write(() => {
     const isNew = !data._id || !realm.objectForPrimaryKey('Expense', data._id)
+    const newAmount = Number(data.amount) || 0
+    if (!isNew) {
+      const old = realm.objectForPrimaryKey('Expense', data._id)
+      const diff = newAmount - old.amount
+      if (diff !== 0) {
+        updateTreasury(realm, -diff, 'تعديل مصروف - ' + (data.category || data.note || ''), session, data._id)
+      }
+    }
     expense = realm.create('Expense', {
       _id: data._id || crypto.randomUUID(),
-      amount: Number(data.amount) || 0,
+      amount: newAmount,
       category: data.category || '',
       note: data.note || '',
       date: data.date ? new Date(data.date) : new Date(),
       createdAt: isNew ? new Date() : realm.objectForPrimaryKey('Expense', data._id).createdAt
     }, Realm.UpdateMode.Modified)
     if (isNew) {
-      updateTreasury(realm, -Number(data.amount), 'مصروف - ' + (data.category || data.note || ''), session, expense._id)
+      updateTreasury(realm, -newAmount, 'مصروف - ' + (data.category || data.note || ''), session, expense._id)
     }
   })
   return { _id: expense._id, amount: expense.amount, category: expense.category, note: expense.note, date: expense.date?.toISOString(), createdAt: expense.createdAt?.toISOString() }

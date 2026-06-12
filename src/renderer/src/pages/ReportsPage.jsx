@@ -40,7 +40,7 @@ export default function ReportsPage() {
   const totalSales = sales.reduce((sum, s) => sum + s.total, 0)
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
   const totalReturns = returns.reduce((sum, r) => sum + r.subtotal, 0)
-  const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0)
+  const totalWithdrawals = withdrawals.reduce((sum, w) => sum + Math.abs(w.amount), 0)
   const netProfit = totalSales - totalExpenses - totalReturns - totalWithdrawals
 
   const filteredSales = sales.filter(s => {
@@ -196,7 +196,7 @@ export default function ReportsPage() {
                   <tr key={w._id}>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(w.createdAt)}</td>
                     <td style={{ fontWeight: 'bold' }}>{w.personName || '-'}</td>
-                    <td style={{ color: '#eab308', fontWeight: 'bold' }}>{formatMoney(w.amount)}</td>
+                    <td style={{ color: '#eab308', fontWeight: 'bold' }}>{formatMoney(Math.abs(w.amount))}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{w.note || '-'}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{w.treasuryName}</td>
                   </tr>

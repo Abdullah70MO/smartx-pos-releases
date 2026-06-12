@@ -47,8 +47,7 @@ function createSale(realm, session, data) {
   const invoiceNo = counter.value + 1
   const subtotal = data.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
   const discount = Number(data.discount) || 0
-  const taxRate = Number(data.taxRate) || 0
-  const tax = (subtotal - discount) * (taxRate / 100)
+  const tax = Number(data.tax) || 0
   const total = subtotal - discount + tax
 
   let sale
