@@ -39,7 +39,7 @@ function saveSettings(realm, data) {
       address: data.address || '',
       commercialRegistration: data.commercialRegistration || '',
       taxNumber: data.taxNumber || '',
-      currency: data.currency || 'SAR',
+      currency: data.currency || 'EGP',
       taxEnabled: data.taxEnabled !== false,
       calendarType: data.calendarType || 'gregorian',
       timeFormat: data.timeFormat || '24',

@@ -317,6 +317,9 @@ function createWindow() {
     return { action: 'deny' }
   })
 
+  // Open DevTools in dev mode only
+  if (process.env.ELECTRON_RENDERER_URL) win.webContents.openDevTools()
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
@@ -332,7 +335,7 @@ async function seedDatabase() {
     r.write(() => {
       if (!settings) {
         r.create('BusinessSettings', {
-          _id: 'business', currency: 'SAR', taxEnabled: true,
+          _id: 'business', currency: 'EGP', taxEnabled: true,
           calendarType: 'gregorian', timeFormat: '24', theme: 'dark', fontFamily: 'dark',
           printAfterPayment: true, seeded: true
         })
@@ -344,11 +347,11 @@ async function seedDatabase() {
         r.create('Counter', { _id: 'invoice', value: 1000 })
       }
 
-      if (!r.objectForPrimaryKey('Treasury', 'main')) {
-        r.create('Treasury', { _id: 'main', name: 'الخزينة الرئيسية', type: 'main', balance: 0, createdAt: new Date(), updatedAt: new Date() })
-      }
       if (!r.objectForPrimaryKey('Treasury', 'bank')) {
         r.create('Treasury', { _id: 'bank', name: 'البنك', type: 'bank', balance: 0, createdAt: new Date(), updatedAt: new Date() })
+      }
+      if (!r.objectForPrimaryKey('Treasury', 'main')) {
+        r.create('Treasury', { _id: 'main', name: 'الخزينة الرئيسية', type: 'main', balance: 0, createdAt: new Date(), updatedAt: new Date() })
       }
 
       const existingAdmin = r.objects('User').filtered('username == "admin"')[0]

@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import api from '../api'
 
 export default function LicensePage() {
-  const { license, setPage } = useStore()
+  const { license, setPage, refreshLicense } = useStore()
   const [mode, setMode] = useState(license?.expired ? 'expired' : 'choose')
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
@@ -18,8 +18,14 @@ export default function LicensePage() {
   async function handleStartTrial() {
     setLoading(true); setError('')
     try {
-      await api.startTrial()
-      setMode('trial-started')
+      const result = await api.startTrial()
+      if (result?.alreadyActivated) {
+        await refreshLicense()
+        setMode('trial-already')
+      } else {
+        await refreshLicense()
+        goToLogin()
+      }
     } catch (err) { setError(err.message) }
     setLoading(false)
   }
@@ -49,6 +55,7 @@ export default function LicensePage() {
       {mode === 'choose' && (
         <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
           <h2 style={{ fontSize:'18px',marginBottom:'4px' }}>تفعيل البرنامج</h2>
+          {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',background:license.remainingDays !== null && license.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',color:license.remainingDays !== null && license.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)' }}>{license.remainingText}</div>}
           <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
             {license?.trialUsed && !license?.activated
               ? 'تم استخدام الفترة التجريبية من قبل. يرجى إدخال مفتاح التفعيل.'
@@ -74,6 +81,9 @@ export default function LicensePage() {
             {loading ? 'جاري...' : 'تفعيل الترخيص'}
           </button>
           {error && <div style={{ color:'var(--danger)',fontSize:'13px' }}>{error}</div>}
+          <button onClick={goToLogin} style={{ background:'transparent',color:'var(--text2)',padding:'8px',borderRadius:'8px',fontSize:'13px',textDecoration:'underline',cursor:'pointer' }}>
+            رجوع إلى تسجيل الدخول
+          </button>
         </div>
       )}
 
@@ -81,6 +91,7 @@ export default function LicensePage() {
         <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
           <div style={{ fontSize:'40px' }}>⏰</div>
           <h2 style={{ fontSize:'18px',color:'var(--danger)' }}>انتهت صلاحية الترخيص</h2>
+          {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',color:'var(--danger)' }}>{license.remainingText}</div>}
           <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
             {license?.trialUsed && !license?.activated
               ? 'انتهت الفترة التجريبية. يرجى تفعيل الترخيص للمتابعة.'
@@ -98,6 +109,21 @@ export default function LicensePage() {
           <h2 style={{ fontSize:'18px' }}>تم تفعيل الفترة التجريبية</h2>
           <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
             يمكنك استخدام البرنامج لمدة 14 يوماً. تفضل بتسجيل الدخول للبدء.
+          </p>
+          <button onClick={goToLogin} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
+            تسجيل الدخول
+          </button>
+        </div>
+      )}
+
+      {mode === 'trial-already' && (
+        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
+          <div style={{ fontSize:'40px' }}>⏳</div>
+          <h2 style={{ fontSize:'18px' }}>الفترة التجريبية مفعلة مسبقاً</h2>
+          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
+            {license?.remainingText
+              ? `باقي من الفترة التجريبية: ${license.remainingText}`
+              : 'لقد بدأت الفترة التجريبية من قبل. يمكنك تسجيل الدخول للمتابعة.'}
           </p>
           <button onClick={goToLogin} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
             تسجيل الدخول

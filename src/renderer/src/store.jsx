@@ -11,10 +11,21 @@ export function StoreProvider({ children }) {
     settings: null,
     license: null,
     page: 'loading',
+    reportTab: 'overview',
+    reportDateFrom: '',
+    reportDateTo: '',
     settingsDirty: false,
     leaveSettingsPrompt: { open: false, targetPage: null },
     settingsLeaveAction: null
   })
+
+  function goToReports(tab, dateFrom, dateTo) {
+    setState(s => ({ ...s, reportTab: tab || 'overview', reportDateFrom: dateFrom || '', reportDateTo: dateTo || '', page: 'reports' }))
+  }
+
+  function clearReportNav() {
+    setState(s => ({ ...s, reportTab: 'overview', reportDateFrom: '', reportDateTo: '' }))
+  }
 
   function setPage(page) {
     setState(s => {
@@ -80,6 +91,12 @@ export function StoreProvider({ children }) {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setState(s => ({ ...s, token: null, user: null, settings: null, license: null, page: 'login' }))
+  }
+
+  async function refreshLicense() {
+    const license = await api.checkLicense()
+    setState(s => ({ ...s, license }))
+    return license
   }
 
   async function updateSettings(newSettings) {
@@ -151,7 +168,8 @@ export function StoreProvider({ children }) {
       login,
       logout,
       setPage,
-      updateSettings,
+      updateSettings, refreshLicense,
+      goToReports, clearReportNav,
       markSettingsDirty,
       registerSettingsLeaveAction,
       closeSettingsPrompt,

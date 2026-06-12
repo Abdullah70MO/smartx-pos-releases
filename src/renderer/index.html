@@ -1,40 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SMART X V2</title>
-  <script>
-  (function(){
-    if(typeof Intl==='undefined')return;
-    var orig=Intl.DateTimeFormat;
-    Intl.DateTimeFormat=function(locale,opts){
-      opts=opts||{};
-      
-      var calendar = localStorage.getItem('calendarType') || 'gregorian';
-      var timeFormat = localStorage.getItem('timeFormat') || '12';
-      
-      var isHijri = calendar === 'hijri';
-      var targetCalendar = isHijri ? 'islamic-umalqura' : 'gregory';
-      var targetLocale = isHijri ? 'ar-SA-u-ca-islamic-umalqura' : 'ar-SA-u-ca-gregory';
-      
-      if (!opts.calendar) {
-        opts.calendar = targetCalendar;
-      }
-      opts.numberingSystem = 'latn';
-      
-      if (opts.hour !== undefined || opts.minute !== undefined || opts.second !== undefined) {
-        if (opts.hour12 === undefined) {
-          opts.hour12 = timeFormat === '12';
-        }
-      }
-      
-      locale = targetLocale;
-      return new orig(locale, opts);
-    };
-    Intl.DateTimeFormat.prototype=orig.prototype;
-  })();
-  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMART X POS</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.supabase.co https://smartx-pos-api.vercel.app; img-src 'self' data:;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="root"></div>

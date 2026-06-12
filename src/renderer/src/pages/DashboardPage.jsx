@@ -5,7 +5,7 @@ import { formatDateTime } from '../utils/date'
 import { formatMoney } from '../utils/money'
 
 export default function DashboardPage() {
-  const { user, license } = useStore()
+  const { user, license, goToReports, setPage } = useStore()
   const [summary, setSummary] = useState(null)
   const [time, setTime] = useState(new Date())
 
@@ -48,11 +48,11 @@ export default function DashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        <StatCard label="مبيعات اليوم" value={summary ? formatMoney(summary.todaySales) : '...'} color="#3b82f6" />
+        <StatCard label="مبيعات اليوم" value={summary ? formatMoney(summary.todaySales) : '...'} color="#3b82f6" onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('sales', d, d) }} />
         <StatCard label="فواتير اليوم" value={summary?.todayInvoices ?? '...'} color="#22c55e" />
         <StatCard label="ربح اليوم" value={summary ? formatMoney(summary.grossProfit) : '...'} color="#f59e0b" />
-        <StatCard label="مصروفات اليوم" value={summary ? formatMoney(summary.expensesToday) : '...'} color="#ef4444" />
-        <StatCard label="المنتجات" value={summary?.totalProducts ?? '...'} color="#8b5cf6" />
+        <StatCard label="مصروفات اليوم" value={summary ? formatMoney(summary.expensesToday) : '...'} color="#ef4444" onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('expenses', d, d) }} />
+        <StatCard label="المنتجات" value={summary?.totalProducts ?? '...'} color="#8b5cf6" onClick={() => setPage('products')} />
         <StatCard label="منخفضة" value={summary?.lowStock ?? '...'} color="#f97316" />
       </div>
 
@@ -119,9 +119,11 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({ label, value, color }) {
+function StatCard({ label, value, color, onClick }) {
   return (
-    <div style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '12px', borderRight: `3px solid ${color}` }}>
+    <div onClick={onClick} style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '12px', borderRight: `3px solid ${color}`, cursor: onClick ? 'pointer' : 'default', transition: '0.15s' }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.background = 'var(--bg3)' }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.background = 'var(--bg2)' }}>
       <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>{label}</div>
       <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text)' }}>{value}</div>
     </div>

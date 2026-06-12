@@ -33,6 +33,7 @@ const ProductSchema = {
     stock:          { type: 'double', default: 0 },
     reorderPoint:   { type: 'double', default: 0 },
     active:         { type: 'bool', default: true },
+    image:          { type: 'string', default: '' },
     updatedAt:      'date'
   }
 }
@@ -96,7 +97,7 @@ const BusinessSettingsSchema = {
     address:                 { type: 'string', default: '' },
     commercialRegistration:  { type: 'string', default: '' },
     taxNumber:               { type: 'string', default: '' },
-    currency:                { type: 'string', default: 'SAR' },
+    currency:                { type: 'string', default: 'EGP' },
     taxEnabled:              { type: 'bool', default: true },
     calendarType:            { type: 'string', default: 'gregorian' },
     timeFormat:              { type: 'string', default: '24' },
@@ -365,6 +366,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 13
+const SCHEMA_VERSION = 14
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

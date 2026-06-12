@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'preact/hooks'
+import { useStore } from '../store'
 import api from '../api'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 
 export default function ReportsPage() {
+  const { reportTab, reportDateFrom, reportDateTo, clearReportNav } = useStore()
+  useEffect(() => { clearReportNav() }, [])
   const [summary, setSummary] = useState(null)
   const [sales, setSales] = useState([])
   const [expenses, setExpenses] = useState([])
   const [returns, setReturns] = useState([])
   const [withdrawals, setWithdrawals] = useState([])
-  const [tab, setTab] = useState('overview')
-  const [searchSales, setSearchSales] = useState({ q: '', dateFrom: '', dateTo: '' })
-  const [searchExpenses, setSearchExpenses] = useState({ q: '', dateFrom: '', dateTo: '' })
+  const [tab, setTab] = useState(reportTab || 'overview')
+  const [searchSales, setSearchSales] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
+  const [searchExpenses, setSearchExpenses] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchReturns, setSearchReturns] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [searchWithdrawals, setSearchWithdrawals] = useState({ q: '', dateFrom: '', dateTo: '' })
 

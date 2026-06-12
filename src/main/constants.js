@@ -5,6 +5,6 @@ const CONTACT_INFO = [
   { label: 'Telegram',   value: 'SMART X POS', link: 'https://t.me/+h4fVJ5QpOydmYWU0' }
 ]
 
-const LICENSE_API_URL = 'https://smartx-license.vercel.app'
+const LICENSE_API_URL = 'https://smartx-pos-api.vercel.app'
 
 module.exports = { CONTACT_INFO, LICENSE_API_URL }

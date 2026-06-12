@@ -86,11 +86,12 @@ export default function ProductsPage() {
   const barcodeRef = useRef(null)
   const categoryRef = useRef(null)
   const fileRef = useRef(null)
+  const imgRef = useRef(null)
 
   const [form, setForm] = useState({
     name: '', category: '', unit: '', barcode: '',
     cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0,
-    taxRate: 0, stock: 0, reorderPoint: 0
+    taxRate: 0, stock: 0, reorderPoint: 0, image: ''
   })
 
   useEffect(() => { load() }, [])
@@ -111,7 +112,7 @@ export default function ProductsPage() {
   }
 
   function resetForm() {
-    setForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, taxRate: 0, stock: 0, reorderPoint: 0 })
+    setForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, taxRate: 0, stock: 0, reorderPoint: 0, image: '' })
   }
 
   function openEdit(product) {
@@ -121,7 +122,8 @@ export default function ProductsPage() {
       barcode: product.barcode || '', cost: product.cost, priceRetail: product.priceRetail,
       priceHalfWholesale: product.priceHalfWholesale || product.priceRetail,
       priceWholesale: product.priceWholesale || product.priceRetail,
-      taxRate: product.taxRate, stock: product.stock, reorderPoint: product.reorderPoint
+      taxRate: product.taxRate, stock: product.stock, reorderPoint: product.reorderPoint,
+      image: product.image || ''
     })
     setShowModal(true)
   }
@@ -251,12 +253,13 @@ export default function ProductsPage() {
         <table>
           <thead>
             <tr>
-              <th>الاسم</th><th>الباركود</th><th>التصنيف</th><th>الوحدة</th><th>سعر التجزئة</th><th>نصف جملة</th><th>المخزون</th><th></th>
+              <th></th><th>الاسم</th><th>الباركود</th><th>التصنيف</th><th>الوحدة</th><th>سعر التجزئة</th><th>نصف جملة</th><th>المخزون</th><th></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p._id}>
+                <td>{p.image ? <img src={p.image} alt="" style={{ width:'40px',height:'40px',borderRadius:'6px',objectFit:'cover' }} /> : null}</td>
                 <td style={{ fontWeight: 'bold' }}>{p.name}</td>
                 <td style={{ color: 'var(--text2)', fontSize: '12px' }}>{p.barcode || '-'}</td>
                 <td>{p.category || '-'}</td>
@@ -283,7 +286,12 @@ export default function ProductsPage() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل منتج' : 'إضافة منتج'}>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display:'flex', gap:'12px', alignItems:'start' }}>
+            <div onClick={() => imgRef.current?.click()} style={{ minWidth:'100px',width:'100px',height:'100px',borderRadius:'12px',border:'2px dashed var(--bg3)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',background:'var(--bg)',fontSize:'11px',color:'var(--text2)',textAlign:'center' }}>
+              {form.image ? <img src={form.image} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : 'إضافة صورة'}
+              <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => setForm(x => ({ ...x, image: r.result })); r.readAsDataURL(f) }} />
+            </div>
+            <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
             <Input inputRef={nameRef} label="الاسم" value={form.name} onInput={v => setForm(f => ({ ...f, name: v }))} required />
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الباركود</label>
@@ -319,6 +327,7 @@ export default function ProductsPage() {
             <Input label="الضريبة %" type="number" value={form.taxRate || ''} onInput={v => setForm(f => ({ ...f, taxRate: Number(v) }))} placeholder="الضريبة %" />
             <Input label="المخزون" type="number" value={form.stock || ''} onInput={v => setForm(f => ({ ...f, stock: Number(v) }))} placeholder="المخزون" />
             <Input label="تنبيه انتهاء المخزون" type="number" value={form.reorderPoint || ''} onInput={v => setForm(f => ({ ...f, reorderPoint: Number(v) }))} placeholder="تنبيه انتهاء المخزون" />
+          </div>
           </div>
           <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', marginTop: '8px' }}>
             {edit ? 'تحديث' : 'إضافة'}

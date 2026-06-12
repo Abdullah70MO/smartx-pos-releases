@@ -2,7 +2,7 @@ const Realm = require('realm')
 const crypto = require('node:crypto')
 
 function listTreasuries(realm) {
-  return Array.from(realm.objects('Treasury').sorted('createdAt', true)).map(t => ({
+  return Array.from(realm.objects('Treasury').sorted('createdAt')).map(t => ({
     _id: t._id, name: t.name, type: t.type,
     balance: t.balance, createdAt: t.createdAt?.toISOString()
   }))

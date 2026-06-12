@@ -404,9 +404,10 @@ export default function CashierPage() {
           )}
           {products.filter(p => !search || /^\d+$/.test(search) || p.name.includes(search) || p.barcode?.includes(search)).map(p => (
             <button key={p._id} onClick={() => addToCart(p)} style={{
-              background: 'var(--bg2)', padding: '12px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
+              background: 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
               border: '1px solid var(--bg3)', transition: '0.15s'
             }}>
+              {p.image ? <img src={p.image} alt="" style={{ width:'48px',height:'48px',borderRadius:'8px',objectFit:'cover',marginBottom:'4px' }} /> : null}
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{p.name}</div>
               <div style={{ color: 'var(--accent)', fontSize: '15px' }}>{formatMoney(getProductPrice(p))}</div>
               <div style={{ fontSize: '11px', color: p.stock <= p.reorderPoint ? 'var(--danger)' : 'var(--text2)' }}>
@@ -559,9 +560,15 @@ export default function CashierPage() {
               <span style={{ color: 'var(--text2)' }}>رصيد البداية</span><span>{activeShift?.startingBalance?.toFixed(2)}</span>
             </div>
           </div>
-          <input type="text" inputMode="numeric" placeholder="رصيد النهاية" value={endBalance}
+           <input type="text" inputMode="numeric" placeholder="رصيد النهاية" value={endBalance}
             onInput={e => setEndBalance(e.target.value)}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />
+          {endBalance !== '' && endBalance !== undefined && (() => {
+            const diff = Number(endBalance) - shiftSales.total
+            if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
+            if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
+            return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
+          })()}
           <button onClick={handleEndShift} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
             تأكيد الإنهاء
           </button>

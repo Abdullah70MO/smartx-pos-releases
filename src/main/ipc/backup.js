@@ -78,14 +78,14 @@ async function resetDatabase() {
       const admin = r.objects('User').filtered('username == "admin"')[0]
       if (admin) admin.passwordHash = require('bcryptjs').hashSync('admin', 12)
       r.create('BusinessSettings', {
-        _id: 'business', currency: 'SAR', taxEnabled: true,
+        _id: 'business', currency: 'EGP', taxEnabled: true,
         calendarType: 'gregorian', timeFormat: '24', theme: 'dark',
         fontFamily: 'Cairo', printAfterPayment: true, seeded: false
       }, Realm.UpdateMode.Modified)
       r.create('Counter', { _id: 'invoice', value: 1000 }, Realm.UpdateMode.Modified)
       r.create('Counter', { _id: 'purchase', value: 1 }, Realm.UpdateMode.Modified)
-      r.create('Treasury', { _id: 'main', name: 'الخزينة الرئيسية', type: 'main', balance: 0, createdAt: new Date(), updatedAt: new Date() })
       r.create('Treasury', { _id: 'bank', name: 'البنك', type: 'bank', balance: 0, createdAt: new Date(), updatedAt: new Date() })
+      r.create('Treasury', { _id: 'main', name: 'الخزينة الرئيسية', type: 'main', balance: 0, createdAt: new Date(), updatedAt: new Date() })
     })
     return true
   }

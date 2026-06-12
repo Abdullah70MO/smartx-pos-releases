@@ -41,7 +41,7 @@ const ALL_PERMISSIONS = [
 
 const ROLES = {
   admin: {
-    label: 'ادمن',
+    label: 'مدير النظام',
     permissions: [...ALL_PERMISSIONS]
   },
   general_manager: {

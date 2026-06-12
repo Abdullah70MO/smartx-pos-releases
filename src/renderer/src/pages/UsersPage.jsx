@@ -53,7 +53,7 @@ function getManagePerms(sectionId) {
 const ALL_PERM_IDS = SECTIONS.flatMap(s => getManagePerms(s.id))
 
 const ROLE_PRESETS = {
-  admin: { label: 'ادمن' },
+  admin: { label: 'مدير النظام' },
   general_manager: { label: 'مدير عام' },
   supervisor: { label: 'مشرف' },
   cashier: { label: 'كاشير' },
@@ -93,7 +93,7 @@ function permsFromLevels(levels) {
   return perms
 }
 
-const ROLE_NAMES = { admin: 'ادمن', general_manager: 'مدير عام', supervisor: 'مشرف', cashier: 'كاشير', employee: 'موظف' }
+const ROLE_NAMES = { admin: 'مدير النظام', general_manager: 'مدير عام', supervisor: 'مشرف', cashier: 'كاشير', employee: 'موظف' }
 const ROLE_COLORS = { admin: 'var(--accent)', general_manager: '#8b5cf6', supervisor: '#f59e0b', cashier: '#10b981', employee: '#64748b' }
 
 export default function UsersPage() {

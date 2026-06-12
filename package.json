@@ -8,7 +8,9 @@
   "private": true,
   "repository": "Abdullah70MO/smartx-pos",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
+    "dev:simple": "npx vite --port 5173 & sleep 3 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 npx electron .",
+    "dev:auto": "concurrently \"vite --port 5173\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
     "dev:vite": "vite",
     "dev:electron": "electron .",
     "build": "vite build && electron-builder build --win",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.9.0",
     "concurrently": "^9.1.0",
+    "cross-env": "^10.1.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
     "vite": "^6.0.0",

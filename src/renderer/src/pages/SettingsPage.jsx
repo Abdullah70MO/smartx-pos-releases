@@ -46,7 +46,7 @@ export default function SettingsPage() {
           address: s.address || '',
           commercialRegistration: s.commercialRegistration || '',
           taxNumber: s.taxNumber || '',
-          currency: s.currency || 'SAR',
+          currency: s.currency || 'EGP',
           taxEnabled: s.taxEnabled !== false,
           theme: s.theme || 'dark',
           timeFormat: s.timeFormat || '12',
@@ -252,8 +252,8 @@ export default function SettingsPage() {
               <div>
                 <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العملة</label>
                 <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
-                  <option value="SAR">ريال سعودي (SAR)</option>
                   <option value="EGP">جنيه مصري (EGP)</option>
+                  <option value="SAR">ريال سعودي (SAR)</option>
                   <option value="AED">درهم إماراتي (AED)</option>
                   <option value="QAR">ريال قطري (QAR)</option>
                   <option value="KWD">دينار كويتي (KWD)</option>

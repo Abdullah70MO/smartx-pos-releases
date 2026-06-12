@@ -1,5 +1,5 @@
 function getCurrencyCode() {
-  return localStorage.getItem('currency') || 'SAR'
+  return localStorage.getItem('currency') || 'EGP'
 }
 
 export function formatMoney(value) {

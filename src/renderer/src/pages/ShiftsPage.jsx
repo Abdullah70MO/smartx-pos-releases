@@ -135,6 +135,12 @@ export default function ShiftsPage() {
             مبيعات الوردية: <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>{formatMoney(activeShift?.totalSales)}</span>
           </div>
           <input type="number" placeholder="رصيد النهاية" value={endingBalance} onInput={e => setEndingBalance(e.target.value)} />
+          {endingBalance !== '' && endingBalance !== undefined && (() => {
+            const diff = Number(endingBalance) - (activeShift?.totalSales || 0)
+            if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
+            if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
+            return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
+          })()}
           <button onClick={handleEnd} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>إنهاء الوردية</button>
         </div>
       </Modal>
