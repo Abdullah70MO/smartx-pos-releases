@@ -1,4 +1,4 @@
-$remoteUrl = git remote get-url origin
+﻿$remoteUrl = git remote get-url origin
 $tokenMatch = [regex]::Match($remoteUrl, 'https://(.+?)@')
 if ($tokenMatch.Success) {
   $env:GH_TOKEN = $tokenMatch.Groups[1].Value
@@ -52,6 +52,7 @@ if ((Test-Path $unpackedDir) -or (Test-Path $setupExe)) {
   Write-Host "جاري البناء والنشر..." -ForegroundColor Cyan
   npm run publish
 }
+
 Write-Host "════════════════════════════════════" -ForegroundColor Cyan
 
 if ($LASTEXITCODE -eq 0) {
