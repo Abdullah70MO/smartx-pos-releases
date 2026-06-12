@@ -1,3 +1,13 @@
+$remoteUrl = git remote get-url origin
+$tokenMatch = [regex]::Match($remoteUrl, 'https://(.+?)@')
+if ($tokenMatch.Success) {
+  $env:GH_TOKEN = $tokenMatch.Groups[1].Value
+  Write-Host "✅ تم استخراج GH_TOKEN من git remote" -ForegroundColor Green
+} else {
+  Write-Host "❌ ما لقيتش GH_TOKEN في git remote. شوف الـ token" -ForegroundColor Red
+  exit 1
+}
+
 $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
 $currentVersion = $packageJson.version
 
@@ -34,11 +44,24 @@ if ($LASTEXITCODE -eq 0) {
   Write-Host "✅ تم بناء ونشر الإصدار $newVersion بنجاح" -ForegroundColor Green
   Write-Host "════════════════════════════════════" -ForegroundColor Green
   Write-Host ""
-  Write-Host "📌 لا تنس عمل commit و push للتغيير:" -ForegroundColor Yellow
-  Write-Host "   git add package.json" -ForegroundColor White
-  Write-Host "   git commit -m ""v$newVersion""" -ForegroundColor White
-  Write-Host "   git tag v$newVersion" -ForegroundColor White
-  Write-Host "   git push && git push --tags" -ForegroundColor White
+  Write-Host "جاري رفع التعديلات والـ tag إلى GitHub..." -ForegroundColor Cyan
+  git add package.json
+  $changed = git status --porcelain
+  if ($changed) {
+    git commit -m "v$newVersion"
+  } else {
+    git commit --allow-empty -m "v$newVersion"
+  }
+  $tagName = "v$newVersion"
+  $tagExists = git tag -l $tagName
+  if ($tagExists) {
+    git tag -d $tagName
+    git push origin ":$tagName" --quiet 2>$null
+  }
+  git tag $tagName
+  git push
+  git push origin $tagName -f
+  Write-Host "✅ تم رفع الإصدار $newVersion إلى GitHub" -ForegroundColor Green
 } else {
   Write-Host "❌ فشل البناء. راجع الأخطاء أعلاه." -ForegroundColor Red
 }
