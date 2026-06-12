@@ -93,6 +93,7 @@ export default function PurchasesPage() {
   const [supplierPhone, setSupplierPhone] = useState('')
   const [note, setNote] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [paid, setPaid] = useState('')
   const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' })
   const [productForm, setProductForm] = useState({
     name: '', category: '', unit: '', barcode: '',
@@ -196,7 +197,7 @@ export default function PurchasesPage() {
     setEditPurchase(null)
     setItems([{ productId: '', name: '', quantity: '', cost: '' }])
     setProductSearch(['']); setShowProductDropdown([false])
-    setSupplierName(''); setSupplierId(''); setSupplierPhone(''); setSupplierSearch(''); setNote(''); setPaymentMethod('cash')
+    setSupplierName(''); setSupplierId(''); setSupplierPhone(''); setSupplierSearch(''); setNote(''); setPaymentMethod('cash'); setPaid('')
     setShowModal(true)
   }
 
@@ -211,6 +212,7 @@ export default function PurchasesPage() {
     setSupplierPhone(p.supplierPhone || '')
     setNote(p.note || '')
     setPaymentMethod(p.paymentMethod || 'cash')
+    setPaid(String(p.paid) || '')
     setShowModal(true)
   }
 
@@ -219,7 +221,7 @@ export default function PurchasesPage() {
     const token = localStorage.getItem('token')
     try {
       const matched = suppliers.find(s => s.name === supplierName)
-      const data = { _id: editPurchase?._id, items, totalCost, supplierName, supplierPhone, supplierId: matched?._id || '', note, paymentMethod }
+      const data = { _id: editPurchase?._id, items, totalCost, supplierName, supplierPhone, supplierId: matched?._id || '', note, paymentMethod, paid: Number(paid) || 0 }
       if (editPurchase) {
         await api.savePurchase(token, data)
         toast('تم تحديث فاتورة الشراء', 'success')
@@ -312,7 +314,7 @@ export default function PurchasesPage() {
 
       <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
         <table>
-            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>طريقة الدفع</th><th></th></tr></thead>
+            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p._id}>
@@ -322,7 +324,12 @@ export default function PurchasesPage() {
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{p.supplierPhone || '-'}</td>
                 <td>{p.items?.length || 0}</td>
                 <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(p.totalCost)}</td>
-                <td><span style={{ color: p.paymentMethod === 'credit' ? 'var(--warning)' : p.paymentMethod === 'card' ? '#3b82f6' : 'var(--text2)', fontSize: '12px' }}>{p.paymentMethod === 'credit' ? 'آجل' : p.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</span></td>
+                <td style={{ fontSize: '12px' }}>{formatMoney(p.paid || 0)}</td>
+                <td>{(s => {
+                  const c = s === 'paid' ? 'var(--success)' : s === 'partial' ? 'var(--warning)' : 'var(--text2)'
+                  const l = s === 'paid' ? 'مدفوعة' : s === 'partial' ? 'مدفوعة جزئياً' : 'آجل'
+                  return <span style={{ color: c, fontSize: '12px', fontWeight: 600 }}>{l}</span>
+                })(p.paymentStatus)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     <button onClick={() => setViewInvoice(p)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>عرض</button>
@@ -391,7 +398,19 @@ export default function PurchasesPage() {
             </div>
           ))}
           {canCreate && <button type="button" onClick={addItem} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '6px', borderRadius: '6px', fontSize: '12px' }}>+ إضافة صنف</button>}
-          <div style={{ textAlign: 'left', fontSize: '15px', fontWeight: 'bold', color: 'var(--success)', marginTop: '4px' }}>الإجمالي: {formatMoney(totalCost)}</div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ textAlign: 'left', fontSize: '15px', fontWeight: 'bold', color: 'var(--success)', flex: 1 }}>الإجمالي: {formatMoney(totalCost)}</div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>المدفوع</label>
+              <input type="number" placeholder="المدفوع" value={paid} onInput={e => setPaid(e.target.value)}
+                style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
+            </div>
+          </div>
+          {Number(paid) > 0 && Number(paid) < totalCost && (
+            <div style={{ fontSize: '12px', color: '#f59e0b', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+              الباقي: {formatMoney(totalCost - Number(paid))} دين على المورد
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="button" onClick={() => setPaymentMethod('cash')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
@@ -409,11 +428,12 @@ export default function PurchasesPage() {
               color: paymentMethod === 'credit' ? '#fff' : 'var(--text)', fontWeight: paymentMethod === 'credit' ? '700' : '500'
             }}>آجل</button>
           </div>
-          {paymentMethod === 'credit' && <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+          {Number(paid) <= 0 || paid === '' ? <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             سيتم إضافة المبلغ إلى ذمة المورد. يمكنك تسديد الدفعات من صفحة الموردين.
-          </div>}
-          {paymentMethod === 'card' && <div style={{ fontSize: '12px', color: '#3b82f6', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-            سيتم خصم المبلغ من خزينة البنك.
+          </div> : paymentMethod === 'card' ? <div style={{ fontSize: '12px', color: '#3b82f6', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            سيتم خصم {formatMoney(Number(paid))} من خزينة البنك.
+          </div> : <div style={{ fontSize: '12px', color: 'var(--success)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            سيتم خصم {formatMoney(Number(paid))} من الخزينة الرئيسية.
           </div>}
           <textarea placeholder="ملاحظة" value={note} onInput={e => setNote(e.target.value)} rows="2"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
@@ -447,10 +467,24 @@ export default function PurchasesPage() {
               </div>
             ))}
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
+            {(s => {
+              const l = s === 'paid' ? 'مدفوعة' : s === 'partial' ? 'مدفوعة جزئياً' : 'آجل'
+              return <div style={{ marginTop: '4px', color: 'var(--text2)', fontSize: '11px' }}>الحالة: {l}</div>
+            })(viewInvoice.paymentStatus)}
             <div style={{ marginTop: '4px', color: 'var(--text2)', fontSize: '11px' }}>طريقة الدفع: {viewInvoice.paymentMethod === 'credit' ? 'آجل' : viewInvoice.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>
               <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.totalCost)}</span>
             </div>
+            {viewInvoice.paid > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
+                <span>المدفوع</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.paid)}</span>
+              </div>
+            )}
+            {(viewInvoice.paid || 0) < viewInvoice.totalCost && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', color: 'var(--warning)' }}>
+                <span>الباقي</span><span>{formatMoney(viewInvoice.totalCost - (viewInvoice.paid || 0))}</span>
+              </div>
+            )}
             {viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{viewInvoice.note}</div>}
             <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>
             <button onClick={() => window.print()}

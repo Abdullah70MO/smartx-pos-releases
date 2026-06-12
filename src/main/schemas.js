@@ -277,16 +277,19 @@ const PurchaseSchema = {
   name: 'Purchase',
   primaryKey: '_id',
   properties: {
-    _id:         'string',
-    invoiceNo:   'int',
-    supplierId:  { type: 'string', default: '' },
-    supplierName: { type: 'string', default: '' },
+    _id:           'string',
+    invoiceNo:     'int',
+    supplierId:    { type: 'string', default: '' },
+    supplierName:  { type: 'string', default: '' },
     supplierPhone: { type: 'string', default: '' },
-    items:       { type: 'list', objectType: 'PurchaseItem' },
-    totalCost:   'double',
-    note:        { type: 'string', default: '' },
-    createdBy:   'string',
-    createdAt:   'date'
+    items:         { type: 'list', objectType: 'PurchaseItem' },
+    totalCost:     'double',
+    paid:          { type: 'double', default: 0 },
+    paymentMethod: { type: 'string', default: 'credit' },
+    paymentStatus: { type: 'string', default: 'credit' },
+    note:          { type: 'string', default: '' },
+    createdBy:     'string',
+    createdAt:     'date'
   }
 }
 
@@ -366,6 +369,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 14
+const SCHEMA_VERSION = 15
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }
