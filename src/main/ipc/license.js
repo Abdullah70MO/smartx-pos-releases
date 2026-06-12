@@ -1,4 +1,4 @@
-const crypto = require('node:crypto')
+﻿const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
@@ -105,7 +105,7 @@ async function checkLicenseWithServer(key, hwid) {
     })
     return await response.json()
   } catch {
-    return { valid: false, error: 'فشل الاتصال بالسيرفر' }
+    return { valid: false, networkError: true, error: 'فشل الاتصال بالسيرفر' }
   }
 }
 
@@ -138,18 +138,18 @@ function checkLicense(realm) {
     expired = expires < now
     if (expired) {
       result.remainingDays = 0
-      result.remainingText = 'منتهي'
+      result.remainingText = '┘à┘å╪¬┘ç┘è'
     } else {
       const diffMs = expires - now
       result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
     if (!expired && license.licenseType === 'lifetime') {
-      result.remainingText = 'مدى الحياة'
+      result.remainingText = '┘à╪»┘ë ╪º┘ä╪¡┘è╪º╪⌐'
     } else if (!expired && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = `${months} شهر`
+      result.remainingText = `${months} ╪┤┘ç╪▒`
     } else if (!expired) {
-      result.remainingText = `${result.remainingDays} يوم`
+      result.remainingText = `${result.remainingDays} ┘è┘ê┘à`
     }
     result.expired = expired
     return result
@@ -163,14 +163,14 @@ function checkLicense(realm) {
       result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
     if (persistent.licenseType === 'lifetime') {
-      result.remainingText = 'مدى الحياة'
+      result.remainingText = '┘à╪»┘ë ╪º┘ä╪¡┘è╪º╪⌐'
     } else if (result.remainingDays !== null && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = `${months} شهر`
+      result.remainingText = `${months} ╪┤┘ç╪▒`
     } else if (result.remainingDays !== null) {
-      result.remainingText = `${result.remainingDays} يوم`
+      result.remainingText = `${result.remainingDays} ┘è┘ê┘à`
     } else {
-      result.remainingText = 'منتهي'
+      result.remainingText = '┘à┘å╪¬┘ç┘è'
     }
     result.expired = expired
     return result
@@ -184,18 +184,18 @@ function checkLicense(realm) {
     if (nowMs < maxSeen.getTime()) {
       expired = true
       result.remainingDays = 0
-      result.remainingText = 'تم اكتشاف تغيير في تاريخ النظام - الترخيص ملغي'
+      result.remainingText = '╪¬┘à ╪º┘â╪¬╪┤╪º┘ü ╪¬╪║┘è┘è╪▒ ┘ü┘è ╪¬╪º╪▒┘è╪« ╪º┘ä┘å╪╕╪º┘à - ╪º┘ä╪¬╪▒╪«┘è╪╡ ┘à┘ä╪║┘è'
     } else {
       const effectiveMax = license ? new Date(Math.max(maxSeen.getTime(), nowMs)) : maxSeen
       const elapsed = Math.floor((effectiveMax - trialStart) / (1000 * 60 * 60 * 24))
       if (elapsed >= TRIAL_DAYS) {
         expired = true
         result.remainingDays = 0
-        result.remainingText = 'منتهي'
+        result.remainingText = '┘à┘å╪¬┘ç┘è'
       } else {
         expired = false
         result.remainingDays = TRIAL_DAYS - elapsed
-        result.remainingText = `تجربة - باقي ${result.remainingDays} يوم`
+        result.remainingText = `╪¬╪¼╪▒╪¿╪⌐ - ╪¿╪º┘é┘è ${result.remainingDays} ┘è┘ê┘à`
       }
 
       if (license) {
@@ -211,7 +211,7 @@ function checkLicense(realm) {
 
   if (persistent && persistent.hwid && persistent.hwid !== hwid) {
     expired = true
-    result.remainingText = 'جهاز مختلف - تجربة غير متاحة'
+    result.remainingText = '╪¼┘ç╪º╪▓ ┘à╪«╪¬┘ä┘ü - ╪¬╪¼╪▒╪¿╪⌐ ╪║┘è╪▒ ┘à╪¬╪º╪¡╪⌐'
     result.remainingDays = 0
   }
 
@@ -230,7 +230,7 @@ async function activateLicense(realm, key) {
   const data = await response.json()
 
   if (!data.success) {
-    throw new Error(data.error || 'فشل التفعيل')
+    throw new Error(data.error || '┘ü╪┤┘ä ╪º┘ä╪¬┘ü╪╣┘è┘ä')
   }
 
   const now = new Date()
@@ -266,7 +266,7 @@ async function startTrial(realm) {
 
   if (persistent) {
     if (persistent.hwid !== hwid) {
-      throw new Error('هذا الجهاز مختلف عن الجهاز الذي بدأ عليه الترخيص')
+      throw new Error('┘ç╪░╪º ╪º┘ä╪¼┘ç╪º╪▓ ┘à╪«╪¬┘ä┘ü ╪╣┘å ╪º┘ä╪¼┘ç╪º╪▓ ╪º┘ä╪░┘è ╪¿╪»╪ú ╪╣┘ä┘è┘ç ╪º┘ä╪¬╪▒╪«┘è╪╡')
     }
     if (persistent.trialStartedAt) {
       return { success: true, alreadyActivated: true }
@@ -299,7 +299,7 @@ async function periodicCheck(realm) {
   if (!license?.activated || !license?.activatedKey) return { valid: true, local: true }
   const hwid = generateHwid()
   const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
-  if (!serverResult.valid) {
+  if (serverResult.valid === false && !serverResult.networkError) {
     realm.write(() => {
       license.activated = false
     })
