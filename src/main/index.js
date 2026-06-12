@@ -12,7 +12,7 @@ const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
 const { listUsers, saveUser, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
-const { checkLicense, activateLicense, startTrial } = require('./ipc/license')
+const { checkLicense, activateLicense, startTrial, periodicCheck, startPeriodicCheck, stopPeriodicCheck } = require('./ipc/license')
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, createReturn, removeReturn } = require('./ipc/returns')
 const { getActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
@@ -67,8 +67,14 @@ function registerIpc() {
 
   // License
   handle('license:check', async () => checkLicense(await openRealm()))
-  handle('license:activate', async ({ key }) => activateLicense(await openRealm(), key))
+  handle('license:activate', async ({ key }) => {
+    const r = await openRealm()
+    const result = await activateLicense(r, key)
+    startPeriodicCheck(r)
+    return result
+  })
   handle('license:startTrial', async () => startTrial(await openRealm()))
+  handle('license:periodicCheck', async () => periodicCheck(await openRealm()))
 
   // Products
   handle('products:list', async ({ token, query }) => (requireUser(token, 'products.view'), listProducts(await openRealm(), query)))
@@ -380,7 +386,12 @@ app.commandLine.appendSwitch('no-sandbox')
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerIpc()
-  seedDatabase().then(() => createWindow())
+  seedDatabase().then(async () => {
+    createWindow()
+    const r = await openRealm()
+    const lic = checkLicense(r)
+    if (lic.activated) startPeriodicCheck(r)
+  })
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -397,6 +408,7 @@ app.on('window-all-closed', () => {
         closeRealm()
       })
     } catch(e) {}
+    stopPeriodicCheck()
     app.quit()
   }
 })

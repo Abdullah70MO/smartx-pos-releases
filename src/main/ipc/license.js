@@ -3,9 +3,13 @@ const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 const { app } = require('electron')
-const { LICENSE_API_URL } = require('../constants')
+const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
 
 const TRIAL_DAYS = 14
+const XOR_KEY = 'Sx@2024!'
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000 // every 6 hours
+
+let periodicTimer = null
 
 function generateHwid() {
   const parts = [
@@ -41,17 +45,42 @@ function xorDecode(encoded, key) {
   } catch { return null }
 }
 
+function computeChecksum(data) {
+  return crypto.createHmac('sha256', LICENSE_SIGNING_KEY)
+    .update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || ''))
+    .digest('hex')
+}
+
+function verifyServerLicenseFile(base64data) {
+  try {
+    const json = Buffer.from(base64data, 'base64').toString('utf8')
+    const data = JSON.parse(json)
+    const signature = data.signature
+    if (!signature) return null
+    const dataForSig = { ...data }
+    delete dataForSig.signature
+    const expected = crypto.createHmac('sha256', LICENSE_SIGNING_KEY)
+      .update(JSON.stringify(dataForSig))
+      .digest('hex')
+    return signature === expected ? data : null
+  } catch { return null }
+}
+
 function readPersistentLicense() {
   const filePath = getLicenseFilePath()
   try {
     if (!fs.existsSync(filePath)) return null
     const raw = fs.readFileSync(filePath, 'utf8').trim()
-    const json = xorDecode(raw, 'Sx@2024!')
+    const json = xorDecode(raw, XOR_KEY)
     if (!json) return null
     const data = JSON.parse(json)
     if (!data.hwid || !data.checksum) return null
-    const expected = crypto.createHash('md5').update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '')).digest('hex')
+    const expected = computeChecksum(data)
     if (data.checksum !== expected) return null
+    if (data.licenseFile) {
+      const verified = verifyServerLicenseFile(data.licenseFile)
+      if (!verified) return null
+    }
     return data
   } catch { return null }
 }
@@ -61,10 +90,23 @@ function writePersistentLicense(data) {
     const filePath = getLicenseFilePath()
     const dir = path.dirname(filePath)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    data.checksum = crypto.createHash('md5').update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '')).digest('hex')
-    const raw = xorEncode(JSON.stringify(data), 'Sx@2024!')
+    data.checksum = computeChecksum(data)
+    const raw = xorEncode(JSON.stringify(data), XOR_KEY)
     fs.writeFileSync(filePath, raw, 'utf8')
   } catch {}
+}
+
+async function checkLicenseWithServer(key, hwid) {
+  try {
+    const response = await fetch(`${LICENSE_API_URL}/api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, hwid })
+    })
+    return await response.json()
+  } catch {
+    return { valid: false, error: 'فشل الاتصال بالسيرفر' }
+  }
 }
 
 function checkLicense(realm) {
@@ -209,7 +251,8 @@ async function activateLicense(realm, key) {
     activatedKey: key,
     expiresAt: data.expiresAt || '',
     licenseType: data.licenseType || 'lifetime',
-    maxDateSeen: now.toISOString()
+    maxDateSeen: now.toISOString(),
+    licenseFile: data.licenseFile || ''
   })
 
   return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType }
@@ -249,4 +292,36 @@ async function startTrial(realm) {
   return { success: true, trialStartedAt: now.toISOString() }
 }
 
-module.exports = { checkLicense, activateLicense, startTrial, generateHwid }
+async function periodicCheck(realm) {
+  const license = realm.objectForPrimaryKey('License', 'license')
+  if (!license?.activated || !license?.activatedKey) return { valid: true, local: true }
+  const hwid = generateHwid()
+  const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
+  if (!serverResult.valid) {
+    realm.write(() => {
+      license.activated = false
+    })
+    writePersistentLicense({
+      hwid,
+      activated: false,
+      maxDateSeen: new Date().toISOString()
+    })
+  }
+  return serverResult
+}
+
+function startPeriodicCheck(realm) {
+  if (periodicTimer) clearInterval(periodicTimer)
+  periodicTimer = setInterval(() => {
+    periodicCheck(realm)
+  }, CHECK_INTERVAL_MS)
+}
+
+function stopPeriodicCheck() {
+  if (periodicTimer) {
+    clearInterval(periodicTimer)
+    periodicTimer = null
+  }
+}
+
+module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, startPeriodicCheck, stopPeriodicCheck }

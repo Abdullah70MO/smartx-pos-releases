@@ -10,6 +10,7 @@ const api = {
   checkLicense: () => ipcRenderer.invoke('license:check'),
   activateLicense: (key) => ipcRenderer.invoke('license:activate', { key }),
   startTrial: () => ipcRenderer.invoke('license:startTrial'),
+  periodicCheck: () => ipcRenderer.invoke('license:periodicCheck'),
 
   // Products
   listProducts: (token, query) => ipcRenderer.invoke('products:list', { token, query }),

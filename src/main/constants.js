@@ -6,5 +6,6 @@ const CONTACT_INFO = [
 ]
 
 const LICENSE_API_URL = 'https://smartx-pos-api.vercel.app'
+const LICENSE_SIGNING_KEY = '26471e18b6753af07d1b84dd7d3f21bbbd80dff514b2cc4ba4466bde96d36e33'
 
-module.exports = { CONTACT_INFO, LICENSE_API_URL }
+module.exports = { CONTACT_INFO, LICENSE_API_URL, LICENSE_SIGNING_KEY }
