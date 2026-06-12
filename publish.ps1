@@ -41,11 +41,13 @@ $setupExe = "build-out\SMART X POS Setup $newVersion.exe"
 if ((Test-Path $unpackedDir) -or (Test-Path $setupExe)) {
   Write-Host "⚠️ الـ build موجود مسبقاً، بينشر من غير ما يبني تاني..." -ForegroundColor Yellow
   node scripts/obfuscate.js obfuscate
-  vite build
+  if ($LASTEXITCODE -ne 0) { Write-Host "❌ فشل التعتيم" -ForegroundColor Red; exit 1 }
+  npx vite build
+  if ($LASTEXITCODE -ne 0) { Write-Host "❌ فشل vite build" -ForegroundColor Red; node scripts/obfuscate.js restore; exit 1 }
   if (Test-Path $unpackedDir) {
-    npx electron-builder build --win --publish always --prepackaged $unpackedDir
+    npx --yes electron-builder build --win --publish always --prepackaged $unpackedDir
   } else {
-    npx electron-builder build --win --publish always
+    npx --yes electron-builder build --win --publish always
   }
   node scripts/obfuscate.js restore
 } else {
