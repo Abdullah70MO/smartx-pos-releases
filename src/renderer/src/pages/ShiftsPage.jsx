@@ -136,7 +136,8 @@ export default function ShiftsPage() {
           </div>
           <input type="number" placeholder="رصيد النهاية" value={endingBalance} onInput={e => setEndingBalance(e.target.value)} />
           {endingBalance !== '' && endingBalance !== undefined && (() => {
-            const diff = Number(endingBalance) - (activeShift?.totalSales || 0)
+            const expected = (activeShift?.startingBalance || 0) + (activeShift?.totalSales || 0)
+            const diff = Number(endingBalance) - expected
             if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
             if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
             return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
