@@ -8,7 +8,7 @@ const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
 const TRIAL_DAYS = 14
 const GRACE_DAYS = 7
 const XOR_KEY = 'Sx@2024!'
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000 // every 6 hours
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 
 let periodicTimer = null
 
@@ -154,16 +154,16 @@ function checkLicense(realm) {
           result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
         } else {
           const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
-          result.remainingText = `مدى الحياة - مهلة ${graceRemaining} يوم`
+          result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
         }
       } else {
         result.remainingText = 'مدى الحياة'
       }
     } else if (!expired && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = `${months} شهر`
+      result.remainingText = months + ' شهر'
     } else if (!expired) {
-      result.remainingText = `${result.remainingDays} يوم`
+      result.remainingText = result.remainingDays + ' يوم'
     }
     result.expired = expired
     return result
@@ -186,18 +186,18 @@ function checkLicense(realm) {
           result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
         } else {
           const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
-          result.remainingText = `مدى الحياة - مهلة ${graceRemaining} يوم`
+          result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
         }
       } else {
         result.remainingText = 'مدى الحياة'
       }
     } else if (result.remainingDays !== null && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = `${months} ╪┤┘ç╪▒`
+      result.remainingText = months + ' شهر'
     } else if (result.remainingDays !== null) {
-      result.remainingText = `${result.remainingDays} ┘è┘ê┘à`
+      result.remainingText = result.remainingDays + ' يوم'
     } else {
-      result.remainingText = '┘à┘å╪¬┘ç┘è'
+      result.remainingText = 'منتهي'
     }
     result.expired = expired
     return result
@@ -211,18 +211,18 @@ function checkLicense(realm) {
     if (nowMs < maxSeen.getTime()) {
       expired = true
       result.remainingDays = 0
-      result.remainingText = '╪¬┘à ╪º┘â╪¬╪┤╪º┘ü ╪¬╪║┘è┘è╪▒ ┘ü┘è ╪¬╪º╪▒┘è╪« ╪º┘ä┘å╪╕╪º┘à - ╪º┘ä╪¬╪▒╪«┘è╪╡ ┘à┘ä╪║┘è'
+      result.remainingText = 'تم اكتشاف تغيير في تاريخ النظام - الترخيص ملغي'
     } else {
       const effectiveMax = license ? new Date(Math.max(maxSeen.getTime(), nowMs)) : maxSeen
       const elapsed = Math.floor((effectiveMax - trialStart) / (1000 * 60 * 60 * 24))
       if (elapsed >= TRIAL_DAYS) {
         expired = true
         result.remainingDays = 0
-        result.remainingText = '┘à┘å╪¬┘ç┘è'
+        result.remainingText = 'منتهي'
       } else {
         expired = false
         result.remainingDays = TRIAL_DAYS - elapsed
-        result.remainingText = `╪¬╪¼╪▒╪¿╪⌐ - ╪¿╪º┘é┘è ${result.remainingDays} ┘è┘ê┘à`
+        result.remainingText = 'تجربة - باقي ' + result.remainingDays + ' يوم'
       }
 
       if (license) {
@@ -238,7 +238,7 @@ function checkLicense(realm) {
 
   if (persistent && persistent.hwid && persistent.hwid !== hwid) {
     expired = true
-    result.remainingText = '╪¼┘ç╪º╪▓ ┘à╪«╪¬┘ä┘ü - ╪¬╪¼╪▒╪¿╪⌐ ╪║┘è╪▒ ┘à╪¬╪º╪¡╪⌐'
+    result.remainingText = 'جهاز مختلف - تجربة غير متاحة'
     result.remainingDays = 0
   }
 
@@ -257,7 +257,7 @@ async function activateLicense(realm, key) {
   const data = await response.json()
 
   if (!data.success) {
-    throw new Error(data.error || '┘ü╪┤┘ä ╪º┘ä╪¬┘ü╪╣┘è┘ä')
+    throw new Error(data.error || 'فشل التفعيل')
   }
 
   const now = new Date()
@@ -294,7 +294,7 @@ async function startTrial(realm) {
 
   if (persistent) {
     if (persistent.hwid !== hwid) {
-      throw new Error('┘ç╪░╪º ╪º┘ä╪¼┘ç╪º╪▓ ┘à╪«╪¬┘ä┘ü ╪╣┘å ╪º┘ä╪¼┘ç╪º╪▓ ╪º┘ä╪░┘è ╪¿╪»╪ú ╪╣┘ä┘è┘ç ╪º┘ä╪¬╪▒╪«┘è╪╡')
+      throw new Error('هذا الجهاز مختلف عن الجهاز الذي بدأ عليه الترخيص')
     }
     if (persistent.trialStartedAt) {
       return { success: true, alreadyActivated: true }

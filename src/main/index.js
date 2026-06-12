@@ -161,7 +161,20 @@ function registerIpc() {
   // Shifts
   handle('shifts:getActive', async ({ token }) => (requireUser(token), getActiveShift(await openRealm(), requireUser(token).userId)))
   handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token), startingBalance))
-  handle('shifts:end', async ({ token, endingBalance }) => endShift(await openRealm(), requireUser(token), endingBalance))
+  handle('shifts:end', async ({ token, endingBalance }) => {
+    const r = await openRealm(); const session = requireUser(token)
+    const result = endShift(r, session, endingBalance)
+    const diff = result.endingBalance - result.startingBalance - result.totalSales
+    if (diff < 0) {
+      saveExpense(r, session, { amount: Math.abs(diff), category: 'عجز وردية', note: 'عجز - ' + result.cashierName, date: new Date().toISOString() })
+    } else if (diff > 0) {
+      const mainTreasury = r.objects('Treasury').filtered('type == "main"')[0]
+      if (mainTreasury) {
+        addToTreasury(r, { treasuryId: mainTreasury._id, amount: diff, note: 'زيادة - ' + result.cashierName, paymentMethod: 'cash', personName: result.cashierName, refType: 'shift', refId: result._id }, session)
+      }
+    }
+    return result
+  })
   handle('shifts:list', async ({ token }) => (requireUser(token, 'shifts.view'), listShifts(await openRealm())))
   handle('shifts:sales', async ({ token }) => (requireUser(token, 'shifts.view'), getShiftSales(await openRealm(), requireUser(token).userId)))
 
@@ -383,15 +396,12 @@ async function seedDatabase() {
 }
 
 app.commandLine.appendSwitch('no-sandbox')
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   registerIpc()
-  seedDatabase().then(async () => {
-    createWindow()
-    const r = await openRealm()
-    const lic = checkLicense(r)
-    if (lic.activated) startPeriodicCheck(r)
-  })
+  await seedDatabase()
+  createWindow()
+  startPeriodicCheck(await openRealm())
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
