@@ -80,7 +80,8 @@ export function StoreProvider({ children }) {
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
     } catch (e) { console.error('getSettings error:', e) }
     const license = await api.checkLicense()
-    setState(s => ({ ...s, token: result.token, user: result.user, settings, license, page: 'dashboard' }))
+    const targetPage = (!license?.activated && !license?.trialUsed) || license?.expired ? 'license' : 'dashboard'
+    setState(s => ({ ...s, token: result.token, user: result.user, settings, license, page: targetPage }))
     localStorage.setItem('token', result.token)
     localStorage.setItem('user', JSON.stringify(result.user))
     return result

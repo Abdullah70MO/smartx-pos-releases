@@ -81,9 +81,11 @@ export default function LicensePage() {
             {loading ? 'جاري...' : 'تفعيل الترخيص'}
           </button>
           {error && <div style={{ color:'var(--danger)',fontSize:'13px' }}>{error}</div>}
-          <button onClick={goToLogin} style={{ background:'transparent',color:'var(--text2)',padding:'8px',borderRadius:'8px',fontSize:'13px',textDecoration:'underline',cursor:'pointer' }}>
-            رجوع إلى تسجيل الدخول
-          </button>
+          {(license?.trialUsed || license?.activated) && (
+            <button onClick={goToLogin} style={{ background:'transparent',color:'var(--text2)',padding:'8px',borderRadius:'8px',fontSize:'13px',textDecoration:'underline',cursor:'pointer' }}>
+              رجوع إلى تسجيل الدخول
+            </button>
+          )}
         </div>
       )}
 
