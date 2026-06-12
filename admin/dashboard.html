@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMART X - لوحة تحكم الترخيص</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Cairo', sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { text-align: center; color: #3b82f6; margin-bottom: 24px; font-size: 24px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { font-size: 16px; margin-bottom: 12px; color: #94a3b8; }
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-warning { background: #f59e0b; color: #fff; }
+    input, select { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-family: inherit; font-size: 13px; margin-bottom: 8px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: right; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-size: 12px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-active { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .badge-inactive { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .badge-lifetime { background: rgba(59,130,246,0.2); color: #3b82f6; }
+    .actions { display: flex; gap: 4px; }
+    .login-box { max-width: 400px; margin: 100px auto; text-align: center; }
+    .login-box input { text-align: center; }
+    .flex { display: flex; gap: 8px; align-items: end; }
+    .flex input { flex: 1; margin-bottom: 0; }
+    .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 600; z-index: 999; }
+    .toast-success { background: #22c55e; }
+    .toast-error { background: #ef4444; }
+    .hidden { display: none; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #1e293b; border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #3b82f6; }
+    .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <div id="login-section">
+      <div class="login-box card">
+        <h1>SMART X</h1>
+        <h2 style="font-size:14px;color:#94a3b8;margin-bottom:16px">لوحة تحكم الترخيص</h2>
+        <input type="password" id="adminKeyInput" placeholder="مفتاح المشرف" />
+        <button class="btn btn-primary" onclick="login()" style="width:100%;padding:12px">دخول</button>
+      </div>
+    </div>
+
+    <div id="dashboard-section" class="hidden">
+      <div class="stats" id="stats"></div>
+      <div class="card">
+        <h2>إنشاء مفتاح جديد</h2>
+        <div class="flex">
+          <select id="newKeyType">
+            <option value="lifetime">مدى الحياة</option>
+            <option value="year">سنة</option>
+            <option value="month">شهر</option>
+          </select>
+          <input type="number" id="newKeyMax" value="1" min="1" placeholder="حد التفعيل" style="width:100px;flex:0" />
+          <button class="btn btn-success" onclick="createKey()">إنشاء</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>المفاتيح</h2>
+        <div id="keys-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://smartx-pos-api.vercel.app'
+    let adminKey = ''
+
+    function toast(msg, type = 'success') {
+      const d = document.createElement('div')
+      d.className = 'toast toast-' + type
+      d.textContent = msg
+      document.body.appendChild(d)
+      setTimeout(() => d.remove(), 3000)
+    }
+
+    function login() {
+      adminKey = document.getElementById('adminKeyInput').value
+      if (!adminKey) return toast('الرجاء إدخال مفتاح المشرف', 'error')
+      document.getElementById('login-section').classList.add('hidden')
+      document.getElementById('dashboard-section').classList.remove('hidden')
+      loadKeys()
+    }
+
+    async function apiCall(endpoint, method = 'GET', body = null) {
+      const opts = { method, headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' } }
+      if (body) opts.body = JSON.stringify(body)
+      const res = await fetch(API + endpoint, opts)
+      return res.json()
+    }
+
+    async function loadKeys() {
+      const data = await apiCall('/api/listKeys')
+      if (data.error) return toast(data.error, 'error')
+      renderKeys(data.keys || [])
+    }
+
+    function renderKeys(keys) {
+      const total = keys.length
+      const active = keys.filter(k => k.is_active).length
+      const totalActivations = keys.reduce((s, k) => s + (k.activations?.length || 0), 0)
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">إجمالي المفاتيح</div></div>
+        <div class="stat"><div class="stat-value">${active}</div><div class="stat-label">نشط</div></div>
+        <div class="stat"><div class="stat-value">${total - active}</div><div class="stat-label">ملغي</div></div>
+        <div class="stat"><div class="stat-value">${totalActivations}</div><div class="stat-label">أجهزة مفعلة</div></div>
+      `
+
+      if (!keys.length) {
+        document.getElementById('keys-table').innerHTML = '<div style="color:#64748b;text-align:center;padding:20px">لا توجد مفاتيح</div>'
+        return
+      }
+
+      document.getElementById('keys-table').innerHTML = `
+        <table>
+          <thead><tr>
+            <th>المفتاح</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>الحد</th><th>الملاحظات</th><th>تاريخ الإنشاء</th><th></th>
+          </tr></thead>
+          <tbody>${keys.map(k => `
+            <tr>
+              <td style="direction:ltr;font-size:11px">${k.key_string}</td>
+              <td><span class="badge badge-lifetime">${k.license_type === 'lifetime' ? 'مدى الحياة' : k.license_type === 'year' ? 'سنة' : 'شهر'}</span></td>
+              <td><span class="badge ${k.is_active ? 'badge-active' : 'badge-inactive'}">${k.is_active ? 'نشط' : 'ملغي'}</span></td>
+              <td>${k.current_activations || 0} / ${k.max_activations}</td>
+              <td style="font-size:11px;color:#94a3b8">${k.notes || '-'}</td>
+              <td style="font-size:11px">${new Date(k.created_at).toLocaleDateString('ar-EG')}</td>
+              <td>
+                <div class="actions">
+                  ${k.is_active ? `<button class="btn btn-warning" onclick="revokeKey(${k.id})">إلغاء</button>` : `<button class="btn btn-success" onclick="reactivateKey(${k.id})">تفعيل</button>`}
+                  <button class="btn btn-danger" onclick="deleteKey(${k.id})">حذف</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}</tbody>
+        </table>
+      `
+    }
+
+    async function createKey() {
+      const type = document.getElementById('newKeyType').value
+      const max = Number(document.getElementById('newKeyMax').value) || 1
+      const data = await apiCall('/api/createKey', 'POST', { license_type: type, max_activations: max })
+      if (data.error) return toast(data.error, 'error')
+      toast(`تم إنشاء المفتاح: ${data.key.key_string}`)
+      loadKeys()
+    }
+
+    async function revokeKey(id) {
+      if (!confirm('إلغاء تفعيل هذا المفتاح؟')) return
+      const data = await apiCall('/api/revokeKey', 'POST', { id, action: 'revoke' })
+      if (data.error) return toast(data.error, 'error')
+      toast('تم إلغاء المفتاح', 'success')
+      loadKeys()
+    }
+
+    async function reactivateKey(id) {
+      const data = await apiCall('/api/revokeKey', 'POST', { id, action: 'reactivate' })
+      if (data.error) return toast(data.error, 'error')
+      toast('تم تفعيل المفتاح', 'success')
+      loadKeys()
+    }
+
+    async function deleteKey(id) {
+      if (!confirm('حذف هذا المفتاح نهائياً؟ سيتم حذف جميع التفعيلات المرتبطة به.')) return
+      const data = await apiCall('/api/revokeKey', 'POST', { id, action: 'delete' })
+      if (data.error) return toast(data.error, 'error')
+      toast('تم حذف المفتاح', 'success')
+      loadKeys()
+    }
+  </script>
+</body>
+</html>
