@@ -47,9 +47,9 @@ function xorDecode(encoded, key) {
 }
 
 function computeChecksum(data) {
-  return crypto.createHmac('sha256', LICENSE_SIGNING_KEY)
-    .update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '') + '|' + (data.lastSuccessfulCheck || ''))
-    .digest('hex')
+  let input = data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '')
+  if (data.lastSuccessfulCheck) input += '|' + data.lastSuccessfulCheck
+  return crypto.createHmac('sha256', LICENSE_SIGNING_KEY).update(input).digest('hex')
 }
 
 function verifyServerLicenseFile(base64data) {
