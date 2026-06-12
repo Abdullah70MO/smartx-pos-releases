@@ -16,3 +16,4 @@ build-out/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+*.bak
