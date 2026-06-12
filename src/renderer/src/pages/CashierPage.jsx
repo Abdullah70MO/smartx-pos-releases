@@ -34,9 +34,10 @@ export default function CashierPage() {
   const [priceMode, setPriceMode] = useState('retail')
   const [showCustomerList, setShowCustomerList] = useState(false)
   const [showStartShift, setShowStartShift] = useState(false)
-  const [showEndShift, setShowEndShift] = useState(false)
-  const [showEndConfirm, setShowEndConfirm] = useState(false)
-  const [startBalance, setStartBalance] = useState('')
+const [showEndShift, setShowEndShift] = useState(false)
+const [showEndConfirm, setShowEndConfirm] = useState(false)
+const [startBalance, setStartBalance] = useState('')
+const [taxEnabled, setTaxEnabled] = useState(true)
   const [endBalance, setEndBalance] = useState('')
   const [errorModal, setErrorModal] = useState({ show: false, message: '' })
   const [receipt, setReceipt] = useState(null)
@@ -53,8 +54,14 @@ export default function CashierPage() {
   const addToCartRef = useRef(null)
 
   useEffect(() => {
-    loadProducts(); loadCustomers(); loadShiftData(); searchRef.current?.focus()
+    loadProducts(); loadCustomers(); loadShiftData(); loadSettings(); searchRef.current?.focus()
   }, [])
+  async function loadSettings() {
+    try {
+      const s = await api.getSettings(localStorage.getItem('token'))
+      setTaxEnabled(s.taxEnabled !== false)
+    } catch {}
+  }
 
   useEffect(() => {
     if (!shiftLoaded) return
@@ -187,15 +194,15 @@ export default function CashierPage() {
     if (paymentMethod === 'cash' && cart.length > 0) {
       const st = cart.reduce((s, item) => s + (item.unitPrice * item.quantity), 0)
       const d = Number(discount) || 0
-      const t = cart.reduce((s, item) => {
+      const t = taxEnabled ? cart.reduce((s, item) => {
         const p = products.find(pr => pr._id === item.productId)
         return s + ((item.unitPrice * item.quantity) * ((p?.taxRate || 0) / 100))
-      }, 0)
+      }, 0) : 0
       setPaid(st - d + t)
     } else if (paymentMethod === 'cash' && cart.length === 0) {
       setPaid('')
     }
-  }, [cart, discount, paymentMethod, products])
+  }, [cart, discount, paymentMethod, products, taxEnabled])
 
   function handleCustomerInput(v) {
     setCustomerName(v)
@@ -220,10 +227,10 @@ export default function CashierPage() {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
   const discAmount = Number(discount) || 0
-  const tax = cart.reduce((sum, item) => {
+  const tax = taxEnabled ? cart.reduce((sum, item) => {
     const p = products.find(pr => pr._id === item.productId)
     return sum + ((item.unitPrice * item.quantity) * ((p?.taxRate || 0) / 100))
-  }, 0)
+  }, 0) : 0
   const total = subtotal - discAmount + tax
   const payable = paymentMethod === 'credit' ? (Number(creditPaid) || 0) : (Number(paid) || 0)
   const change = payable > total ? (payable - total) : 0

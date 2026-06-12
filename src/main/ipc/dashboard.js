@@ -12,7 +12,7 @@ function dashboardSummary(realm) {
   const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0)
   const todayProfit = todaySales.reduce((sum, s) => {
     const cost = s.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
-    return sum + s.total - cost
+    return sum + (s.total - (s.tax || 0)) - cost
   }, 0)
 
   const productSalesMap = new Map()

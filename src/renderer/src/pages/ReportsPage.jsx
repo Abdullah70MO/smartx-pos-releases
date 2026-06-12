@@ -38,10 +38,11 @@ export default function ReportsPage() {
   }, [])
 
   const totalSales = sales.reduce((sum, s) => sum + s.total, 0)
+  const totalTax = sales.reduce((sum, s) => sum + (s.tax || 0), 0)
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
   const totalReturns = returns.reduce((sum, r) => sum + r.subtotal, 0)
   const totalWithdrawals = withdrawals.reduce((sum, w) => sum + Math.abs(w.amount), 0)
-  const netProfit = totalSales - totalExpenses - totalReturns - totalWithdrawals
+  const netProfit = totalSales - totalTax - totalExpenses - totalReturns - totalWithdrawals
 
   const filteredSales = sales.filter(s => {
     if (searchSales.q && !String(s.invoiceNo).includes(searchSales.q) && !s.customerName?.includes(searchSales.q) && !s.cashierName?.includes(searchSales.q)) return false

@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState(null)
   const [updateModal, setUpdateModal] = useState(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -33,7 +34,8 @@ export default function SettingsPage() {
   async function load() {
     const token = localStorage.getItem('token')
     try {
-      const [s, c] = await Promise.all([api.getSettings(token), api.getContactInfo()])
+      const [s, c, ver] = await Promise.all([api.getSettings(token), api.getContactInfo(), api.getAppVersion()])
+      if (ver) setAppVersion(ver)
       if (s) {
         setSettings(s)
         let savedFont = s.fontFamily || 'Cairo'
@@ -404,7 +406,10 @@ export default function SettingsPage() {
           </div>
 
           <div style={{ borderTop: '1px solid var(--bg3)', margin: '16px 0 12px' }}></div>
-          <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)' }}>تحديث التطبيق</div>
+          <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>تحديث التطبيق</span>
+            <span style={{ fontSize: '12px', color: 'var(--text2)', fontWeight: '400' }}>{appVersion ? `الإصدار: v${appVersion}` : ''}</span>
+          </div>
           <button onClick={handleCheckUpdates} disabled={checkingUpdate} style={{ width: '100%', background: 'var(--bg3)', color: 'var(--text)', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>
             {checkingUpdate ? 'جاري التحقق...' : 'التحقق من وجود تحديثات'}
           </button>
