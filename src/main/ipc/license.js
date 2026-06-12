@@ -6,6 +6,7 @@ const { app } = require('electron')
 const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
 
 const TRIAL_DAYS = 14
+const GRACE_DAYS = 7
 const XOR_KEY = 'Sx@2024!'
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000 // every 6 hours
 
@@ -47,7 +48,7 @@ function xorDecode(encoded, key) {
 
 function computeChecksum(data) {
   return crypto.createHmac('sha256', LICENSE_SIGNING_KEY)
-    .update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || ''))
+    .update(data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '') + '|' + (data.lastSuccessfulCheck || ''))
     .digest('hex')
 }
 
@@ -138,18 +139,31 @@ function checkLicense(realm) {
     expired = expires < now
     if (expired) {
       result.remainingDays = 0
-      result.remainingText = '┘à┘å╪¬┘ç┘è'
+      result.remainingText = 'منتهي'
     } else {
       const diffMs = expires - now
       result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
     if (!expired && license.licenseType === 'lifetime') {
-      result.remainingText = '┘à╪»┘ë ╪º┘ä╪¡┘è╪º╪⌐'
+      if (persistent?.lastSuccessfulCheck) {
+        const lastCheck = new Date(persistent.lastSuccessfulCheck)
+        const graceEnd = new Date(lastCheck.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000)
+        if (now > graceEnd) {
+          expired = true
+          result.remainingDays = 0
+          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+        } else {
+          const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
+          result.remainingText = `مدى الحياة - مهلة ${graceRemaining} يوم`
+        }
+      } else {
+        result.remainingText = 'مدى الحياة'
+      }
     } else if (!expired && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = `${months} ╪┤┘ç╪▒`
+      result.remainingText = `${months} شهر`
     } else if (!expired) {
-      result.remainingText = `${result.remainingDays} ┘è┘ê┘à`
+      result.remainingText = `${result.remainingDays} يوم`
     }
     result.expired = expired
     return result
@@ -163,7 +177,20 @@ function checkLicense(realm) {
       result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     }
     if (persistent.licenseType === 'lifetime') {
-      result.remainingText = '┘à╪»┘ë ╪º┘ä╪¡┘è╪º╪⌐'
+      if (persistent.lastSuccessfulCheck) {
+        const lastCheck = new Date(persistent.lastSuccessfulCheck)
+        const graceEnd = new Date(lastCheck.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000)
+        if (now > graceEnd) {
+          expired = true
+          result.remainingDays = 0
+          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+        } else {
+          const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
+          result.remainingText = `مدى الحياة - مهلة ${graceRemaining} يوم`
+        }
+      } else {
+        result.remainingText = 'مدى الحياة'
+      }
     } else if (result.remainingDays !== null && result.remainingDays > 30) {
       const months = Math.floor(result.remainingDays / 30)
       result.remainingText = `${months} ╪┤┘ç╪▒`
@@ -254,7 +281,8 @@ async function activateLicense(realm, key) {
     expiresAt: data.expiresAt || '',
     licenseType: data.licenseType || 'lifetime',
     maxDateSeen: now.toISOString(),
-    licenseFile: data.licenseFile || ''
+    licenseFile: data.licenseFile || '',
+    lastSuccessfulCheck: now.toISOString()
   })
 
   return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType }
@@ -299,7 +327,11 @@ async function periodicCheck(realm) {
   if (!license?.activated || !license?.activatedKey) return { valid: true, local: true }
   const hwid = generateHwid()
   const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
-  if (serverResult.valid === false && !serverResult.networkError) {
+  if (serverResult.valid === true) {
+    const persistent = readPersistentLicense() || {}
+    persistent.lastSuccessfulCheck = new Date().toISOString()
+    writePersistentLicense(persistent)
+  } else if (serverResult.valid === false && !serverResult.networkError) {
     realm.write(() => {
       license.activated = false
     })
