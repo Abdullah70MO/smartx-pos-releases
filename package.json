@@ -15,7 +15,9 @@
     "dev:electron": "electron .",
     "build": "vite build && electron-builder build --win",
     "build:win": "vite build && electron-builder build --win",
-    "publish": "vite build && electron-builder build --win --publish always"
+    "publish": "vite build && electron-builder build --win --publish always",
+    "release": "powershell -ExecutionPolicy Bypass -File publish.ps1",
+    "release:gh": "powershell -ExecutionPolicy Bypass -File version-bump.ps1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

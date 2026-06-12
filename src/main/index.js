@@ -26,7 +26,8 @@ const { CONTACT_INFO } = require('./constants')
 
 const ALL_ADMIN_PERMISSIONS = ROLES.admin.permissions
 
-// Auto updater
+// Auto updater (manual only)
+autoUpdater.autoDownload = false
 autoUpdater.on('update-available', (info) => {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'available', info }))
 })
@@ -38,7 +39,6 @@ autoUpdater.on('download-progress', (progress) => {
 })
 autoUpdater.on('update-downloaded', (info) => {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'downloaded', info }))
-  setTimeout(() => autoUpdater.quitAndInstall(), 1000)
 })
 autoUpdater.on('error', (err) => {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'error', message: err.message }))
@@ -283,6 +283,7 @@ function registerIpc() {
   handle('app:close', () => app.quit())
   handle('get-app-version', () => app.getVersion())
   handle('check-for-updates-now', async () => { try { await autoUpdater.checkForUpdates() } catch(e) { BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'error', message: e.message })) }; return true })
+  handle('download-update-now', async () => { try { await autoUpdater.downloadUpdate() } catch(e) { BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'error', message: e.message })) }; return true })
   handle('install-update-now', () => { autoUpdater.quitAndInstall(); return true })
   handle('dialog:selectFolder', async () => {
     const { dialog } = require('electron')
@@ -292,7 +293,7 @@ function registerIpc() {
     if (result.canceled) return null
     return result.filePaths[0]
   })
-  handle('open-releases-page', () => shell.openExternal('https://github.com/Abdullah70MO/smartx-license/releases'))
+  handle('open-releases-page', () => shell.openExternal('https://github.com/Abdullah70MO/smartx-pos-releases/releases'))
 }
 
 function createWindow() {
@@ -380,9 +381,6 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerIpc()
   seedDatabase().then(() => createWindow())
-  if (!process.env.ELECTRON_RENDERER_URL) {
-    autoUpdater.checkForUpdatesAndNotify()
-  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

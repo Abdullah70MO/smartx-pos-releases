@@ -110,6 +110,7 @@ const api = {
   closeApp: () => ipcRenderer.invoke('app:close'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates-now'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update-now'),
   installUpdate: () => ipcRenderer.invoke('install-update-now'),
   openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
   onUpdateStatus: (callback) => {

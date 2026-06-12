@@ -130,6 +130,7 @@ export default function SettingsPage() {
         setUpdateModal({ type: 'available', info: status.info })
       } else if (status.type === 'downloaded') {
         setUpdateModal({ type: 'downloaded' })
+        toast('تم تحميل التحديث', 'success')
       } else if (status.type === 'error') {
         setUpdateModal({ type: 'error', message: status.message })
       } else if (status.type === 'not-available') {
@@ -150,8 +151,7 @@ export default function SettingsPage() {
     setCheckingUpdate(false)
   }
 
-  async function handleInstallUpdate() {
-    // Ask user to backup first
+  async function handleDownloadUpdate() {
     const doBackup = await confirm('يفضل أخذ نسخة احتياطية قبل التحديث. هل تريد أخذ نسخة الآن؟')
     if (doBackup) {
       try {
@@ -162,6 +162,15 @@ export default function SettingsPage() {
         return
       }
     }
+    setUpdateModal(null)
+    try {
+      await api.downloadUpdate()
+    } catch (err) {
+      setUpdateModal({ type: 'error', message: err.message })
+    }
+  }
+
+  async function handleInstallUpdate() {
     setUpdateModal(null)
     await api.installUpdate()
   }
@@ -431,14 +440,14 @@ export default function SettingsPage() {
         </Section>
       </div>
       {/* Update modals */}
-      <Modal open={!!updateModal} onClose={() => setUpdateModal(null)} title="تحديث التطبيق" width="420px">
+      <Modal open={!!updateModal} onClose={() => { if (updateModal?.type !== 'downloading') setUpdateModal(null) }} title="تحديث التطبيق" width="420px">
         {updateModal?.type === 'available' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
             <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
               يوجد تحديث جديد. يفضل أخذ نسخة احتياطية قبل التحديث لتجنب فقدان البيانات في حالة حدوث خطأ.
             </div>
-            <button onClick={handleInstallUpdate} style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}>
-              تثبيت التحديث
+            <button onClick={handleDownloadUpdate} style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}>
+              تحميل التحديث
             </button>
             <button onClick={() => setUpdateModal(null)} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '10px', borderRadius: '10px', fontSize: '13px' }}>
               لاحقاً
@@ -449,10 +458,13 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
             <div style={{ fontSize: '40px' }}>✅</div>
             <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-              تم تحميل التحديث. سيتم إعادة تشغيل التطبيق لتثبيته.
+              تم تحميل التحديث بنجاح. هل تريد إعادة التشغيل الآن لتثبيته؟
             </div>
             <button onClick={handleInstallUpdate} style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}>
               إعادة التشغيل والتحديث
+            </button>
+            <button onClick={() => setUpdateModal(null)} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '10px', borderRadius: '10px', fontSize: '13px' }}>
+              لاحقاً
             </button>
           </div>
         )}
