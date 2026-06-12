@@ -26,10 +26,25 @@ Write-Host "✅ تم تحديث الإصدار إلى $newVersion في package.j
 Write-Host "جاري الرفع إلى GitHub..." -ForegroundColor Cyan
 
 git add package.json
-git commit -m "v$newVersion"
-git tag "v$newVersion"
+$changed = git status --porcelain
+if ($changed) {
+  git commit -m "v$newVersion"
+} else {
+  Write-Host "⚠️ ما فيش تغيير في package.json، بنستخدم commit فارغ" -ForegroundColor Yellow
+  git commit --allow-empty -m "v$newVersion"
+}
+
+$tagName = "v$newVersion"
+$tagExists = git tag -l $tagName
+if ($tagExists) {
+  Write-Host "⚠️ الـ tag $tagName موجود، بنحذفه ونعيد إنشاؤه..." -ForegroundColor Yellow
+  git tag -d $tagName
+  git push origin ":$tagName" --quiet 2>$null
+}
+
+git tag $tagName
 git push
-git push --tags
+git push origin $tagName -f
 
 Write-Host "════════════════════════════════════" -ForegroundColor Green
 Write-Host "✅ تم رفع الإصدار $newVersion إلى GitHub" -ForegroundColor Green
