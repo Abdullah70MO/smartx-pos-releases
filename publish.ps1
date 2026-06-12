@@ -34,10 +34,25 @@ Set-Content "package.json" -Value $packageContent -NoNewline
 
 Write-Host "✅ تم تحديث الإصدار إلى $newVersion في package.json" -ForegroundColor Green
 Write-Host "════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "جاري البناء والنشر..." -ForegroundColor Cyan
-Write-Host "════════════════════════════════════" -ForegroundColor Cyan
 
-npm run publish
+$unpackedDir = "build-out\win-unpacked"
+$setupExe = "build-out\SMART X POS Setup $newVersion.exe"
+
+if ((Test-Path $unpackedDir) -or (Test-Path $setupExe)) {
+  Write-Host "⚠️ الـ build موجود مسبقاً، بينشر من غير ما يبني تاني..." -ForegroundColor Yellow
+  node scripts/obfuscate.js obfuscate
+  vite build
+  if (Test-Path $unpackedDir) {
+    npx electron-builder build --win --publish always --prepackaged $unpackedDir
+  } else {
+    npx electron-builder build --win --publish always
+  }
+  node scripts/obfuscate.js restore
+} else {
+  Write-Host "جاري البناء والنشر..." -ForegroundColor Cyan
+  npm run publish
+}
+Write-Host "════════════════════════════════════" -ForegroundColor Cyan
 
 if ($LASTEXITCODE -eq 0) {
   Write-Host "════════════════════════════════════" -ForegroundColor Green
