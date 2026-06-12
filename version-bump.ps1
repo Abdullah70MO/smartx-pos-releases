@@ -1,4 +1,4 @@
-$packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+﻿$packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
 $currentVersion = $packageJson.version
 
 Write-Host "════════════════════════════════════" -ForegroundColor Cyan
@@ -49,4 +49,4 @@ git push origin $tagName -f
 Write-Host "════════════════════════════════════" -ForegroundColor Green
 Write-Host "✅ تم رفع الإصدار $newVersion إلى GitHub" -ForegroundColor Green
 Write-Host "GitHub Actions سيبني وينشر التحديث تلقائياً" -ForegroundColor Cyan
-Write-Host "تتبع进度: https://github.com/Abdullah70MO/smartx-pos/actions" -ForegroundColor Cyan
+Write-Host "تابع: https://github.com/Abdullah70MO/smartx-pos/actions" -ForegroundColor Cyan
