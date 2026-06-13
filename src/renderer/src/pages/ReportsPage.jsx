@@ -14,6 +14,7 @@ export default function ReportsPage() {
   const [withdrawals, setWithdrawals] = useState([])
   const [customers, setCustomers] = useState([])
   const [suppliers, setSuppliers] = useState([])
+  const [treasuries, setTreasuries] = useState([])
   const [tab, setTab] = useState(reportTab || 'overview')
   const [searchSales, setSearchSales] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchExpenses, setSearchExpenses] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
@@ -23,19 +24,23 @@ export default function ReportsPage() {
   const [searchSuppliers, setSearchSuppliers] = useState('')
   const [treasuryTxns, setTreasuryTxns] = useState([])
   const [searchTreasury, setSearchTreasury] = useState({ q: '', dateFrom: '', dateTo: '' })
+  const [period, setPeriod] = useState('all')
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
 
   useEffect(() => {
     async function load() {
       const token = localStorage.getItem('token')
       try {
-        const [s, salesData, expensesData, returnsData, txns, customersData, suppliersData] = await Promise.all([
+        const [s, salesData, expensesData, returnsData, txns, customersData, suppliersData, treasuriesData] = await Promise.all([
           api.dashboardSummary(token),
           api.listSales(token),
           api.listExpenses(token),
           api.listReturns(token),
           api.listTreasuryTransactions(token, '', 0),
           api.listCustomers(token),
-          api.listSuppliers(token)
+          api.listSuppliers(token),
+          api.listTreasuries(token)
         ])
         setSummary(s); setSales(salesData)
         setExpenses(expensesData); setReturns(returnsData)
@@ -43,19 +48,60 @@ export default function ReportsPage() {
         setTreasuryTxns(txns || [])
         setCustomers(customersData || [])
         setSuppliers(suppliersData || [])
+        setTreasuries(treasuriesData || [])
       } catch {}
     }
     load()
   }, [])
 
-  const totalSales = sales.reduce((sum, s) => sum + s.total, 0)
-  const totalTax = sales.reduce((sum, s) => sum + (s.tax || 0), 0)
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const totalReturns = returns.reduce((sum, r) => sum + r.subtotal, 0)
-  const totalWithdrawals = withdrawals.reduce((sum, w) => sum + Math.abs(w.amount), 0)
-  const totalCOGS = sales.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
-  const totalReturnCost = returns.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+  function setPeriodFilter(p) {
+    setPeriod(p)
+    const now = new Date()
+    let from = '', to = now.toISOString().slice(0, 10)
+    if (p === 'today') from = to
+    else if (p === 'month') { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString().slice(0, 10) }
+    else if (p === '3months') { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().slice(0, 10) }
+    else if (p === '6months') { const d = new Date(now); d.setMonth(d.getMonth() - 6); from = d.toISOString().slice(0, 10) }
+    else if (p === 'year') { const d = new Date(now.getFullYear(), 0, 1); from = d.toISOString().slice(0, 10) }
+    else { from = ''; to = '' }
+    setFilterDateFrom(from)
+    setFilterDateTo(to)
+  }
+
+  function inRange(dateStr) {
+    if (!filterDateFrom && !filterDateTo) return true
+    const d = dateStr ? dateStr.slice(0, 10) : ''
+    if (!d) return true
+    if (filterDateFrom && d < filterDateFrom) return false
+    if (filterDateTo && d > filterDateTo) return false
+    return true
+  }
+
+  const filteredByDate = (arr, dateField) => arr.filter(x => inRange(x[dateField] || x.createdAt))
+
+  const filteredSalesAll = filteredByDate(sales, 'createdAt')
+  const filteredExpensesAll = filteredByDate(expenses, 'date')
+  const filteredReturnsAll = filteredByDate(returns, 'createdAt')
+  const filteredWithdrawalsAll = filteredByDate(withdrawals, 'createdAt')
+
+  const totalSales = filteredSalesAll.reduce((sum, s) => sum + s.total, 0)
+  const totalTax = filteredSalesAll.reduce((sum, s) => sum + (s.tax || 0), 0)
+  const totalExpenses = filteredExpensesAll.reduce((sum, e) => sum + e.amount, 0)
+  const totalReturns = filteredReturnsAll.reduce((sum, r) => sum + r.subtotal, 0)
+  const totalWithdrawals = filteredWithdrawalsAll.reduce((sum, w) => sum + Math.abs(w.amount), 0)
+  const totalCOGS = filteredSalesAll.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+  const totalReturnCost = filteredReturnsAll.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
   const netProfit = (totalSales - totalTax - totalCOGS) + (totalReturnCost - totalReturns) - totalExpenses - totalWithdrawals
+  const totalTreasuryBalance = treasuries.reduce((sum, t) => sum + (t.balance || 0), 0)
+
+  const PERIODS = [
+    { id: 'today', label: 'اليوم' },
+    { id: 'month', label: 'هذا الشهر' },
+    { id: '3months', label: 'آخر 3 شهور' },
+    { id: '6months', label: 'آخر 6 شهور' },
+    { id: 'year', label: 'السنة' },
+    { id: 'all', label: 'الكل' }
+  ]
 
   const filteredSales = sales.filter(s => {
     if (searchSales.q && !String(s.invoiceNo).includes(searchSales.q) && !s.customerName?.includes(searchSales.q) && !s.cashierName?.includes(searchSales.q)) return false
@@ -114,16 +160,29 @@ export default function ReportsPage() {
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
-      <h1 style={{ fontSize: '20px', marginBottom: '16px' }}>التقارير</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        <h1 style={{ fontSize: '20px' }}>التقارير</h1>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {PERIODS.map(p => (
+            <button key={p.id} onClick={() => setPeriodFilter(p.id)}
+              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: period === p.id ? 'var(--accent)' : 'var(--bg3)', color: period === p.id ? '#fff' : 'var(--text2)', fontWeight: period === p.id ? 'bold' : 'normal' }}>
+              {p.label}
+            </button>
+          ))}
+          <input type="date" value={filterDateFrom} onInput={e => { setFilterDateFrom(e.target.value); setPeriod('') }} style={{ width: '120px', fontSize: '11px' }} title="من تاريخ" />
+          <input type="date" value={filterDateTo} onInput={e => { setFilterDateTo(e.target.value); setPeriod('') }} style={{ width: '120px', fontSize: '11px' }} title="إلى تاريخ" />
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '20px' }}>
-          <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
-          <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
-          <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
-          <SummaryCard label="إجمالي المرتجعات" value={formatMoney(totalReturns)} color="#f59e0b" />
-          <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? '#22c55e' : '#ef4444'} />
-        <SummaryCard label="عدد الفواتير" value={sales.length} color="#3b82f6" />
+        <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
+        <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
+        <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
+        <SummaryCard label="إجمالي المرتجعات" value={formatMoney(totalReturns)} color="#f59e0b" />
+        <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? '#22c55e' : '#ef4444'} />
+        <SummaryCard label="عدد الفواتير" value={filteredSalesAll.length} color="#3b82f6" />
         <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="#8b5cf6" />
+        <SummaryCard label="رصيد الخزينة" value={formatMoney(totalTreasuryBalance)} color="#06b6d4" />
       </div>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: 'var(--bg2)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>

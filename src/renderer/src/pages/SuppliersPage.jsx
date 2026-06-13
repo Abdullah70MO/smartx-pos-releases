@@ -113,7 +113,7 @@ export default function SuppliersPage() {
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {canPay && <button onClick={() => openPay(s)} style={{ background: 'var(--bg3)', color: 'var(--success)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>تسديد</button>}
-                      <button onClick={() => openTransactions(s)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>العمليات</button>
+                      <button onClick={() => openTransactions(s)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>كشف حساب</button>
                       {canManage && <button onClick={() => openEdit(s)} style={{ background: 'var(--bg3)', color: 'var(--warning)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>تعديل</button>}
                       {canManage && <button onClick={() => handleRemove(s._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
                     </div>
@@ -199,14 +199,8 @@ export default function SuppliersPage() {
             </table>
           </div>
         </div>
-        <button onClick={() => {
-          if (settings?.printDefaultSize === 'a4') {
-            printA4(<StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} />)
-          } else {
-            window.print()
-          }
-        }} style={{ marginTop: '12px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-          {settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
+        <button onClick={() => printA4(<StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} />)} style={{ marginTop: '12px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
+          طباعة كشف حساب
         </button>
       </Modal>
       <ConfirmDialog />

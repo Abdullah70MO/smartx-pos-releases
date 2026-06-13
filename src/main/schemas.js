@@ -75,12 +75,13 @@ const ExpenseSchema = {
   name: 'Expense',
   primaryKey: '_id',
   properties: {
-    _id:       'string',
-    amount:    'double',
-    category:  'string',
-    note:      { type: 'string', default: '' },
-    date:      'date',
-    createdAt: 'date'
+    _id:           'string',
+    amount:        'double',
+    category:      'string',
+    note:          { type: 'string', default: '' },
+    date:          'date',
+    paymentMethod: { type: 'string', default: 'cash' },
+    createdAt:     'date'
   }
 }
 

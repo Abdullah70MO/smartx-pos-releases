@@ -81,9 +81,9 @@ function registerIpc() {
   handle('print:a4', async (html) => {
     const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-    printWin.webContents.on('did-finish-load', () => {
+    setTimeout(() => {
       printWin.webContents.print({}, () => printWin.destroy())
-    })
+    }, 300)
   })
 
   // Products
