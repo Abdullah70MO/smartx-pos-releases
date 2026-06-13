@@ -16,7 +16,8 @@ export function StoreProvider({ children }) {
     reportDateTo: '',
     settingsDirty: false,
     leaveSettingsPrompt: { open: false, targetPage: null },
-    settingsLeaveAction: null
+    settingsLeaveAction: null,
+    updateAvailable: null
   })
 
   function goToReports(tab, dateFrom, dateTo) {
@@ -152,6 +153,18 @@ export function StoreProvider({ children }) {
     return unsub
   }, [])
 
+  // Listen for update status
+  useEffect(() => {
+    const unsub = window.smartx?.onUpdateStatus?.((status) => {
+      if (status.type === 'available') {
+        setState(s => ({ ...s, updateAvailable: status.info?.version }))
+      } else if (status.type === 'not-available' || status.type === 'downloaded') {
+        // reset on next app restart
+      }
+    })
+    return unsub
+  }, [])
+
   // Sync theme attribute with state.settings.theme
   useEffect(() => {
     const theme = state.settings?.theme || 'dark'
@@ -183,7 +196,8 @@ export function StoreProvider({ children }) {
       markSettingsDirty,
       registerSettingsLeaveAction,
       closeSettingsPrompt,
-      confirmLeaveSettings
+      confirmLeaveSettings,
+      clearUpdate: () => setState(s => ({ ...s, updateAvailable: null }))
     }}>
       {children}
     </StoreContext.Provider>

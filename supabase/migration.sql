@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS activations (
   activated_at TIMESTAMPTZ DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ DEFAULT NOW(),
   is_active BOOLEAN DEFAULT true,
+  license_file TEXT,
   UNIQUE(key_id, hwid)
 );
 
@@ -44,6 +45,9 @@ CREATE POLICY "anon_can_read_active_keys" ON license_keys
 
 CREATE POLICY "anon_can_read_activations" ON activations
   FOR SELECT USING (true);
+
+-- Fix: Add missing license_file column (for existing databases)
+ALTER TABLE activations ADD COLUMN IF NOT EXISTS license_file TEXT;
 
 -- Insert a test key (lifetime)
 INSERT INTO license_keys (key_string, license_type, max_activations)

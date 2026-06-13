@@ -4,7 +4,12 @@ import api from '../api'
 
 export default function LicensePage() {
   const { license, setPage, refreshLicense } = useStore()
-  const [mode, setMode] = useState(license?.expired ? 'expired' : 'choose')
+  const [mode, setMode] = useState(() => {
+    if (license?.expired) return 'expired'
+    if (license?.activated) return 'activated'
+    if (license?.trialUsed) return 'trial-already'
+    return 'choose'
+  })
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -61,14 +66,14 @@ export default function LicensePage() {
               ? 'تم استخدام الفترة التجريبية من قبل. يرجى إدخال مفتاح التفعيل.'
               : 'يمكنك بدء الفترة التجريبية لمدة 14 يوماً أو إدخال مفتاح التفعيل الخاص بك'}
           </p>
-          {(!license?.trialUsed || license?.activated) && (
+          {(!license?.trialUsed && !license?.activated) && (
             <button onClick={handleStartTrial} disabled={loading} style={{
               background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold'
             }}>
               {loading ? 'جاري...' : 'بدء الفترة التجريبية (14 يوم)'}
             </button>
           )}
-          {(!license?.trialUsed || license?.activated) && (
+          {(!license?.trialUsed && !license?.activated) && (
             <div style={{ position:'relative',margin:'8px 0' }}>
               <div style={{ borderTop:'1px solid var(--bg3)' }}></div>
               <div style={{ position:'absolute',top:'-8px',left:'50%',transform:'translateX(-50%)',background:'var(--bg2)',padding:'0 12px',color:'var(--text2)',fontSize:'12px' }}>أو</div>
@@ -81,7 +86,7 @@ export default function LicensePage() {
             {loading ? 'جاري...' : 'تفعيل الترخيص'}
           </button>
           {error && <div style={{ color:'var(--danger)',fontSize:'13px' }}>{error}</div>}
-          {(license?.trialUsed || license?.activated) && (
+          {(license?.trialUsed || license?.activated) && !license?.expired && (
             <button onClick={goToLogin} style={{ background:'transparent',color:'var(--text2)',padding:'8px',borderRadius:'8px',fontSize:'13px',textDecoration:'underline',cursor:'pointer' }}>
               رجوع إلى تسجيل الدخول
             </button>

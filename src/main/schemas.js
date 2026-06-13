@@ -153,6 +153,7 @@ const LicenseSchema = {
     _id:             'string',
     activatedKey:    { type: 'string', default: '' },
     activated:       { type: 'bool', default: false },
+    activatedAt:     'date?',
     expiresAt:       'date?',
     licenseType:     { type: 'string', default: '' },
     trialStartedAt:  'date?',
@@ -377,6 +378,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 19
+const SCHEMA_VERSION = 20
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

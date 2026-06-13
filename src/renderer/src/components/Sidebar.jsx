@@ -22,7 +22,7 @@ const PAGES = [
 ]
 
 export default function Sidebar({ currentPage, onNavigate }) {
-  const { user, logout, settings } = useStore()
+  const { user, logout, settings, updateAvailable } = useStore()
   const { showAlert, ConfirmDialog } = useConfirm()
   const userPerms = user?.permissions || []
 
@@ -66,7 +66,12 @@ export default function Sidebar({ currentPage, onNavigate }) {
               }}
               className={isActive ? "" : "sidebar-btn"}
             >
-              <span style={{ fontSize: '16px' }}>{page.icon}</span>
+              <span style={{ fontSize: '16px', position: 'relative' }}>
+                {page.icon}
+                {page.id === 'settings' && updateAvailable && (
+                  <span style={{ position: 'absolute', top: '-4px', right: '-6px', width: '10px', height: '10px', background: '#ef4444', borderRadius: '50%', border: '2px solid var(--bg2)' }}></span>
+                )}
+              </span>
               <span>{page.label}</span>
             </button>
           )

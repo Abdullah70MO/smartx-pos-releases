@@ -412,6 +412,15 @@ app.whenReady().then(async () => {
   await seedDatabase()
   createWindow()
   startPeriodicCheck(await openRealm())
+  // Auto check for updates on startup (after 5s delay)
+  setTimeout(async () => {
+    try {
+      const r = await autoUpdater.checkForUpdates()
+      if (r?.updateInfo?.version && r.updateInfo.version !== app.getVersion()) {
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'available', info: r.updateInfo }))
+      }
+    } catch {}
+  }, 5000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

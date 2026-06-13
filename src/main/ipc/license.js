@@ -109,8 +109,9 @@ function readPersistentLicense() {
     if (!fs.existsSync(filePath)) return null
     const raw = fs.readFileSync(filePath, 'utf8').trim()
     let json = null
+    const hwid = generateHwid()
     if (raw.startsWith('{') && raw.includes('"v"')) {
-      json = aesDecrypt(raw, 'read')
+      json = aesDecrypt(raw, 'read') || aesDecrypt(raw, hwid)
     }
     if (!json) {
       json = xorDecode(raw, XOR_KEY)
@@ -134,7 +135,7 @@ function writePersistentLicense(data) {
     const dir = path.dirname(filePath)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     data.checksum = computeChecksum(data)
-    const raw = aesEncrypt(JSON.stringify(data), data.hwid)
+    const raw = aesEncrypt(JSON.stringify(data), 'read')
     fs.writeFileSync(filePath, raw, 'utf8')
   } catch {}
 }
@@ -167,6 +168,7 @@ function checkLicense(realm) {
   const result = {
     activated: license?.activated || persistent?.activated || false,
     activatedKey: license?.activatedKey || '',
+    activatedAt: license?.activatedAt?.toISOString() || persistent?.activatedAt || null,
     expiresAt: license?.expiresAt?.toISOString() || null,
     licenseType: license?.licenseType || persistent?.licenseType || '',
     trialStartedAt: license?.trialStartedAt?.toISOString() || persistent?.trialStartedAt || null,
@@ -294,11 +296,14 @@ async function activateLicense(realm, key) {
   }
 
   const now = new Date()
+  const existing = realm.objectForPrimaryKey('License', 'license')
+  const activatedAt = existing?.activatedAt || now
   realm.write(() => {
     realm.create('License', {
       _id: 'license',
       activatedKey: key,
       activated: true,
+      activatedAt,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       licenseType: data.licenseType || 'lifetime',
       deviceHwid: hwid,
@@ -311,6 +316,7 @@ async function activateLicense(realm, key) {
     hwid,
     activated: true,
     activatedKey: key,
+    activatedAt: activatedAt.toISOString(),
     expiresAt: data.expiresAt || '',
     licenseType: data.licenseType || 'lifetime',
     maxDateSeen: now.toISOString(),
@@ -319,12 +325,21 @@ async function activateLicense(realm, key) {
     cachedServerResponse: JSON.stringify(data)
   })
 
-  return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType }
+  return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType, activatedAt: activatedAt.toISOString() }
 }
 
 async function startTrial(realm) {
   const persistent = readPersistentLicense()
   const hwid = generateHwid()
+
+  if (persistent?.activated) {
+    throw new Error('الترخيص مفعل بالفعل')
+  }
+
+  const realmLicense = realm.objectForPrimaryKey('License', 'license')
+  if (realmLicense?.activated) {
+    throw new Error('الترخيص مفعل بالفعل')
+  }
 
   if (persistent) {
     if (persistent.hwid !== hwid) {
@@ -335,7 +350,6 @@ async function startTrial(realm) {
     }
   }
 
-  const realmLicense = realm.objectForPrimaryKey('License', 'license')
   if (realmLicense?.trialStartedAt) {
     return { success: true, alreadyActivated: true }
   }

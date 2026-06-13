@@ -4,11 +4,13 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
+import { formatDate } from '../utils/date'
 
 export default function SettingsPage() {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
-  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty } = useStore()
+  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty, clearUpdate, setPage } = useStore()
+  useEffect(() => { clearUpdate() }, [])
   const canManage = user?.permissions?.includes('settings.manage')
   const [settings, setSettings] = useState(null)
   const [contact, setContact] = useState([])
@@ -17,7 +19,9 @@ export default function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState(null)
   const [updateModal, setUpdateModal] = useState(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
-const [appVersion, setAppVersion] = useState('')
+  const [appVersion, setAppVersion] = useState('')
+  const [licenseStatus, setLicenseStatus] = useState(null)
+  const [refreshingLicense, setRefreshingLicense] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -34,7 +38,8 @@ const [appVersion, setAppVersion] = useState('')
   async function load() {
     const token = localStorage.getItem('token')
     try {
-      const [s, c, ver] = await Promise.all([api.getSettings(token), api.getContactInfo(), api.getAppVersion()])
+      const [s, c, ver, lic] = await Promise.all([api.getSettings(token), api.getContactInfo(), api.getAppVersion(), api.checkLicense()])
+      setLicenseStatus(lic)
       if (ver) setAppVersion(ver)
       if (s) {
         setSettings(s)
@@ -87,6 +92,18 @@ const [appVersion, setAppVersion] = useState('')
       toast('تمت استعادة النسخة الاحتياطية', 'success')
       load()
     } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function handleRefreshLicense() {
+    setRefreshingLicense(true)
+    try {
+      const lic = await api.checkLicense()
+      setLicenseStatus(lic)
+      toast('تم تحديث حالة الترخيص', 'success')
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+    setRefreshingLicense(false)
   }
 
   async function handleSelectBackupFolder() {
@@ -456,7 +473,79 @@ const [appVersion, setAppVersion] = useState('')
         </Section>}
 
         {/* Contact info */}
-        <Section title="الدعم الفني وتنشيط الترخيص">
+        <Section title="الترخيص">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '14px', border: '1px solid var(--outline)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>حالة الترخيص</span>
+                <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', fontWeight: '600',
+                  background: licenseStatus?.activated ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                  color: licenseStatus?.activated ? 'var(--success)' : 'var(--danger)'
+                }}>
+                  {licenseStatus?.activated ? 'مفعل' : licenseStatus?.trialUsed ? 'تجريبي' : 'غير مفعل'}
+                </span>
+              </div>
+              {licenseStatus?.activated && (
+                <>
+                  <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
+                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>المفتاح: </span>
+                    {licenseStatus.activatedKey}
+                  </div>
+                  {licenseStatus.activatedAt && (
+                    <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '600', color: 'var(--text)' }}>تاريخ التفعيل: </span>
+                      {formatDate(licenseStatus.activatedAt)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
+                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>النوع: </span>
+                    {licenseStatus.licenseType === 'lifetime' ? 'مدى الحياة' :
+                     licenseStatus.licenseType === 'year' ? 'سنوي' :
+                     licenseStatus.licenseType === 'half_year' ? 'نصف سنوي' :
+                     licenseStatus.licenseType === 'quarter' ? 'ربع سنوي' :
+                     licenseStatus.licenseType === 'month' ? 'شهري' : licenseStatus.licenseType}
+                  </div>
+                  {licenseStatus.expiresAt && (
+                    <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '600', color: 'var(--text)' }}>تاريخ الانتهاء: </span>
+                      {formatDate(licenseStatus.expiresAt)}
+                    </div>
+                  )}
+                  {licenseStatus.remainingText && (
+                    <div style={{ fontSize: '12px', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', fontWeight: '600',
+                      background: licenseStatus.remainingDays !== null && licenseStatus.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                      color: licenseStatus.remainingDays !== null && licenseStatus.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)'
+                    }}>
+                      {licenseStatus.remainingText}
+                    </div>
+                  )}
+                </>
+              )}
+              {!licenseStatus?.activated && licenseStatus?.trialUsed && (
+                <div style={{ fontSize: '12px', color: 'var(--text2)' }}>
+                  <span style={{ fontWeight: '600', color: 'var(--text)' }}>باقي: </span>
+                  {licenseStatus.remainingText || 'انتهت'}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={handleRefreshLicense} disabled={refreshingLicense} style={{
+                flex: 1, background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'
+              }}>
+                {refreshingLicense ? 'جاري...' : 'تحديث حالة الترخيص'}
+              </button>
+              {!licenseStatus?.activated && (
+                <button onClick={() => setPage('license')} style={{
+                  flex: 1, background: 'var(--bg3)', color: 'var(--text)', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'
+                }}>
+                  تفعيل
+                </button>
+              )}
+            </div>
+          </div>
+        </Section>
+
+        <Section title="الدعم الفني">
           {contact.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {contact.map((item, i) => (
