@@ -49,7 +49,6 @@ function getOrCreateProduct(realm, item) {
       priceRetail: Number(item.cost) || 0,
       priceHalfWholesale: Number(item.cost) || 0,
       priceWholesale: Number(item.cost) || 0,
-      taxRate: 0,
       stock: 0,
       reorderPoint: 0,
       active: true,
@@ -72,15 +71,17 @@ function updateSupplierBalance(realm, supplierId, delta, isPayment = false) {
   }
 }
 
-function getPaymentStatus(totalCost, paid) {
+function getPaymentStatus(netCost, paid) {
   if (paid <= 0) return 'credit'
-  if (paid >= totalCost) return 'paid'
+  if (paid >= netCost) return 'paid'
   return 'partial'
 }
 
-function createPurchase(realm, user, { items, totalCost, supplierName, supplierPhone, supplierId, note, paymentMethod, paid }) {
+function createPurchase(realm, user, { items, totalCost, supplierName, supplierPhone, supplierId, note, paymentMethod, paid, discount }) {
   let purchase
   const paidAmount = Number(paid) || 0
+  const discAmount = Number(discount) || 0
+  const netCost = Number(totalCost) - discAmount
   const pm = paymentMethod || 'credit'
   realm.write(() => {
     const invoiceNo = getNextInvoice(realm)
@@ -89,14 +90,16 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
       invoiceNo, supplierName: supplierName || '', supplierPhone: supplierPhone || '',
       supplierId: supplierId || '', note: note || '',
       paymentMethod: pm,
+      totalCost: Number(totalCost),
+      discount: discAmount,
+      netCost: netCost < 0 ? 0 : netCost,
       paid: paidAmount,
-      paymentStatus: getPaymentStatus(Number(totalCost), paidAmount),
+      paymentStatus: getPaymentStatus(netCost < 0 ? 0 : netCost, paidAmount),
       items: items.map(i => ({
         productId: i.productId, name: i.name,
         quantity: Number(i.quantity), cost: Number(i.cost),
         subtotal: Number(i.quantity) * Number(i.cost)
       })),
-      totalCost: Number(totalCost),
       createdBy: user.userId || user.name, createdAt: new Date()
     })
     items.forEach(i => {
@@ -108,7 +111,7 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
       updateWeightedAverage(product, qty, cost, oldStock)
       product.updatedAt = new Date()
     })
-    if (supplierId) updateSupplierBalance(realm, supplierId, Number(totalCost))
+    if (supplierId) updateSupplierBalance(realm, supplierId, netCost < 0 ? 0 : netCost)
     if (paidAmount > 0) {
       updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + invoiceNo, user.userId || user.name, purchase._id, pm)
       if (supplierId) {
@@ -132,11 +135,13 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
 function savePurchase(realm, user, data) {
   let purchase
   const paidAmount = Number(data.paid) || 0
+  const discAmount = Number(data.discount) || 0
+  const newNetCost = (Number(data.totalCost) - discAmount)
   realm.write(() => {
     if (data._id) {
       purchase = realm.objectForPrimaryKey('Purchase', data._id)
       if (!purchase) throw new Error('الفاتورة غير موجودة')
-      const oldTotal = purchase.totalCost
+      const oldNetCost = (purchase.totalCost - (purchase.discount || 0))
       const oldSupplierId = purchase.supplierId
       const oldPaid = purchase.paid || 0
       purchase.items.forEach(i => {
@@ -159,9 +164,11 @@ function savePurchase(realm, user, data) {
       purchase.supplierName = data.supplierName || ''
       purchase.supplierPhone = data.supplierPhone || ''
       purchase.totalCost = Number(data.totalCost)
+      purchase.discount = discAmount
+      purchase.netCost = newNetCost < 0 ? 0 : newNetCost
       purchase.paymentMethod = data.paymentMethod || 'credit'
       purchase.paid = paidAmount
-      purchase.paymentStatus = getPaymentStatus(Number(data.totalCost), paidAmount)
+      purchase.paymentStatus = getPaymentStatus(newNetCost < 0 ? 0 : newNetCost, paidAmount)
       purchase.note = data.note || ''
       data.items.forEach(i => {
         const product = getOrCreateProduct(realm, i)
@@ -172,13 +179,11 @@ function savePurchase(realm, user, data) {
         updateWeightedAverage(product, qty, cost, oldStock)
         product.updatedAt = new Date()
       })
-      if (oldSupplierId) updateSupplierBalance(realm, oldSupplierId, -oldTotal)
-      if (data.supplierId) updateSupplierBalance(realm, data.supplierId, Number(data.totalCost))
-      // Revert old treasury deduction
+      if (oldSupplierId) updateSupplierBalance(realm, oldSupplierId, -oldNetCost)
+      if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (oldPaid > 0) {
         updateTreasury(realm, oldPaid, 'إلغاء مشتريات #' + purchase.invoiceNo, user.userId || user.name, purchase._id, purchase.paymentMethod)
       }
-      // Apply new treasury deduction
       if (paidAmount > 0) {
         updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + purchase.invoiceNo, user.userId || user.name, purchase._id, data.paymentMethod || 'cash')
       }
@@ -189,14 +194,16 @@ function savePurchase(realm, user, data) {
         invoiceNo, supplierName: data.supplierName || '', supplierPhone: data.supplierPhone || '',
         supplierId: data.supplierId || '', note: data.note || '',
         paymentMethod: data.paymentMethod || 'credit',
+        totalCost: Number(data.totalCost),
+        discount: discAmount,
+        netCost: newNetCost < 0 ? 0 : newNetCost,
         paid: paidAmount,
-        paymentStatus: getPaymentStatus(Number(data.totalCost), paidAmount),
+        paymentStatus: getPaymentStatus(newNetCost < 0 ? 0 : newNetCost, paidAmount),
         items: data.items.map(i => ({
           productId: i.productId, name: i.name,
           quantity: Number(i.quantity), cost: Number(i.cost),
           subtotal: Number(i.quantity) * Number(i.cost)
         })),
-        totalCost: Number(data.totalCost),
         createdBy: user.userId || user.name, createdAt: new Date()
       })
       data.items.forEach(i => {
@@ -208,7 +215,7 @@ function savePurchase(realm, user, data) {
         updateWeightedAverage(product, qty, cost, oldStock)
         product.updatedAt = new Date()
       })
-      if (data.supplierId) updateSupplierBalance(realm, data.supplierId, Number(data.totalCost))
+      if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (paidAmount > 0) {
         updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + invoiceNo, user.userId || user.name, purchase._id, data.paymentMethod || 'cash')
       }
@@ -225,8 +232,9 @@ function flattenPurchase(p) {
       productId: i.productId, name: i.name,
       quantity: i.quantity, cost: i.cost, subtotal: i.subtotal
     })),
-    totalCost: p.totalCost, paid: p.paid, paymentMethod: p.paymentMethod,
-    paymentStatus: p.paymentStatus,
+    totalCost: p.totalCost, discount: p.discount || 0, netCost: p.netCost || p.totalCost,
+    paid: p.paid, paymentMethod: p.paymentMethod,
+    paymentStatus: p.paymentStatus || 'credit',
     note: p.note, createdBy: p.createdBy,
     createdAt: p.createdAt?.toISOString()
   }
@@ -246,7 +254,8 @@ function removePurchase(realm, id) {
           removeFromWeightedAverage(product, qty, cost, oldStock)
         }
       })
-      if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -purchase.totalCost)
+      const remNetCost = (purchase.totalCost - (purchase.discount || 0))
+      if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -remNetCost)
       const paidAmount = purchase.paid || 0
       if (paidAmount > 0) {
         updateTreasury(realm, paidAmount, 'إلغاء مشتريات #' + purchase.invoiceNo, 'system', purchase._id, purchase.paymentMethod)

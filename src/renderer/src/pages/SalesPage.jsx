@@ -6,6 +6,8 @@ import { formatDate, formatDateTime } from '../utils/date'
 import { formatMoney } from '../utils/money'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
+import PrintTemplateA4 from '../components/PrintTemplateA4'
+import { printA4 } from '../utils/print'
 
 export default function SalesPage() {
   const { user } = useStore()
@@ -148,9 +150,15 @@ export default function SalesPage() {
             {viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316' }}>ملاحظة: {viewInvoice.note}</div>}
             <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>
             {settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
-            <button onClick={() => window.print()}
+            <button onClick={() => {
+              if (settings?.printDefaultSize === 'a4') {
+                printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} />)
+              } else {
+                window.print()
+              }
+            }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              طباعة
+              {settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
             </button>
           </div>
         )}

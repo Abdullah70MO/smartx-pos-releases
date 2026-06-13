@@ -29,7 +29,6 @@ const ProductSchema = {
     priceRetail:    { type: 'double', default: 0 },
     priceHalfWholesale: { type: 'double', default: 0 },
     priceWholesale: { type: 'double', default: 0 },
-    taxRate:        { type: 'double', default: 0 },
     stock:          { type: 'double', default: 0 },
     reorderPoint:   { type: 'double', default: 0 },
     active:         { type: 'bool', default: true },
@@ -105,6 +104,9 @@ const BusinessSettingsSchema = {
     fontFamily:              { type: 'string', default: 'dark' },
     receiptFooter:           { type: 'string', default: '' },
     printAfterPayment:       { type: 'bool', default: true },
+    taxRate:                 { type: 'float', default: 14 },
+    printDefaultSize:        { type: 'string', default: 'receipt' },
+    printColorMode:          { type: 'string', default: 'color' },
     autoBackup:              { type: 'bool', default: false },
     autoBackupInterval:      { type: 'string', default: 'weekly' },
     autoBackupLastDate:      { type: 'date', optional: true },
@@ -284,6 +286,8 @@ const PurchaseSchema = {
     supplierPhone: { type: 'string', default: '' },
     items:         { type: 'list', objectType: 'PurchaseItem' },
     totalCost:     'double',
+    discount:      { type: 'double', default: 0 },
+    netCost:       'double',
     paid:          { type: 'double', default: 0 },
     paymentMethod: { type: 'string', default: 'credit' },
     paymentStatus: { type: 'string', default: 'credit' },
@@ -369,6 +373,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 15
+const SCHEMA_VERSION = 17
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

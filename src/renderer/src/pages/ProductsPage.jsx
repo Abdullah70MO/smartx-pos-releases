@@ -91,7 +91,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState({
     name: '', category: '', unit: '', barcode: '',
     cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0,
-    taxRate: 0, stock: 0, reorderPoint: 0, image: ''
+    stock: 0, reorderPoint: 0, image: ''
   })
 
   useEffect(() => { load() }, [])
@@ -112,7 +112,7 @@ export default function ProductsPage() {
   }
 
   function resetForm() {
-    setForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, taxRate: 0, stock: 0, reorderPoint: 0, image: '' })
+    setForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0, image: '' })
   }
 
   function openEdit(product) {
@@ -122,7 +122,7 @@ export default function ProductsPage() {
       barcode: product.barcode || '', cost: product.cost, priceRetail: product.priceRetail,
       priceHalfWholesale: product.priceHalfWholesale || product.priceRetail,
       priceWholesale: product.priceWholesale || product.priceRetail,
-      taxRate: product.taxRate, stock: product.stock, reorderPoint: product.reorderPoint,
+      stock: product.stock, reorderPoint: product.reorderPoint,
       image: product.image || ''
     })
     setShowModal(true)
@@ -174,7 +174,7 @@ export default function ProductsPage() {
       '#': i + 1, الاسم: p.name, الباركود: p.barcode || '', التصنيف: p.category || '',
       الوحدة: p.unit || '', التكلفة: p.cost, 'سعر التجزئة': p.priceRetail,
       'نصف جملة': p.priceHalfWholesale || 0, جملة: p.priceWholesale || 0,
-      'الضريبة %': p.taxRate || 0, المخزون: p.stock, 'حد التنبيه': p.reorderPoint || 0
+      المخزون: p.stock, 'حد التنبيه': p.reorderPoint || 0
     }))
     const ws = XLSX.utils.json_to_sheet(data)
     ws['!dir'] = 'rtl'
@@ -210,7 +210,6 @@ export default function ProductsPage() {
           priceRetail: Number(row['سعر التجزئة'] || row['priceRetail'] || 0),
           priceHalfWholesale: Number(row['نصف جملة'] || row['priceHalfWholesale'] || 0),
           priceWholesale: Number(row['جملة'] || row['priceWholesale'] || 0),
-          taxRate: Number(row['الضريبة %'] || row['taxRate'] || 0),
           stock: Number(row['المخزون'] || row['stock'] || 0),
           reorderPoint: Number(row['حد التنبيه'] || row['reorderPoint'] || 0)
         }
@@ -324,7 +323,6 @@ export default function ProductsPage() {
             <Input label="سعر التجزئة" type="number" value={form.priceRetail || ''} onInput={v => setForm(f => ({ ...f, priceRetail: Number(v) }))} placeholder="سعر التجزئة" />
             <Input label="سعر نصف الجملة" type="number" value={form.priceHalfWholesale || ''} onInput={v => setForm(f => ({ ...f, priceHalfWholesale: Number(v) }))} placeholder="سعر نصف الجملة" />
             <Input label="سعر الجملة" type="number" value={form.priceWholesale || ''} onInput={v => setForm(f => ({ ...f, priceWholesale: Number(v) }))} placeholder="سعر الجملة" />
-            <Input label="الضريبة %" type="number" value={form.taxRate || ''} onInput={v => setForm(f => ({ ...f, taxRate: Number(v) }))} placeholder="الضريبة %" />
             <Input label="المخزون" type="number" value={form.stock || ''} onInput={v => setForm(f => ({ ...f, stock: Number(v) }))} placeholder="المخزون" />
             <Input label="تنبيه انتهاء المخزون" type="number" value={form.reorderPoint || ''} onInput={v => setForm(f => ({ ...f, reorderPoint: Number(v) }))} placeholder="تنبيه انتهاء المخزون" />
           </div>

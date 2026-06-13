@@ -13,7 +13,7 @@ function listProducts(realm, query) {
     _id: p._id, sku: p.sku, barcode: p.barcode, name: p.name,
     category: p.category, unit: p.unit, cost: p.cost,
     priceRetail: p.priceRetail, priceHalfWholesale: p.priceHalfWholesale, priceWholesale: p.priceWholesale,
-    taxRate: p.taxRate, stock: p.stock, reorderPoint: p.reorderPoint,
+    stock: p.stock, reorderPoint: p.reorderPoint,
     active: p.active, image: p.image || '', updatedAt: p.updatedAt?.toISOString()
   }))
 }
@@ -32,7 +32,6 @@ function saveProduct(realm, data) {
       priceRetail: Number(data.priceRetail) || 0,
       priceHalfWholesale: Number(data.priceHalfWholesale) || Number(data.priceRetail) || 0,
       priceWholesale: Number(data.priceWholesale) || Number(data.priceRetail) || 0,
-      taxRate: Number(data.taxRate) || 0,
       stock: Number(data.stock) || 0,
       reorderPoint: Number(data.reorderPoint) || 0,
       active: data.active !== false,
@@ -44,7 +43,7 @@ function saveProduct(realm, data) {
     _id: product._id, sku: product.sku, barcode: product.barcode, name: product.name,
     category: product.category, unit: product.unit, cost: product.cost,
     priceRetail: product.priceRetail, priceHalfWholesale: product.priceHalfWholesale, priceWholesale: product.priceWholesale,
-    taxRate: product.taxRate, stock: product.stock, reorderPoint: product.reorderPoint,
+    stock: product.stock, reorderPoint: product.reorderPoint,
     active: product.active, image: product.image || '', updatedAt: product.updatedAt?.toISOString()
   }
 }

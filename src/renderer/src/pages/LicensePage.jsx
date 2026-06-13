@@ -35,7 +35,7 @@ export default function LicensePage() {
     setLoading(true); setError('')
     try {
       const result = await api.activateLicense(key.trim())
-      if (result?.activated) {
+      if (result?.success) {
         setMode('activated')
       } else {
         setError(result?.message || 'فشل التفعيل')

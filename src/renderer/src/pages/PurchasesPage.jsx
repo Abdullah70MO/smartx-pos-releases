@@ -6,6 +6,8 @@ import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
+import PrintTemplateA4 from '../components/PrintTemplateA4'
+import { printA4 } from '../utils/print'
 
 function generateBarcode() {
   const first = Math.floor(Math.random() * 9) + 1
@@ -94,19 +96,22 @@ export default function PurchasesPage() {
   const [note, setNote] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paid, setPaid] = useState('')
+  const [discount, setDiscount] = useState('')
+  const [discountType, setDiscountType] = useState('amount')
   const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' })
   const [productForm, setProductForm] = useState({
     name: '', category: '', unit: '', barcode: '',
     cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0,
-    taxRate: 0, stock: 0, reorderPoint: 0
+    stock: 0, reorderPoint: 0
   })
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
+  const [settings, setSettings] = useState(null)
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))]
   const units = [...new Set(products.map(p => p.unit).filter(Boolean))]
   const categoryRef = useRef(null)
 
-  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers() }, [])
+  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings() }, [])
   useEffect(() => {
     const handler = () => { loadProducts(); loadSuppliers() }
     window.addEventListener('dataChanged', handler)
@@ -129,6 +134,12 @@ export default function PurchasesPage() {
     const token = localStorage.getItem('token')
     const data = await api.listSuppliers(token)
     setSuppliers(data)
+  }
+
+  async function loadSettings() {
+    const token = localStorage.getItem('token')
+    const s = await api.getSettings(token)
+    setSettings(s)
   }
 
   function handleProductSearch(idx, value) {
@@ -197,7 +208,7 @@ export default function PurchasesPage() {
     setEditPurchase(null)
     setItems([{ productId: '', name: '', quantity: '', cost: '' }])
     setProductSearch(['']); setShowProductDropdown([false])
-    setSupplierName(''); setSupplierId(''); setSupplierPhone(''); setSupplierSearch(''); setNote(''); setPaymentMethod('cash'); setPaid('')
+    setSupplierName(''); setSupplierId(''); setSupplierPhone(''); setSupplierSearch(''); setNote(''); setPaymentMethod('cash'); setPaid(''); setDiscount(''); setDiscountType('amount')
     setShowModal(true)
   }
 
@@ -213,6 +224,8 @@ export default function PurchasesPage() {
     setNote(p.note || '')
     setPaymentMethod(p.paymentMethod || 'cash')
     setPaid(String(p.paid) || '')
+    setDiscount(String(p.discount) || '')
+    setDiscountType('amount')
     setShowModal(true)
   }
 
@@ -221,7 +234,9 @@ export default function PurchasesPage() {
     const token = localStorage.getItem('token')
     try {
       const matched = suppliers.find(s => s.name === supplierName)
-      const data = { _id: editPurchase?._id, items, totalCost, supplierName, supplierPhone, supplierId: matched?._id || '', note, paymentMethod, paid: Number(paid) || 0 }
+      const discAmount = discountType === 'percent' ? (totalCost * (Number(discount) || 0) / 100) : (Number(discount) || 0)
+      const netCost = Math.max(0, totalCost - discAmount)
+      const data = { _id: editPurchase?._id, items, totalCost, supplierName, supplierPhone, supplierId: matched?._id || '', note, paymentMethod, paid: Number(paid) || 0, discount: discAmount }
       if (editPurchase) {
         await api.savePurchase(token, data)
         toast('تم تحديث فاتورة الشراء', 'success')
@@ -281,7 +296,7 @@ export default function PurchasesPage() {
       await api.saveProduct(token, productForm)
       toast('تمت إضافة المنتج', 'success')
       setShowProductModal(false)
-      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, taxRate: 0, stock: 0, reorderPoint: 0 })
+      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 })
       setGeneratedBarcode(''); setShowPrintBarcode(false)
       loadProducts(); window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
@@ -314,7 +329,7 @@ export default function PurchasesPage() {
 
       <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
         <table>
-            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
+            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p._id}>
@@ -323,7 +338,9 @@ export default function PurchasesPage() {
                 <td>{p.supplierName || '-'}</td>
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{p.supplierPhone || '-'}</td>
                 <td>{p.items?.length || 0}</td>
-                <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(p.totalCost)}</td>
+                <td style={{ fontWeight: 'bold' }}>{formatMoney(p.totalCost)}</td>
+                <td style={{ fontSize: '12px', color: 'var(--danger)' }}>{p.discount > 0 ? formatMoney(p.discount) : '-'}</td>
+                <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(p.netCost)}</td>
                 <td style={{ fontSize: '12px' }}>{formatMoney(p.paid || 0)}</td>
                 <td>{(s => {
                   const c = s === 'paid' ? 'var(--success)' : s === 'partial' ? 'var(--warning)' : 'var(--text2)'
@@ -339,7 +356,7 @@ export default function PurchasesPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan="7" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
+              <tr><td colSpan="11" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
             )}
           </tbody>
         </table>
@@ -374,7 +391,7 @@ export default function PurchasesPage() {
                   onFocus={() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = true; return n })}
                   onBlur={() => setTimeout(() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = false; return n }), 200)}
                   style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
-                {canCreate && <button type="button" onClick={() => { setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, taxRate: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }}
+                {canCreate && <button type="button" onClick={() => { setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }}
                   style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap' }}>+</button>}
                 {showProductDropdown[idx] && filteredProducts(productSearch[idx]).length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg2)', border: '1px solid var(--bg3)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflow: 'auto' }}>
@@ -401,16 +418,33 @@ export default function PurchasesPage() {
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <div style={{ textAlign: 'left', fontSize: '15px', fontWeight: 'bold', color: 'var(--success)', flex: 1 }}>الإجمالي: {formatMoney(totalCost)}</div>
             <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>الخصم</label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button type="button" onClick={() => setDiscountType(dt => dt === 'amount' ? 'percent' : 'amount')}
+                  style={{ background: 'var(--bg3)', color: 'var(--text2)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                  {discountType === 'amount' ? 'قيمة' : '%'}
+                </button>
+                <input type="number" placeholder="0" value={discount} onInput={e => setDiscount(e.target.value)}
+                  style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>المدفوع</label>
               <input type="number" placeholder="المدفوع" value={paid} onInput={e => setPaid(e.target.value)}
                 style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
             </div>
           </div>
-          {Number(paid) > 0 && Number(paid) < totalCost && (
-            <div style={{ fontSize: '12px', color: '#f59e0b', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-              الباقي: {formatMoney(totalCost - Number(paid))} دين على المورد
+          {(() => {
+            const n = Math.max(0, totalCost - (discountType === 'percent' ? (totalCost * (Number(discount) || 0) / 100) : (Number(discount) || 0)))
+            const p = Number(paid) || 0
+            if (Number(discount) > 0) return <div style={{ fontSize: '12px', color: 'var(--danger)', textAlign: 'center', padding: '4px 0' }}>
+              الصافي: {formatMoney(n)}
             </div>
-          )}
+            if (p > 0 && p < n) return <div style={{ fontSize: '12px', color: '#f59e0b', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+              الباقي: {formatMoney(n - p)} دين على المورد
+            </div>
+            return null
+          })()}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="button" onClick={() => setPaymentMethod('cash')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
@@ -475,21 +509,35 @@ export default function PurchasesPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>
               <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.totalCost)}</span>
             </div>
+            {viewInvoice.discount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
+                <span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(viewInvoice.discount)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
+              <span>الصافي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.netCost)}</span>
+            </div>
             {viewInvoice.paid > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
                 <span>المدفوع</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.paid)}</span>
               </div>
             )}
-            {(viewInvoice.paid || 0) < viewInvoice.totalCost && (
+            {(viewInvoice.paid || 0) < viewInvoice.netCost && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', color: 'var(--warning)' }}>
-                <span>الباقي</span><span>{formatMoney(viewInvoice.totalCost - (viewInvoice.paid || 0))}</span>
+                <span>الباقي</span><span>{formatMoney(viewInvoice.netCost - (viewInvoice.paid || 0))}</span>
               </div>
             )}
             {viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{viewInvoice.note}</div>}
             <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>
-            <button onClick={() => window.print()}
+            <button onClick={() => {
+              if (settings?.printDefaultSize === 'a4') {
+                printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
+              } else {
+                window.print()
+              }
+            }}
               style={{ marginTop: '16px', background: 'var(--success)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              طباعة
+              {settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
             </button>
           </div>
         )}
@@ -547,7 +595,6 @@ export default function PurchasesPage() {
             <Input label="سعر التجزئة" type="number" value={productForm.priceRetail || ''} onInput={v => setProductForm(f => ({ ...f, priceRetail: Number(v) }))} placeholder="سعر التجزئة" />
             <Input label="سعر نصف الجملة" type="number" value={productForm.priceHalfWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceHalfWholesale: Number(v) }))} placeholder="سعر نصف الجملة" />
             <Input label="سعر الجملة" type="number" value={productForm.priceWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceWholesale: Number(v) }))} placeholder="سعر الجملة" />
-            <Input label="الضريبة %" type="number" value={productForm.taxRate || ''} onInput={v => setProductForm(f => ({ ...f, taxRate: Number(v) }))} placeholder="الضريبة %" />
             <Input label="المخزون" type="number" value={productForm.stock || ''} onInput={v => setProductForm(f => ({ ...f, stock: Number(v) }))} placeholder="المخزون" />
             <Input label="تنبيه انتهاء المخزون" type="number" value={productForm.reorderPoint || ''} onInput={v => setProductForm(f => ({ ...f, reorderPoint: Number(v) }))} placeholder="تنبيه انتهاء المخزون" />
           </div>

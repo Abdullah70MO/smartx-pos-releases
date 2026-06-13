@@ -57,6 +57,9 @@ const [appVersion, setAppVersion] = useState('')
           logoDataUrl: s.logoDataUrl || '',
           receiptFooter: s.receiptFooter || '',
           printAfterPayment: s.printAfterPayment !== false,
+          taxRate: s.taxRate != null ? s.taxRate : 14,
+          printDefaultSize: s.printDefaultSize || 'receipt',
+          printColorMode: s.printColorMode || 'color',
           autoBackup: s.autoBackup || false,
           autoBackupInterval: s.autoBackupInterval || 'weekly',
           autoBackupPath: s.autoBackupPath || ''
@@ -294,11 +297,6 @@ const [appVersion, setAppVersion] = useState('')
               <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العنوان</label>
               <input value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} style={{ width: '100%' }} readOnly={!canManage} />
             </div>
-            <div>
-              <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نص تذييل الفاتورة</label>
-              <textarea value={form.receiptFooter} onInput={e => setForm(f => ({ ...f, receiptFooter: e.target.value }))} rows="2" readOnly={!canManage}
-                style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--outline)', borderRadius: '8px', padding: '10px', resize: 'vertical' }} />
-            </div>
             {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
               حفظ بيانات المتجر
             </button>}
@@ -343,19 +341,53 @@ const [appVersion, setAppVersion] = useState('')
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '4px 0' }}>
+            {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
+              حفظ التهيئة
+            </button>}
+          </form>
+        </Section>
+
+        <Section title="الطباعة">
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="checkbox" id="taxEnabled" checked={form.taxEnabled} onChange={e => setForm(f => ({ ...f, taxEnabled: e.target.checked }))} disabled={!canManage} />
                 <label for="taxEnabled" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>تفعيل ضريبة القيمة المضافة</label>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input type="checkbox" id="printAfter" checked={form.printAfterPayment} onChange={e => setForm(f => ({ ...f, printAfterPayment: e.target.checked }))} disabled={!canManage} />
-                <label for="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
+              {form.taxEnabled && (
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نسبة الضريبة (%)</label>
+                  <input type="number" placeholder="14" value={form.taxRate} onInput={e => setForm(f => ({ ...f, taxRate: Number(e.target.value) }))} style={{ width: '100%' }} readOnly={!canManage} />
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>حجم الطباعة الافتراضي</label>
+                <select value={form.printDefaultSize} onChange={e => setForm(f => ({ ...f, printDefaultSize: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
+                  <option value="receipt">صغير (80mm)</option>
+                  <option value="a4">A4</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>وضع الطباعة</label>
+                <select value={form.printColorMode} onChange={e => setForm(f => ({ ...f, printColorMode: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
+                  <option value="color">ألوان</option>
+                  <option value="bw">أبيض وأسود فقط</option>
+                </select>
               </div>
             </div>
-
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input type="checkbox" id="printAfter" checked={form.printAfterPayment} onChange={e => setForm(f => ({ ...f, printAfterPayment: e.target.checked }))} disabled={!canManage} />
+              <label for="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نص تذييل الفاتورة</label>
+              <textarea value={form.receiptFooter} onInput={e => setForm(f => ({ ...f, receiptFooter: e.target.value }))} rows="2" readOnly={!canManage}
+                style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--outline)', borderRadius: '8px', padding: '10px', resize: 'vertical' }} />
+            </div>
             {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
-              حفظ التهيئة
+              حفظ إعدادات الطباعة
             </button>}
           </form>
         </Section>

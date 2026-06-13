@@ -6,7 +6,9 @@ const { app, BrowserWindow } = require('electron')
 const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
 
 const TRIAL_DAYS = 14
-const GRACE_DAYS = 7
+function getGraceDays(licenseType) {
+  return licenseType === 'lifetime' ? 210 : 7
+}
 const XOR_KEY = 'Sx@2024!'
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 const AES_ALGO = 'aes-256-gcm'
@@ -30,7 +32,7 @@ function generateHwid() {
 }
 
 function getLicenseFilePath() {
-  return path.join(app.getPath('appData'), 'SmartX', 'license.dat')
+  return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'SmartX', 'license.dat')
 }
 
 function deriveAesKey(hwid) {
@@ -176,72 +178,58 @@ function checkLicense(realm) {
 
   let expired = false
 
-  if (license?.activated && license?.expiresAt) {
-    const expires = new Date(license.expiresAt)
-    expired = expires < now
-    if (expired) {
-      result.remainingDays = 0
-      result.remainingText = 'منتهي'
-    } else {
-      const diffMs = expires - now
-      result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-    }
-    if (!expired && license.licenseType === 'lifetime') {
-      if (persistent?.lastSuccessfulCheck) {
-        const lastCheck = new Date(persistent.lastSuccessfulCheck)
-        const graceEnd = new Date(lastCheck.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000)
-        if (now > graceEnd) {
-          expired = true
-          result.remainingDays = 0
-          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
-        } else {
-          const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
-          result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
-          if (graceRemaining <= 2) result.graceWarning = true
-        }
-      } else {
-        result.remainingText = 'مدى الحياة'
-      }
-    } else if (!expired && result.remainingDays > 30) {
-      const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = months + ' شهر'
-    } else if (!expired) {
-      result.remainingText = result.remainingDays + ' يوم'
-    }
-    result.expired = expired
-    return result
-  }
+  if (license?.activated || (persistent && persistent.activated)) {
+    const hardExpiry = (license?.expiresAt && license.licenseType !== 'lifetime') ? new Date(license.expiresAt) : null
+    const graceDays = getGraceDays(result.licenseType)
+    const lastCheck = persistent?.lastSuccessfulCheck ? new Date(persistent.lastSuccessfulCheck) : null
+    const networkExpiry = lastCheck ? new Date(lastCheck.getTime() + graceDays * 24 * 60 * 60 * 1000) : null
 
-  if (persistent && persistent.activated && persistent.expiresAt) {
-    const expires = new Date(persistent.expiresAt)
-    expired = expires < now
-    if (!expired) {
-      const diffMs = expires - now
-      result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    let earliestExpiry = null
+    if (hardExpiry && networkExpiry) {
+      earliestExpiry = hardExpiry < networkExpiry ? hardExpiry : networkExpiry
+    } else if (hardExpiry) {
+      earliestExpiry = hardExpiry
+    } else if (networkExpiry) {
+      earliestExpiry = networkExpiry
     }
-    if (persistent.licenseType === 'lifetime') {
-      if (persistent.lastSuccessfulCheck) {
-        const lastCheck = new Date(persistent.lastSuccessfulCheck)
-        const graceEnd = new Date(lastCheck.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000)
-        if (now > graceEnd) {
-          expired = true
-          result.remainingDays = 0
+
+    if (earliestExpiry) {
+      expired = now >= earliestExpiry
+      if (expired) {
+        result.remainingDays = 0
+        if (result.licenseType === 'lifetime') {
           result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+        } else if (hardExpiry && now >= hardExpiry) {
+          result.remainingText = 'منتهي'
         } else {
-          const graceRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24))
-          result.remainingText = 'مدى الحياة - مهلة ' + graceRemaining + ' يوم'
-          if (graceRemaining <= 2) result.graceWarning = true
+          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
         }
       } else {
+        const diffMs = earliestExpiry - now
+        result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+        if (result.licenseType === 'lifetime') {
+          result.remainingText = lastCheck ? ('مدى الحياة - مهلة ' + result.remainingDays + ' يوم') : 'مدى الحياة'
+          if (lastCheck) {
+            const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
+            if (graceRemaining <= 7) result.graceWarning = true
+          }
+        } else {
+          if (result.remainingDays > 30) {
+            const months = Math.floor(result.remainingDays / 30)
+            result.remainingText = months + ' شهر'
+          } else {
+            result.remainingText = result.remainingDays + ' يوم'
+          }
+          if (networkExpiry) {
+            const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
+            if (graceRemaining <= 2) result.graceWarning = true
+          }
+        }
+      }
+    } else {
+      if (result.licenseType === 'lifetime') {
         result.remainingText = 'مدى الحياة'
       }
-    } else if (result.remainingDays !== null && result.remainingDays > 30) {
-      const months = Math.floor(result.remainingDays / 30)
-      result.remainingText = months + ' شهر'
-    } else if (result.remainingDays !== null) {
-      result.remainingText = result.remainingDays + ' يوم'
-    } else {
-      result.remainingText = 'منتهي'
     }
     result.expired = expired
     return result

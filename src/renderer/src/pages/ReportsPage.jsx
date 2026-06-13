@@ -12,26 +12,34 @@ export default function ReportsPage() {
   const [expenses, setExpenses] = useState([])
   const [returns, setReturns] = useState([])
   const [withdrawals, setWithdrawals] = useState([])
+  const [customers, setCustomers] = useState([])
+  const [suppliers, setSuppliers] = useState([])
   const [tab, setTab] = useState(reportTab || 'overview')
   const [searchSales, setSearchSales] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchExpenses, setSearchExpenses] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchReturns, setSearchReturns] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [searchWithdrawals, setSearchWithdrawals] = useState({ q: '', dateFrom: '', dateTo: '' })
+  const [searchCustomers, setSearchCustomers] = useState('')
+  const [searchSuppliers, setSearchSuppliers] = useState('')
 
   useEffect(() => {
     async function load() {
       const token = localStorage.getItem('token')
       try {
-        const [s, salesData, expensesData, returnsData, txns] = await Promise.all([
+        const [s, salesData, expensesData, returnsData, txns, customersData, suppliersData] = await Promise.all([
           api.dashboardSummary(token),
           api.listSales(token),
           api.listExpenses(token),
           api.listReturns(token),
-          api.listTreasuryTransactions(token, '', 0)
+          api.listTreasuryTransactions(token, '', 0),
+          api.listCustomers(token),
+          api.listSuppliers(token)
         ])
         setSummary(s); setSales(salesData)
         setExpenses(expensesData); setReturns(returnsData)
         setWithdrawals((txns || []).filter(t => t.type === 'personal_withdraw'))
+        setCustomers(customersData || [])
+        setSuppliers(suppliersData || [])
       } catch {}
     }
     load()
@@ -73,12 +81,22 @@ export default function ReportsPage() {
     return true
   })
 
+  const filteredCustomers = customers.filter(c =>
+    !searchCustomers || c.name?.includes(searchCustomers) || c.phone?.includes(searchCustomers)
+  )
+
+  const filteredSuppliers = suppliers.filter(s =>
+    !searchSuppliers || s.name?.includes(searchSuppliers) || s.phone?.includes(searchSuppliers)
+  )
+
   const TABS = [
     { id: 'overview', label: 'نظرة عامة' },
     { id: 'sales', label: 'المبيعات' },
     { id: 'expenses', label: 'المصروفات' },
     { id: 'withdrawals', label: 'المسحوبات الشخصية' },
-    { id: 'returns', label: 'المرتجعات' }
+    { id: 'returns', label: 'المرتجعات' },
+    { id: 'customers', label: 'العملاء' },
+    { id: 'suppliers', label: 'الموردين' }
   ]
 
   return (
@@ -203,6 +221,66 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {filteredWithdrawals.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مسحوبات شخصية</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'customers' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={searchCustomers}
+              onInput={e => setSearchCustomers(e.target.value)}
+              style={{ flex: 1, minWidth: '150px' }} />
+          </div>
+          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+            <table>
+              <thead><tr><th>العميل</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
+              <tbody>
+                {filteredCustomers.map(c => {
+                  const remaining = (c.totalDebt || 0) - (c.totalPaid || 0)
+                  return (
+                    <tr key={c._id}>
+                      <td style={{ fontWeight: 'bold' }}>{c.name}</td>
+                      <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{c.phone || '-'}</td>
+                      <td>{formatMoney(c.totalDebt || 0)}</td>
+                      <td>{formatMoney(c.totalPaid || 0)}</td>
+                      <td style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{formatMoney(remaining)}</td>
+                    </tr>
+                  )
+                })}
+                {filteredCustomers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد بيانات عملاء</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'suppliers' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <input placeholder="بحث باسم المورد أو رقم الهاتف..." value={searchSuppliers}
+              onInput={e => setSearchSuppliers(e.target.value)}
+              style={{ flex: 1, minWidth: '150px' }} />
+          </div>
+          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+            <table>
+              <thead><tr><th>المورد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
+              <tbody>
+                {filteredSuppliers.map(s => {
+                  const remaining = (s.totalPurchases || 0) - (s.totalPaid || 0)
+                  return (
+                    <tr key={s._id}>
+                      <td style={{ fontWeight: 'bold' }}>{s.name}</td>
+                      <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{s.phone || '-'}</td>
+                      <td>{formatMoney(s.totalPurchases || 0)}</td>
+                      <td>{formatMoney(s.totalPaid || 0)}</td>
+                      <td style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{formatMoney(remaining)}</td>
+                    </tr>
+                  )
+                })}
+                {filteredSuppliers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد بيانات موردين</td></tr>}
               </tbody>
             </table>
           </div>

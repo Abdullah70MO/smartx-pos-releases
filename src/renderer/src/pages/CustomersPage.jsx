@@ -4,7 +4,10 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
+import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
+import StatementA4 from '../components/StatementA4'
+import { printA4 } from '../utils/print'
 
 export default function CustomersPage() {
   const { user } = useStore()
@@ -24,13 +27,14 @@ export default function CustomersPage() {
   const [transModal, setTransModal] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [search, setSearch] = useState('')
+  const [settings, setSettings] = useState(null)
 
   useEffect(() => { load() }, [])
 
   async function load() {
     const token = localStorage.getItem('token')
-    const [cust, s] = await Promise.all([api.listCustomers(token), api.listSales(token)])
-    setCustomers(cust); setSales(s)
+    const [cust, s, sett] = await Promise.all([api.listCustomers(token), api.listSales(token), api.getSettings(token)])
+    setCustomers(cust); setSales(s); setSettings(sett)
   }
 
   function openEdit(c) {
@@ -172,22 +176,33 @@ export default function CustomersPage() {
             {transactions.length > 0 ? transactions[transactions.length - 1]?.balance?.toFixed(2) : '0.00'}
           </span>
         </div>
-        <div style={{ background: 'var(--bg)', borderRadius: '8px', overflow: 'auto', maxHeight: '400px' }}>
-          <table>
-            <thead><tr><th>البيان</th><th>المبلغ</th><th>الرصيد</th><th>التاريخ</th></tr></thead>
-            <tbody>
-              {transactions.map((t, i) => (
-                <tr key={i}>
-                  <td style={{ fontSize: '12px' }}>{t.desc}</td>
-                  <td style={{ color: t.amount > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
-                  <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold', fontSize: '12px' }}>{t.balance.toFixed(2)}</td>
-                  <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>
-                </tr>
-              ))}
-              {transactions.length === 0 && <tr><td colSpan="4" style={{ padding: '16px', color: '#475569', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
-            </tbody>
-          </table>
+        <div id="customer-print">
+          <div style={{ background: 'var(--bg)', borderRadius: '8px', overflow: 'auto', maxHeight: '400px' }}>
+            <table>
+              <thead><tr><th>البيان</th><th>المبلغ</th><th>الرصيد</th><th>التاريخ</th></tr></thead>
+              <tbody>
+                {transactions.map((t, i) => (
+                  <tr key={i}>
+                    <td style={{ fontSize: '12px' }}>{t.desc}</td>
+                    <td style={{ color: t.amount > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
+                    <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold', fontSize: '12px' }}>{t.balance.toFixed(2)}</td>
+                    <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>
+                  </tr>
+                ))}
+                {transactions.length === 0 && <tr><td colSpan="4" style={{ padding: '16px', color: '#475569', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <button onClick={() => {
+          if (settings?.printDefaultSize === 'a4') {
+            printA4(<StatementA4 type="customer" party={transModal} transactions={transactions} settings={settings} />)
+          } else {
+            window.print()
+          }
+        }} style={{ marginTop: '12px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
+          {settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
+        </button>
       </Modal>
       <ConfirmDialog />
     </div>

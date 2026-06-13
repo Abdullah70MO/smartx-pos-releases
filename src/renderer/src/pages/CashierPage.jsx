@@ -5,6 +5,8 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
+import PrintTemplateA4 from '../components/PrintTemplateA4'
+import { printA4 } from '../utils/print'
 
 const PRICE_MODES = [
   { id: 'retail', label: 'تجزئة', field: 'priceRetail' },
@@ -27,6 +29,7 @@ export default function CashierPage() {
   const [paid, setPaid] = useState('')
   const [creditPaid, setCreditPaid] = useState('')
   const [discount, setDiscount] = useState('')
+  const [discountType, setDiscountType] = useState('amount')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [note, setNote] = useState('')
@@ -38,6 +41,7 @@ const [showEndShift, setShowEndShift] = useState(false)
 const [showEndConfirm, setShowEndConfirm] = useState(false)
 const [startBalance, setStartBalance] = useState('')
 const [taxEnabled, setTaxEnabled] = useState(true)
+const [taxRate, setTaxRate] = useState(14)
   const [endBalance, setEndBalance] = useState('')
   const [errorModal, setErrorModal] = useState({ show: false, message: '' })
   const [receipt, setReceipt] = useState(null)
@@ -60,6 +64,7 @@ const [taxEnabled, setTaxEnabled] = useState(true)
     try {
       const s = await api.getSettings(localStorage.getItem('token'))
       setTaxEnabled(s.taxEnabled !== false)
+      setTaxRate(s.taxRate != null ? s.taxRate : 14)
     } catch {}
   }
 
@@ -193,16 +198,13 @@ const [taxEnabled, setTaxEnabled] = useState(true)
   useEffect(() => {
     if (paymentMethod === 'cash' && cart.length > 0) {
       const st = cart.reduce((s, item) => s + (item.unitPrice * item.quantity), 0)
-      const d = Number(discount) || 0
-      const t = taxEnabled ? cart.reduce((s, item) => {
-        const p = products.find(pr => pr._id === item.productId)
-        return s + ((item.unitPrice * item.quantity) * ((p?.taxRate || 0) / 100))
-      }, 0) : 0
+      const d = discountType === 'percent' ? (st * (Number(discount) || 0) / 100) : (Number(discount) || 0)
+      const t = taxEnabled ? ((st - d) * taxRate / 100) : 0
       setPaid(st - d + t)
     } else if (paymentMethod === 'cash' && cart.length === 0) {
       setPaid('')
     }
-  }, [cart, discount, paymentMethod, products, taxEnabled])
+  }, [cart, discount, discountType, paymentMethod, taxEnabled, taxRate])
 
   function handleCustomerInput(v) {
     setCustomerName(v)
@@ -226,11 +228,8 @@ const [taxEnabled, setTaxEnabled] = useState(true)
   }
 
   const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
-  const discAmount = Number(discount) || 0
-  const tax = taxEnabled ? cart.reduce((sum, item) => {
-    const p = products.find(pr => pr._id === item.productId)
-    return sum + ((item.unitPrice * item.quantity) * ((p?.taxRate || 0) / 100))
-  }, 0) : 0
+  const discAmount = discountType === 'percent' ? (subtotal * (Number(discount) || 0) / 100) : (Number(discount) || 0)
+  const tax = taxEnabled ? ((subtotal - discAmount) * taxRate / 100) : 0
   const total = subtotal - discAmount + tax
   const payable = paymentMethod === 'credit' ? (Number(creditPaid) || 0) : (Number(paid) || 0)
   const change = payable > total ? (payable - total) : 0
@@ -455,10 +454,16 @@ const [taxEnabled, setTaxEnabled] = useState(true)
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
             <span style={{ color: 'var(--text2)' }}>المجموع</span><span>{formatMoney(subtotal)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px', alignItems: 'center' }}>
             <span style={{ color: 'var(--text2)' }}>الخصم</span>
-            <input type="number" placeholder="الخصم" value={discount || ''} onInput={e => setDiscount(e.target.value)}
-              style={{ width: '80px', textAlign: 'center', fontSize: '12px', padding: '4px' }} />
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <button type="button" onClick={() => setDiscountType(dt => dt === 'amount' ? 'percent' : 'amount')}
+                style={{ background: 'var(--bg3)', color: 'var(--text2)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                {discountType === 'amount' ? 'قيمة' : '%'}
+              </button>
+              <input type="number" placeholder="0" value={discount || ''} onInput={e => setDiscount(e.target.value)}
+                style={{ width: '70px', textAlign: 'center', fontSize: '12px', padding: '4px' }} />
+            </div>
           </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px', color: 'var(--text2)' }}>
             <span>الضريبة</span><span>{formatMoney(tax)}</span>
@@ -625,13 +630,22 @@ const [taxEnabled, setTaxEnabled] = useState(true)
               </div>
             ))}
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الإجمالي</span><span style={{ fontWeight: 'bold' }}>{formatMoney(receipt.total)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المجموع</span><span>{formatMoney(receipt.subtotal)}</span></div>
+            {receipt.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(receipt.discount)}</span></div>}
+            {receipt.tax > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الضريبة</span><span>{formatMoney(receipt.tax)}</span></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}><span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(receipt.total)}</span></div>
             {receipt.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المدفوع</span><span>{formatMoney(receipt.paid)}</span></div>}
             {receipt.customerName && <div style={{ marginTop: '8px', color: 'var(--text2)' }}>العميل: {receipt.customerName}{receipt.customerPhone ? ` - ${receipt.customerPhone}` : ''}</div>}
             {receipt.settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.receiptFooter}</div>}
-            <button onClick={() => window.print()}
+            <button onClick={() => {
+              if (receipt.settings?.printDefaultSize === 'a4') {
+                printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} />)
+              } else {
+                window.print()
+              }
+            }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              طباعة
+              {receipt.settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
             </button>
           </div>
         )}
