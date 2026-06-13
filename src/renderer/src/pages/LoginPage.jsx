@@ -99,11 +99,9 @@ export default function LoginPage() {
         <button onClick={handleClose} style={{ flex: 1, background:'var(--bg3)',color:'var(--danger)',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
           إغلاق التطبيق
         </button>
-        {license?.licenseType !== 'lifetime' && (
-          <button onClick={() => setPage('license')} style={{ flex: 1, background:'var(--accent)',color:'#fff',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
-            الترخيص
-          </button>
-        )}
+        <button onClick={() => setPage('settings')} style={{ flex: 1, background:'var(--bg3)',color:'var(--text)',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
+          الإعدادات
+        </button>
       </div>
 
       {contact && (
