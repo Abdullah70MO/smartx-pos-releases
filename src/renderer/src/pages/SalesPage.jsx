@@ -158,7 +158,7 @@ export default function SalesPage() {
               }
             }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              {settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة'}
+              {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
             </button>
           </div>
         )}

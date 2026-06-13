@@ -366,7 +366,7 @@ const [appVersion, setAppVersion] = useState('')
                 <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>حجم الطباعة الافتراضي</label>
                 <select value={form.printDefaultSize} onChange={e => setForm(f => ({ ...f, printDefaultSize: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
                   <option value="receipt">صغير (80mm)</option>
-                  <option value="a4">A4</option>
+                  <option value="a4">كبير (A4)</option>
                 </select>
               </div>
               <div>
