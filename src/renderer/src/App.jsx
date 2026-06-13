@@ -60,7 +60,7 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt } = useStore()
+  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, clearUpdate } = useStore()
 
   if (page === 'loading') {
     return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:'18px',color:'var(--text2)' }}>جاري التحميل...</div>
@@ -135,3 +135,30 @@ export default function App() {
     </StoreProvider>
   )
 }
+      <Modal
+        open={showUpdateNotif}
+        onClose={() => setShowUpdateNotif(false)}
+        title="????? ????"
+        width='420px'
+      >
+        <div style={{ display:'flex',flexDirection:'column',gap:'14px',alignItems:'center' }}>
+          <div style={{ fontSize:'32px' }}>??</div>
+          <div style={{ fontSize:'16px',fontWeight:'bold',color:'var(--text)' }}>
+            ????? {updateAvailable}
+          </div>
+          <div style={{ color:'var(--text2)',fontSize:'14px',lineHeight:'1.8',textAlign:'center' }}>
+            ????? ????? ???? ???????. ????? ?????? ?? ???? ?????????.
+          </div>
+          <div style={{ display:'flex',gap:'10px',width:'100%' }}>
+            <button onClick={() => { setShowUpdateNotif(false); window.smartx?.openReleasesPage?.() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
+              ??? ???? ???????
+            </button>
+            <button onClick={() => setShowUpdateNotif(false)} style={{ flex:1,background:'var(--bg3)',color:'var(--text)',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
+              ??????
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={leaveSettingsPrompt.open}

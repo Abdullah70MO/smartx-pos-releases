@@ -1,4 +1,4 @@
-﻿const crypto = require('node:crypto')
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
@@ -150,7 +150,7 @@ async function checkLicenseWithServer(key, hwid) {
     })
     return await response.json()
   } catch {
-    return { valid: false, networkError: true, error: 'فشل الاتصال بالسيرفر' }
+    return { valid: false, networkError: true, error: '??? ??????? ????????' }
   }
 }
 
@@ -175,7 +175,8 @@ function checkLicense(realm) {
     trialUsed: !!(license?.trialStartedAt || persistent?.trialStartedAt),
     remainingDays: null,
     remainingText: '',
-    graceWarning: false
+    graceWarning: false,
+    wasEverActivated: persistent?.wasEverActivated || false
   }
 
   let expired = false
@@ -200,17 +201,17 @@ function checkLicense(realm) {
       if (expired) {
         result.remainingDays = 0
         if (result.licenseType === 'lifetime') {
-          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+          result.remainingText = '????? ???? ?????? - ???? ??????? ?????????'
         } else if (hardExpiry && now >= hardExpiry) {
-          result.remainingText = 'منتهي'
+          result.remainingText = '?????'
         } else {
-          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+          result.remainingText = '????? ???? ?????? - ???? ??????? ?????????'
         }
       } else {
         const diffMs = earliestExpiry - now
         result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
         if (result.licenseType === 'lifetime') {
-          result.remainingText = lastCheck ? ('مدى الحياة - مهلة ' + result.remainingDays + ' يوم') : 'مدى الحياة'
+          result.remainingText = lastCheck ? ('??? ?????? - ???? ' + result.remainingDays + ' ???') : '??? ??????'
           if (lastCheck) {
             const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
             if (graceRemaining <= 7) result.graceWarning = true
@@ -218,9 +219,9 @@ function checkLicense(realm) {
         } else {
           if (result.remainingDays > 30) {
             const months = Math.floor(result.remainingDays / 30)
-            result.remainingText = months + ' شهر'
+            result.remainingText = months + ' ???'
           } else {
-            result.remainingText = result.remainingDays + ' يوم'
+            result.remainingText = result.remainingDays + ' ???'
           }
           if (networkExpiry) {
             const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
@@ -230,7 +231,7 @@ function checkLicense(realm) {
       }
     } else {
       if (result.licenseType === 'lifetime') {
-        result.remainingText = 'مدى الحياة'
+        result.remainingText = '??? ??????'
       }
     }
     result.expired = expired
@@ -245,18 +246,18 @@ function checkLicense(realm) {
     if (nowMs < maxSeen.getTime()) {
       expired = true
       result.remainingDays = 0
-      result.remainingText = 'تم اكتشاف تغيير في تاريخ النظام - الترخيص ملغي'
+      result.remainingText = '?? ?????? ????? ?? ????? ?????? - ??????? ????'
     } else {
       const effectiveMax = license ? new Date(Math.max(maxSeen.getTime(), nowMs)) : maxSeen
       const elapsed = Math.floor((effectiveMax - trialStart) / (1000 * 60 * 60 * 24))
       if (elapsed >= TRIAL_DAYS) {
         expired = true
         result.remainingDays = 0
-        result.remainingText = 'منتهي'
+        result.remainingText = '?????'
       } else {
         expired = false
         result.remainingDays = TRIAL_DAYS - elapsed
-        result.remainingText = 'تجربة - باقي ' + result.remainingDays + ' يوم'
+        result.remainingText = '????? - ???? ' + result.remainingDays + ' ???'
       }
 
       if (license) {
@@ -272,7 +273,7 @@ function checkLicense(realm) {
 
   if (persistent && persistent.hwid && persistent.hwid !== hwid) {
     expired = true
-    result.remainingText = 'جهاز مختلف - تجربة غير متاحة'
+    result.remainingText = '???? ????? - ????? ??? ?????'
     result.remainingDays = 0
   }
 
@@ -292,7 +293,7 @@ async function activateLicense(realm, key) {
   const data = await response.json()
 
   if (!data.success) {
-    throw new Error(data.error || 'فشل التفعيل')
+    throw new Error(data.error || '??? ???????')
   }
 
   const now = new Date()
@@ -333,18 +334,18 @@ async function startTrial(realm) {
   const persistent = readPersistentLicense()
   const hwid = generateHwid()
 
-  if (persistent?.activated) {
-    throw new Error('الترخيص مفعل بالفعل')
+  if (persistent?.activated || persistent?.wasEverActivated) {
+    throw new Error('??????? ???? ??????')
   }
 
   const realmLicense = realm.objectForPrimaryKey('License', 'license')
   if (realmLicense?.activated) {
-    throw new Error('الترخيص مفعل بالفعل')
+    throw new Error('??????? ???? ??????')
   }
 
   if (persistent) {
     if (persistent.hwid !== hwid) {
-      throw new Error('هذا الجهاز مختلف عن الجهاز الذي بدأ عليه الترخيص')
+      throw new Error('??? ?????? ????? ?? ?????? ???? ??? ???? ???????')
     }
     if (persistent.trialStartedAt) {
       return { success: true, alreadyActivated: true }
@@ -399,6 +400,7 @@ async function periodicCheck(realm) {
     writePersistentLicense({
       hwid,
       activated: false,
+      wasEverActivated: true,
       maxDateSeen: new Date().toISOString()
     })
     BrowserWindow.getAllWindows().forEach(w =>
@@ -420,7 +422,7 @@ async function serverLicenseCheck(realm) {
     writePersistentLicense(persistent)
   } else if (serverResult.valid === false && !serverResult.networkError) {
     try { realm.write(() => { license.activated = false }) } catch {}
-    writePersistentLicense({ hwid, activated: false, maxDateSeen: new Date().toISOString() })
+    writePersistentLicense({ hwid, activated: false, wasEverActivated: true, maxDateSeen: new Date().toISOString() })
     BrowserWindow.getAllWindows().forEach(w =>
       w.webContents.send('license:revoked', {})
     )

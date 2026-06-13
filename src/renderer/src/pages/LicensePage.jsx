@@ -64,18 +64,18 @@ export default function LicensePage() {
           <h2 style={{ fontSize:'18px',marginBottom:'4px' }}>تفعيل البرنامج</h2>
           {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',background:license.remainingDays !== null && license.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',color:license.remainingDays !== null && license.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)' }}>{license.remainingText}</div>}
           <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            {license?.trialUsed && !license?.activated
+            {license?.trialUsed && !license?.activated || license?.wasEverActivated
               ? 'تم استخدام الفترة التجريبية من قبل. يرجى إدخال مفتاح التفعيل.'
               : 'يمكنك بدء الفترة التجريبية لمدة 14 يوماً أو إدخال مفتاح التفعيل الخاص بك'}
           </p>
-          {(!license?.trialUsed && !license?.activated) && (
+          {(license?.wasEverActivated ? false : !license?.trialUsed && !license?.activated) && (
             <button onClick={handleStartTrial} disabled={loading} style={{
               background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold'
             }}>
               {loading ? 'جاري...' : 'بدء الفترة التجريبية (14 يوم)'}
             </button>
           )}
-          {(!license?.trialUsed && !license?.activated) && (
+          {(license?.wasEverActivated ? false : !license?.trialUsed && !license?.activated) && (
             <div style={{ position:'relative',margin:'8px 0' }}>
               <div style={{ borderTop:'1px solid var(--bg3)' }}></div>
               <div style={{ position:'absolute',top:'-8px',left:'50%',transform:'translateX(-50%)',background:'var(--bg2)',padding:'0 12px',color:'var(--text2)',fontSize:'12px' }}>أو</div>
@@ -102,7 +102,7 @@ export default function LicensePage() {
           <h2 style={{ fontSize:'18px',color:'var(--danger)' }}>انتهت صلاحية الترخيص</h2>
           {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',color:'var(--danger)' }}>{license.remainingText}</div>}
           <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            {license?.trialUsed && !license?.activated
+            {license?.trialUsed && !license?.activated || license?.wasEverActivated
               ? 'انتهت الفترة التجريبية. يرجى تفعيل الترخيص للمتابعة.'
               : 'انتهت صلاحية الترخيص. يرجى تجديد الترخيص للمتابعة.'}
           </p>

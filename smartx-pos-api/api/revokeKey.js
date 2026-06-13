@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   if (action === 'revoke') {
-    await supabase.from('activations').delete().eq('key_id', id)
+    await supabase.from('activations').update({ is_active: false }).eq('key_id', id)
     const { data, error } = await supabase
       .from('license_keys')
       .update({ is_active: false, current_activations: 0, updated_at: new Date().toISOString() })

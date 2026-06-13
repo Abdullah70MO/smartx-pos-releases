@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
     const { error } = await supabase
       .from('activations')
-      .delete()
+      .update({ is_active: false })
       .eq('key_id', licenseKey.id)
       .eq('hwid', hwid);
 
