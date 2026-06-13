@@ -61,7 +61,7 @@ function addToTreasury(realm, data, session) {
       refType: data.refType || '',
       refId: data.refId || '',
       paymentMethod: data.paymentMethod || 'cash',
-      createdBy: session.userId,
+      createdBy: session.name,
       createdAt: new Date()
     })
   })
@@ -91,7 +91,7 @@ function withdrawFromTreasury(realm, data, session) {
       refType: data.refType || '',
       refId: data.refId || '',
       paymentMethod: data.paymentMethod || 'cash',
-      createdBy: session.userId,
+      createdBy: session.name,
       createdAt: new Date()
     })
     if (!data.isPersonal) {
@@ -129,7 +129,7 @@ function transferBetweenTreasuries(realm, data, session) {
       note: 'تحويل إلى ' + to.name + (data.note ? ' - ' + data.note : ''),
       relatedTreasuryId: data.toTreasuryId,
       relatedTreasuryName: to.name,
-      createdBy: session.userId,
+      createdBy: session.name,
       createdAt: new Date()
     })
     realm.create('TreasuryTransaction', {
@@ -141,7 +141,7 @@ function transferBetweenTreasuries(realm, data, session) {
       note: 'تحويل من ' + from.name + (data.note ? ' - ' + data.note : ''),
       relatedTreasuryId: data.fromTreasuryId,
       relatedTreasuryName: from.name,
-      createdBy: session.userId,
+      createdBy: session.name,
       createdAt: new Date()
     })
   })

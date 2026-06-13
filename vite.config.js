@@ -18,6 +18,9 @@ export default defineConfig({
       zimmerframe: path.resolve(__dirname, 'node_modules/zimmerframe/src/walk.js')
     }
   },
+  optimizeDeps: {
+    exclude: ['zimmerframe']
+  },
   server: {
     port: 5173,
     strictPort: true

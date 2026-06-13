@@ -21,6 +21,8 @@ export default function ReportsPage() {
   const [searchWithdrawals, setSearchWithdrawals] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [searchCustomers, setSearchCustomers] = useState('')
   const [searchSuppliers, setSearchSuppliers] = useState('')
+  const [treasuryTxns, setTreasuryTxns] = useState([])
+  const [searchTreasury, setSearchTreasury] = useState({ q: '', dateFrom: '', dateTo: '' })
 
   useEffect(() => {
     async function load() {
@@ -38,6 +40,7 @@ export default function ReportsPage() {
         setSummary(s); setSales(salesData)
         setExpenses(expensesData); setReturns(returnsData)
         setWithdrawals((txns || []).filter(t => t.type === 'personal_withdraw'))
+        setTreasuryTxns(txns || [])
         setCustomers(customersData || [])
         setSuppliers(suppliersData || [])
       } catch {}
@@ -50,7 +53,9 @@ export default function ReportsPage() {
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
   const totalReturns = returns.reduce((sum, r) => sum + r.subtotal, 0)
   const totalWithdrawals = withdrawals.reduce((sum, w) => sum + Math.abs(w.amount), 0)
-  const netProfit = totalSales - totalTax - totalExpenses - totalReturns - totalWithdrawals
+  const totalCOGS = sales.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+  const totalReturnCost = returns.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+  const netProfit = (totalSales - totalTax - totalCOGS) + (totalReturnCost - totalReturns) - totalExpenses - totalWithdrawals
 
   const filteredSales = sales.filter(s => {
     if (searchSales.q && !String(s.invoiceNo).includes(searchSales.q) && !s.customerName?.includes(searchSales.q) && !s.cashierName?.includes(searchSales.q)) return false
@@ -89,6 +94,13 @@ export default function ReportsPage() {
     !searchSuppliers || s.name?.includes(searchSuppliers) || s.phone?.includes(searchSuppliers)
   )
 
+  const filteredTreasury = treasuryTxns.filter(t => {
+    if (searchTreasury.q && !(t.createdBy || '').includes(searchTreasury.q) && !(t.personName || '').includes(searchTreasury.q) && !(t.note || '').includes(searchTreasury.q)) return false
+    if (searchTreasury.dateFrom && t.createdAt && t.createdAt.slice(0, 10) < searchTreasury.dateFrom) return false
+    if (searchTreasury.dateTo && t.createdAt && t.createdAt.slice(0, 10) > searchTreasury.dateTo) return false
+    return true
+  })
+
   const TABS = [
     { id: 'overview', label: 'نظرة عامة' },
     { id: 'sales', label: 'المبيعات' },
@@ -96,7 +108,8 @@ export default function ReportsPage() {
     { id: 'withdrawals', label: 'المسحوبات الشخصية' },
     { id: 'returns', label: 'المرتجعات' },
     { id: 'customers', label: 'العملاء' },
-    { id: 'suppliers', label: 'الموردين' }
+    { id: 'suppliers', label: 'الموردين' },
+    { id: 'treasury', label: 'الخزينة' }
   ]
 
   return (
@@ -310,6 +323,47 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {filteredReturns.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مرتجعات</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'treasury' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <input placeholder="بحث باسم المستخدم أو البيان أو الشخص..." value={searchTreasury.q}
+              onInput={e => setSearchTreasury(s => ({ ...s, q: e.target.value }))}
+              style={{ flex: 1, minWidth: '150px' }} />
+            <input type="date" value={searchTreasury.dateFrom} onInput={e => setSearchTreasury(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
+            <input type="date" value={searchTreasury.dateTo} onInput={e => setSearchTreasury(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
+          </div>
+          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+            <table>
+              <thead><tr><th>التاريخ</th><th>الخزينة</th><th>النوع</th><th>المبلغ</th><th>البيان</th><th>الشخص</th><th>بواسطة</th></tr></thead>
+              <tbody>
+                {filteredTreasury.map(t => (
+                  <tr key={t._id}>
+                    <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.createdAt)}</td>
+                    <td style={{ fontSize: '12px' }}>{t.treasuryName}</td>
+                    <td>
+                      <span style={{
+                        fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
+                        background: t.type === 'deposit' || t.type === 'transfer_in' ? 'rgba(34,197,94,0.15)' :
+                          t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
+                        color: t.type === 'deposit' || t.type === 'transfer_in' ? '#22c55e' :
+                          t.type === 'personal_withdraw' ? '#eab308' : '#ef4444'
+                      }}>
+                        {t.type === 'deposit' ? 'إيداع' : t.type === 'withdraw' ? 'سحب' : t.type === 'personal_withdraw' ? 'سحب شخصي' : t.type === 'transfer_in' ? 'تحويل وارد' : t.type === 'transfer_out' ? 'تحويل صادر' : t.type}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 'bold', color: t.amount > 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(t.amount)}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.note || '-'}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.personName || '-'}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy || '-'}</td>
+                  </tr>
+                ))}
+                {filteredTreasury.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد حركات</td></tr>}
               </tbody>
             </table>
           </div>

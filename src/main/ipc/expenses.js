@@ -13,7 +13,7 @@ function updateTreasury(realm, amount, note, session, refId) {
     type: amount > 0 ? 'deposit' : 'withdraw',
     amount, note: note || '',
     refType: 'expense', refId: refId || '',
-    createdBy: session.userId, createdAt: new Date()
+    createdBy: session.name || session.userId || 'system', createdAt: new Date()
   })
 }
 

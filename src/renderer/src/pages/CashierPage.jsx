@@ -251,11 +251,11 @@ const [taxRate, setTaxRate] = useState(14)
           quantity: item.quantity, unitPrice: item.unitPrice, cost: item.cost
         })),
         subtotal, discount: discAmount, tax, total,
-        paymentMethod, paid: payable || total,
+        paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total),
         customerName, customerPhone, note
       })
       if (settings?.printAfterPayment) {
-        setReceipt({ ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: payable || total, customerName, customerPhone, settings })
+        setReceipt({ ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total), customerName, customerPhone, settings })
       } else {
         toast(`تمت الفاتورة #${result.invoiceNo}`, 'success')
         setCart([]); setPaid(''); setCreditPaid(''); setDiscount(''); setNote('')

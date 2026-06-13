@@ -77,6 +77,15 @@ function registerIpc() {
   handle('license:periodicCheck', async () => periodicCheck(await openRealm()))
   handle('license:getGraceWarning', async () => getGraceWarning(await openRealm()))
 
+  // Print
+  handle('print:a4', async (html) => {
+    const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+    printWin.webContents.on('did-finish-load', () => {
+      printWin.webContents.print({}, () => printWin.destroy())
+    })
+  })
+
   // Products
   handle('products:list', async ({ token, query }) => (requireUser(token, 'products.view'), listProducts(await openRealm(), query)))
   handle('products:save', async ({ token, product }) => {

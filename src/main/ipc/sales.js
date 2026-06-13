@@ -15,7 +15,7 @@ function updateTreasury(realm, amount, note, session, refId, refType, paymentMet
     amount, note: note || '',
     refType, refId: refId || '',
     paymentMethod: paymentMethod || 'cash',
-    createdBy: session.userId, createdAt: new Date()
+    createdBy: session.name || session.userId || 'system', createdAt: new Date()
   })
 }
 

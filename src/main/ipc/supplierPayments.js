@@ -33,14 +33,14 @@ function createSupplierPayment(realm, user, { supplierId, supplierName, amount, 
       _id: crypto.randomUUID(),
       supplierId, supplierName: supplierName || '', amount: Number(amount),
       note: note || '', paymentMethod: paymentMethod || 'cash',
-      createdBy: user.userId || user.name, createdAt: new Date()
+      createdBy: user.name, createdAt: new Date()
     })
     const supplier = realm.objectForPrimaryKey('Supplier', supplierId)
     if (supplier) {
       supplier.totalPaid = (supplier.totalPaid || 0) + Number(amount)
       supplier.updatedAt = new Date()
     }
-    updateTreasury(realm, -Number(amount), 'تسديد لمورد - ' + (supplierName || ''), user.userId || user.name, payment._id, paymentMethod)
+    updateTreasury(realm, -Number(amount), 'تسديد لمورد - ' + (supplierName || ''), user.name, payment._id, paymentMethod)
   })
   return { _id: payment._id, supplierId: payment.supplierId, supplierName: payment.supplierName, amount: payment.amount, note: payment.note, paymentMethod: payment.paymentMethod, createdBy: payment.createdBy, createdAt: payment.createdAt?.toISOString() }
 }

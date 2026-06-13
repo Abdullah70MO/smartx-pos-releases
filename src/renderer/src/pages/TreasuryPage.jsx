@@ -18,6 +18,7 @@ export default function TreasuryPage() {
   const [form, setForm] = useState({ name: '', type: 'main', initialBalance: '', withdrawCategory: '' })
   const [editTreasury, setEditTreasury] = useState(null)
   const [withdrawCategories, setWithdrawCategories] = useState([])
+  const [searchTx, setSearchTx] = useState({ q: '', dateFrom: '', dateTo: '' })
 
   useEffect(() => {
     async function loadCats() {
@@ -80,6 +81,13 @@ export default function TreasuryPage() {
   const typeLabels = { main: 'رئيسية', bank: 'بنك', wallet: 'محفظة' }
   const typeColors = { main: 'var(--success)', bank: '#3b82f6', wallet: '#f59e0b' }
 
+  const filteredTransactions = transactions.filter(t => {
+    if (searchTx.q && !(t.createdBy || '').includes(searchTx.q) && !(t.personName || '').includes(searchTx.q) && !(t.note || '').includes(searchTx.q)) return false
+    if (searchTx.dateFrom && t.createdAt && t.createdAt.slice(0, 10) < searchTx.dateFrom) return false
+    if (searchTx.dateTo && t.createdAt && t.createdAt.slice(0, 10) > searchTx.dateTo) return false
+    return true
+  })
+
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
       {/* Header */}
@@ -134,14 +142,25 @@ export default function TreasuryPage() {
       {/* Transactions table */}
       {currentTreasury && (
         <>
-          <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '8px' }}>
-            آخر الحركات - {currentTreasury.name}
-          </h3>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '13px', color: 'var(--text2)' }}>
+              آخر الحركات - {currentTreasury.name}
+            </h3>
+            <button onClick={() => loadTransactions(activeTreasury)}
+              style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', marginRight: 'auto' }}>تحديث</button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <input placeholder="بحث باسم المستخدم أو البيان..." value={searchTx.q}
+              onInput={e => setSearchTx(s => ({ ...s, q: e.target.value }))}
+              style={{ flex: 1, minWidth: '150px' }} />
+            <input type="date" value={searchTx.dateFrom} onInput={e => setSearchTx(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
+            <input type="date" value={searchTx.dateTo} onInput={e => setSearchTx(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
+          </div>
           <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
             <table>
               <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>البيان</th><th>الشخص</th><th>بواسطة</th></tr></thead>
               <tbody>
-                {transactions.map(t => (
+                {filteredTransactions.map(t => (
                   <tr key={t._id}>
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.createdAt)}</td>
                     <td>
@@ -158,10 +177,10 @@ export default function TreasuryPage() {
                     <td style={{ fontWeight: 'bold', color: t.amount > 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(t.amount)}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.note || '-'}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.personName || '-'}</td>
-                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy ? t.createdBy.slice(0, 8) : '-'}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy || '-'}</td>
                   </tr>
                 ))}
-                {transactions.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد حركات</td></tr>}
+                {filteredTransactions.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد حركات</td></tr>}
               </tbody>
             </table>
           </div>

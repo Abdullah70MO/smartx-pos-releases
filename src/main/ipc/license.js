@@ -335,6 +335,11 @@ async function startTrial(realm) {
     }
   }
 
+  const realmLicense = realm.objectForPrimaryKey('License', 'license')
+  if (realmLicense?.trialStartedAt) {
+    return { success: true, alreadyActivated: true }
+  }
+
   const now = new Date()
   realm.write(() => {
     realm.create('License', {

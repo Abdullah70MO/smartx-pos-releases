@@ -124,7 +124,10 @@ const api = {
     ipcRenderer.on('license:grace-warning', handler)
     return () => ipcRenderer.removeListener('license:grace-warning', handler)
   },
-  getGraceWarning: () => ipcRenderer.invoke('license:getGraceWarning')
+  getGraceWarning: () => ipcRenderer.invoke('license:getGraceWarning'),
+
+  // Print
+  printA4: (html) => ipcRenderer.invoke('print:a4', html)
 }
 
 contextBridge.exposeInMainWorld('smartx', api)

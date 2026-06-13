@@ -25,7 +25,7 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
     adjustment = realm.create('InventoryAdjustment', {
       _id: crypto.randomUUID(), productId, productName,
       type, quantity: qty, oldStock, newStock,
-      reason: reason || '', createdBy: user.userId || user.name,
+      reason: reason || '', createdBy: user.name,
       createdAt: date ? new Date(date) : new Date()
     })
   })

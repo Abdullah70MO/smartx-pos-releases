@@ -33,14 +33,14 @@ function createCustomerPayment(realm, user, { customerId, customerName, amount, 
       _id: crypto.randomUUID(),
       customerId, customerName: customerName || '', amount: Number(amount),
       note: note || '', paymentMethod: paymentMethod || 'cash',
-      createdBy: user.userId || user.name, createdAt: new Date()
+      createdBy: user.name, createdAt: new Date()
     })
     const customer = realm.objectForPrimaryKey('CreditCustomer', customerId)
     if (customer) {
       customer.totalPaid = (customer.totalPaid || 0) + Number(amount)
       customer.updatedAt = new Date()
     }
-    updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.userId || user.name, payment._id, paymentMethod)
+    updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
   })
   return { _id: payment._id, customerId: payment.customerId, customerName: payment.customerName, amount: payment.amount, note: payment.note, paymentMethod: payment.paymentMethod, createdBy: payment.createdBy, createdAt: payment.createdAt?.toISOString() }
 }

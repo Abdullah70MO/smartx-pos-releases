@@ -2,18 +2,20 @@ const Realm = require('realm')
 const crypto = require('node:crypto')
 const { updateWeightedAverage, removeFromWeightedAverage } = require('./inventoryHelpers')
 
-function updateTreasury(realm, amount, note, session) {
+function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount === 0) return
-  const mainTreasury = realm.objects('Treasury').filtered('type == "main"')[0]
-  if (!mainTreasury) return
-  mainTreasury.balance += amount
-  mainTreasury.updatedAt = new Date()
+  const treasuryType = paymentMethod === 'card' ? 'bank' : 'main'
+  const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
+  if (!treasury) return
+  treasury.balance += amount
+  treasury.updatedAt = new Date()
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
-    treasuryId: mainTreasury._id, treasuryName: mainTreasury.name,
+    treasuryId: treasury._id, treasuryName: treasury.name,
     type: amount > 0 ? 'deposit' : 'withdraw',
     amount, note: note || '', refType: 'return',
-    createdBy: session.userId, createdAt: new Date()
+    paymentMethod: paymentMethod || 'cash',
+    createdBy: session.name || session.userId || 'system', createdAt: new Date()
   })
 }
 
@@ -84,7 +86,15 @@ function createReturn(realm, session, data) {
       isFullReturn: data.isFullReturn || false,
       createdAt: new Date()
     })
-    updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session)
+    updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session, sale.paymentMethod)
+
+    if (sale.paymentMethod === 'credit' && data.customerName) {
+      const customer = realm.objects('CreditCustomer').filtered('name == $0', data.customerName)[0]
+      if (customer) {
+        customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - Number(data.subtotal))
+        customer.updatedAt = new Date()
+      }
+    }
   })
   return { _id: ret._id, invoiceNo: ret.invoiceNo, saleId: ret.saleId, subtotal: ret.subtotal, reason: ret.reason, cashierId: ret.cashierId, cashierName: ret.cashierName, customerName: ret.customerName, isFullReturn: ret.isFullReturn, createdAt: ret.createdAt?.toISOString() }
 }
@@ -93,6 +103,7 @@ function removeReturn(realm, id) {
   realm.write(() => {
     const ret = realm.objectForPrimaryKey('Return', id)
     if (ret) {
+      const sale = realm.objectForPrimaryKey('Sale', ret.saleId)
       ret.items.forEach(item => {
         const product = realm.objectForPrimaryKey('Product', item.productId)
         if (product) {
@@ -103,17 +114,28 @@ function removeReturn(realm, id) {
           removeFromWeightedAverage(product, qty, cost, oldStock)
         }
       })
-      const mainTreasury = realm.objects('Treasury').filtered('type == "main"')[0]
-      if (mainTreasury) {
-        mainTreasury.balance += Number(ret.subtotal)
-        mainTreasury.updatedAt = new Date()
-        realm.create('TreasuryTransaction', {
-          _id: crypto.randomUUID(),
-          treasuryId: mainTreasury._id, treasuryName: mainTreasury.name,
-          type: 'deposit', amount: Number(ret.subtotal),
-          note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
-          createdBy: 'system', createdAt: new Date()
-        })
+      if (sale && (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card')) {
+        const treasuryType = sale.paymentMethod === 'card' ? 'bank' : 'main'
+        const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
+        if (treasury) {
+          treasury.balance += Number(ret.subtotal)
+          treasury.updatedAt = new Date()
+          realm.create('TreasuryTransaction', {
+            _id: crypto.randomUUID(),
+            treasuryId: treasury._id, treasuryName: treasury.name,
+            type: 'deposit', amount: Number(ret.subtotal),
+            note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
+            paymentMethod: sale.paymentMethod,
+            createdBy: 'system', createdAt: new Date()
+          })
+        }
+      }
+      if (sale && sale.paymentMethod === 'credit' && sale.customerName) {
+        const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
+        if (customer) {
+          customer.totalDebt = (customer.totalDebt || 0) + Number(ret.subtotal)
+          customer.updatedAt = new Date()
+        }
       }
       realm.delete(ret)
     }
