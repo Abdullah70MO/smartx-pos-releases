@@ -17,5 +17,27 @@ export default async function handler(req, res) {
     .order('created_at', { ascending: false })
 
   if (error) return res.status(500).json({ error: error.message })
-  return res.status(200).json({ keys: data })
+
+  // Decode license_file from each activation to extract activatedAt and expiresAt
+  const keys = (data || []).map(key => ({
+    ...key,
+    activations: (key.activations || []).map(act => {
+      try {
+        const decoded = JSON.parse(Buffer.from(act.license_file, 'base64').toString('utf-8'))
+        return {
+          ...act,
+          decoded_activated_at: decoded.activatedAt || act.activated_at,
+          decoded_expires_at: decoded.expiresAt || null
+        }
+      } catch {
+        return {
+          ...act,
+          decoded_activated_at: act.activated_at,
+          decoded_expires_at: null
+        }
+      }
+    })
+  }))
+
+  return res.status(200).json({ keys })
 }

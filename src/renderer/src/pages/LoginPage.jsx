@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
+import ActivateLicenseModal from '../components/ActivateLicenseModal'
 
 export default function LoginPage() {
-  const { login, license, setPage } = useStore()
+  const { login, license, setPage, refreshLicense } = useStore()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [contact, setContact] = useState(null)
   const [showContact, setShowContact] = useState(false)
+  const [showLicenseModal, setShowLicenseModal] = useState(false)
 
   useEffect(() => {
     api.getContactInfo().then(setContact).catch(() => {})
@@ -99,10 +101,16 @@ export default function LoginPage() {
         <button onClick={handleClose} style={{ flex: 1, background:'var(--bg3)',color:'var(--danger)',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
           إغلاق التطبيق
         </button>
-        <button onClick={() => setPage('settings')} style={{ flex: 1, background:'var(--bg3)',color:'var(--text)',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
-          الإعدادات
+        <button onClick={() => setShowLicenseModal(true)} style={{ flex: 1, background:'var(--bg3)',color:'var(--accent)',padding:'10px',borderRadius:'8px',fontSize:'13px',fontWeight:'600' }}>
+          الترخيص
         </button>
       </div>
+
+      <ActivateLicenseModal
+        open={showLicenseModal}
+        onClose={() => setShowLicenseModal(false)}
+        onActivated={() => refreshLicense()}
+      />
 
       {contact && (
         <div style={{ maxWidth:'320px',width:'100%' }}>

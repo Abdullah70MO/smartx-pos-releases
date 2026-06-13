@@ -36,10 +36,17 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'فشل في إلغاء التفعيل' });
     }
 
+    // Recount active activations
+    const { count } = await supabase
+      .from('activations')
+      .select('id', { count: 'exact', head: true })
+      .eq('key_id', licenseKey.id)
+      .eq('is_active', true)
+
     await supabase
       .from('license_keys')
-      .update({ 
-        current_activations: Math.max(0, (await supabase.from('license_keys').select('current_activations').eq('id', licenseKey.id).single()).data?.current_activations - 1 || 0),
+      .update({
+        current_activations: count,
         updated_at: new Date().toISOString()
       })
       .eq('id', licenseKey.id);

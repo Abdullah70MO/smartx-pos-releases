@@ -5,11 +5,12 @@ import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
+import ActivateLicenseModal from '../components/ActivateLicenseModal'
 
 export default function SettingsPage() {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
-  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty, clearUpdate, setPage } = useStore()
+  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty, clearUpdate, setPage, refreshLicense } = useStore()
   useEffect(() => { clearUpdate() }, [])
   const canManage = user?.permissions?.includes('settings.manage')
   const [settings, setSettings] = useState(null)
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const [initialForm, setInitialForm] = useState(null)
   const [updateStatus, setUpdateStatus] = useState(null)
   const [updateModal, setUpdateModal] = useState(null)
+  const [showLicenseModal, setShowLicenseModal] = useState(false)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [licenseStatus, setLicenseStatus] = useState(null)
@@ -535,7 +537,7 @@ export default function SettingsPage() {
                 {refreshingLicense ? 'جاري...' : 'تحديث حالة الترخيص'}
               </button>
               {!licenseStatus?.activated && (
-                <button onClick={() => setPage('license')} style={{
+                <button onClick={() => setShowLicenseModal(true)} style={{
                   flex: 1, background: 'var(--bg3)', color: 'var(--text)', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'
                 }}>
                   تفعيل
@@ -544,6 +546,12 @@ export default function SettingsPage() {
             </div>
           </div>
         </Section>
+
+        <ActivateLicenseModal
+          open={showLicenseModal}
+          onClose={() => setShowLicenseModal(false)}
+          onActivated={() => { handleRefreshLicense(); refreshLicense() }}
+        />
 
         <Section title="الدعم الفني">
           {contact.length > 0 ? (

@@ -20,7 +20,7 @@
     input, select { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-family: inherit; font-size: 13px; margin-bottom: 8px; }
     label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: right; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-size: 12px; }
+    th { text-align: right; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-size: 12px; white-space: nowrap; }
     td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
     .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
     .badge-active { background: rgba(34,197,94,0.2); color: #22c55e; }
@@ -39,7 +39,11 @@
     .stat { background: #1e293b; border-radius: 12px; padding: 16px; text-align: center; }
     .stat-value { font-size: 24px; font-weight: 700; color: #3b82f6; }
     .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-    .key-display { direction: ltr; font-size: 12px; background: #0f172a; padding: 6px 10px; border-radius: 6px; font-family: monospace; }
+    .key-display { direction: ltr; font-size: 12px; background: #0f172a; padding: 6px 10px; border-radius: 6px; font-family: monospace; word-break: break-all; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header-row h1 { margin-bottom: 0; }
+    .refresh-btn { font-size: 18px; padding: 8px 16px; }
+    .activation-details { font-size: 11px; color: #94a3b8; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -59,6 +63,13 @@
         <div class="key-display" id="newKeyValue" style="margin-bottom:8px"></div>
         <button class="btn btn-primary" id="copyKeyBtn">نسخ المفتاح</button>
         <button class="btn btn-danger" id="closeResultBtn" style="margin-right:8px">إغلاق</button>
+      </div>
+
+      <div class="header-row">
+        <h1>لوحة تحكم الترخيص</h1>
+        <div>
+          <button class="btn btn-primary refresh-btn" id="refreshBtn" onclick="loadKeys()">⟳ تحديث</button>
+        </div>
       </div>
 
       <div class="stats" id="stats"></div>
@@ -119,6 +130,12 @@
       })
     }
 
+    function formatDate(d) {
+      if (!d) return '-'
+      var date = new Date(d)
+      return date.toLocaleDateString('ar-EG') + ' ' + date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+    }
+
     function renderKeys(keys) {
       var total = keys.length
       var active = 0
@@ -142,7 +159,7 @@
       }
 
       var html = '<table><thead><tr>' +
-        '<th>المفتاح</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>تاريخ الانتهاء</th><th>آخر تفعيل</th><th>ملاحظات</th><th>تاريخ الإنشاء</th><th></th>' +
+        '<th>المفتاح</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>وقت التفعيل</th><th>تاريخ الانتهاء</th><th>آخر تفعيل</th><th>ملاحظات</th><th>تاريخ الإنشاء</th><th></th>' +
         '</tr></thead><tbody>'
 
       for (var i = 0; i < keys.length; i++) {
@@ -156,8 +173,27 @@
           return new Date(b.activated_at) - new Date(a.activated_at)
         })
         var lastActivation = sorted[0]
-        var lastActivationDate = lastActivation ? new Date(lastActivation.activated_at).toLocaleDateString('ar-EG') : '-'
-        var expiresAt = k.expires_at ? new Date(k.expires_at).toLocaleDateString('ar-EG') : (k.license_type === 'lifetime' ? 'مدى الحياة' : 'لم يفعل بعد')
+        var lastActivationDate = lastActivation ? formatDate(lastActivation.activated_at) : '-'
+
+        // Get decoded activated_at (earliest activation)
+        var firstAct = null
+        for (var j = 0; j < activations.length; j++) {
+          if (!firstAct || new Date(activations[j].activated_at) < new Date(firstAct.activated_at)) {
+            firstAct = activations[j]
+          }
+        }
+        var activatedAtDisplay = firstAct ? formatDate(firstAct.decoded_activated_at || firstAct.activated_at) : '-'
+
+        // Get decoded expires_at from first/last activation
+        var expiresAtDisplay = '-'
+        if (k.license_type === 'lifetime') {
+          expiresAtDisplay = 'مدى الحياة'
+        } else if (lastActivation && lastActivation.decoded_expires_at) {
+          expiresAtDisplay = formatDate(lastActivation.decoded_expires_at)
+        } else if (k.expires_at) {
+          expiresAtDisplay = formatDate(k.expires_at)
+        }
+
         var typeLabel = k.license_type === 'lifetime' ? 'مدى الحياة' : k.license_type === 'year' ? 'سنة' : k.license_type === 'half_year' ? '6 أشهر' : k.license_type === 'quarter' ? '3 أشهر' : 'شهر'
         var statusLabel = k.is_active ? 'نشط' : 'ملغي'
         var statusClass = k.is_active ? 'badge-active' : 'badge-inactive'
@@ -174,10 +210,11 @@
           '<td><span class="badge badge-lifetime">' + typeLabel + '</span></td>' +
           '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
           '<td>' + (k.current_activations || 0) + ' / ' + k.max_activations + '</td>' +
-          '<td style="font-size:11px">' + expiresAt + '</td>' +
+          '<td style="font-size:11px">' + activatedAtDisplay + '</td>' +
+          '<td style="font-size:11px">' + expiresAtDisplay + '</td>' +
           '<td style="font-size:11px">' + lastActivationDate + '</td>' +
           '<td style="font-size:11px;color:#94a3b8">' + (k.notes || '-') + '</td>' +
-          '<td style="font-size:11px">' + new Date(k.created_at).toLocaleDateString('ar-EG') + '</td>' +
+          '<td style="font-size:11px">' + formatDate(k.created_at) + '</td>' +
           '<td><div class="actions">' + actionHtml + '</div></td>' +
           '</tr>'
       }

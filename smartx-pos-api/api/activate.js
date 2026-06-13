@@ -51,18 +51,24 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'المفتاح معطل' });
     }
 
-    if (licenseKey.current_activations >= licenseKey.max_activations) {
-      const { data: existingActivations } = await supabase
-        .from('activations')
-        .select('*')
-        .eq('key_id', licenseKey.id)
-        .eq('hwid', hwid)
-        .eq('is_active', true)
-        .single();
+    // Count actual active activations
+    const { count } = await supabase
+      .from('activations')
+      .select('id', { count: 'exact', head: true })
+      .eq('key_id', licenseKey.id)
+      .eq('is_active', true)
 
-      if (!existingActivations) {
-        return res.status(403).json({ error: 'تم الوصول للحد الأقصى من التفعيلات' });
-      }
+    // Check if this HWID already has an activation
+    const { data: existingActivation } = await supabase
+      .from('activations')
+      .select('id')
+      .eq('key_id', licenseKey.id)
+      .eq('hwid', hwid)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (count >= licenseKey.max_activations && !existingActivation) {
+      return res.status(403).json({ error: 'تم الوصول للحد الأقصى من التفعيلات' })
     }
 
     let expiresAt = null;
@@ -97,15 +103,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'فشل في تسجيل التفعيل' });
     }
 
+    // Recount active activations after upsert
+    const { count: newCount } = await supabase
+      .from('activations')
+      .select('id', { count: 'exact', head: true })
+      .eq('key_id', licenseKey.id)
+      .eq('is_active', true)
+
     await supabase
       .from('license_keys')
-      .update({ current_activations: licenseKey.current_activations + 1, updated_at: new Date().toISOString() })
+      .update({
+        current_activations: newCount,
+        expires_at: expiresAt?.toISOString() || null,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', licenseKey.id);
 
     return res.status(200).json({
       success: true,
       licenseType: licenseKey.license_type,
       expiresAt: expiresAt?.toISOString(),
+      activatedAt: new Date().toISOString(),
       licenseFile
     });
   } catch (error) {
