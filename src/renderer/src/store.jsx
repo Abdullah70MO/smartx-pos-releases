@@ -80,7 +80,7 @@ export function StoreProvider({ children }) {
       if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
     } catch (e) { console.error('getSettings error:', e) }
-    const license = await api.checkLicense()
+    const license = await api.serverCheckLicense()
     const targetPage = (!license?.activated && !license?.trialUsed) || license?.expired ? 'license' : 'dashboard'
     setState(s => ({ ...s, token: result.token, user: result.user, settings, license, page: targetPage }))
     localStorage.setItem('token', result.token)
@@ -97,7 +97,7 @@ export function StoreProvider({ children }) {
   }
 
   async function refreshLicense() {
-    const license = await api.checkLicense()
+    const license = await api.serverCheckLicense()
     setState(s => ({ ...s, license }))
     return license
   }
@@ -116,6 +116,14 @@ export function StoreProvider({ children }) {
     async function init() {
       try {
         const license = await api.checkLicense()
+        // Background server check to detect revocation
+        api.serverCheckLicense().then(serverLic => {
+          if (serverLic?.expired && !license?.expired) {
+            setState(s => ({ ...s, license: serverLic, page: 'license' }))
+          } else if (serverLic) {
+            setState(s => ({ ...s, license: serverLic }))
+          }
+        }).catch(() => {})
         if (license?.expired) {
           setState(s => ({ ...s, license, page: 'license' }))
         } else if (license?.activated || license?.trialUsed) {
@@ -149,6 +157,16 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     const unsub = window.smartx?.onGraceWarning?.((data) => {
       if (!data.graceWarning) refreshLicense()
+    })
+    return unsub
+  }, [])
+
+  // Listen for license revoked from periodic check
+  useEffect(() => {
+    const unsub = window.smartx?.onLicenseRevoked?.(() => {
+      refreshLicense().then(lic => {
+        if (lic?.expired) setState(s => ({ ...s, page: 'license' }))
+      })
     })
     return unsub
   }, [])

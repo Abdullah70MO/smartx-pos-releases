@@ -99,9 +99,13 @@ export default function SettingsPage() {
   async function handleRefreshLicense() {
     setRefreshingLicense(true)
     try {
-      const lic = await api.checkLicense()
+      const lic = await api.serverCheckLicense()
       setLicenseStatus(lic)
-      toast('تم تحديث حالة الترخيص', 'success')
+      if (lic?.expired) {
+        toast('تم إلغاء الترخيص من المسؤول', 'error')
+      } else {
+        toast('تم تحديث حالة الترخيص', 'success')
+      }
     } catch (err) {
       toast(err.message, 'error')
     }

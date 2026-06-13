@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const adminKey = req.headers['x-admin-key']
   if (adminKey !== process.env.ADMIN_DASHBOARD_KEY) return res.status(403).json({ error: 'Unauthorized' })
 
-  const { license_type, max_activations, notes } = req.body
+  const { license_type, notes } = req.body
   const keyString = generateKey()
 
   const { data, error } = await supabase
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     .insert({
       key_string: keyString,
       license_type: license_type || 'lifetime',
-      max_activations: max_activations || 1,
+      max_activations: 1,
       notes: notes || ''
     })
     .select()

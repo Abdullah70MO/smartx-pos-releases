@@ -83,7 +83,6 @@
             <option value="quarter">3 أشهر</option>
             <option value="month">شهر</option>
           </select>
-          <input type="number" id="newKeyMax" value="1" min="1" placeholder="حد التفعيل" style="width:100px;flex:0" />
           <button class="btn btn-success" id="createKeyBtn">إنشاء</button>
         </div>
       </div>
@@ -225,8 +224,7 @@
 
     function createNewKey() {
       var type = document.getElementById('newKeyType').value
-      var max = Number(document.getElementById('newKeyMax').value) || 1
-      apiCall('/createKey', 'POST', { license_type: type, max_activations: max }).then(function(data) {
+      apiCall('/createKey', 'POST', { license_type: type }).then(function(data) {
         if (data.error) return toast(data.error, 'error')
         lastCreatedKey = data.key.key_string
         document.getElementById('newKeyValue').textContent = lastCreatedKey

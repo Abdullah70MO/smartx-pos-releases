@@ -11,6 +11,7 @@ const api = {
   activateLicense: (key) => ipcRenderer.invoke('license:activate', { key }),
   startTrial: () => ipcRenderer.invoke('license:startTrial'),
   periodicCheck: () => ipcRenderer.invoke('license:periodicCheck'),
+  serverCheckLicense: () => ipcRenderer.invoke('license:serverCheck'),
 
   // Products
   listProducts: (token, query) => ipcRenderer.invoke('products:list', { token, query }),
@@ -125,6 +126,11 @@ const api = {
     return () => ipcRenderer.removeListener('license:grace-warning', handler)
   },
   getGraceWarning: () => ipcRenderer.invoke('license:getGraceWarning'),
+  onLicenseRevoked: (callback) => {
+    const handler = (_event, data) => callback(data)
+    ipcRenderer.on('license:revoked', handler)
+    return () => ipcRenderer.removeListener('license:revoked', handler)
+  },
 
   // Print
   printA4: (html) => ipcRenderer.invoke('print:a4', html)

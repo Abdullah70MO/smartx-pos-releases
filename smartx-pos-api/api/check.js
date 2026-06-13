@@ -6,13 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function generateLicenseFile(keyData, hwid, expiresAt) {
+function generateLicenseFile(keyData, hwid, expiresAt, existingActivatedAt) {
   const data = {
     key: keyData.key_string,
     hwid,
     licenseType: keyData.license_type,
     expiresAt: expiresAt?.toISOString() || null,
-    activatedAt: new Date().toISOString(),
+    activatedAt: existingActivatedAt || new Date().toISOString(),
     signature: ''
   };
   data.signature = crypto
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
       expiresAt = new Date(licenseKey.expires_at);
     }
 
-    const freshLicenseFile = generateLicenseFile(licenseKey, hwid, expiresAt);
+    const freshLicenseFile = generateLicenseFile(licenseKey, hwid, expiresAt, activation.activated_at);
 
     await supabase
       .from('activations')

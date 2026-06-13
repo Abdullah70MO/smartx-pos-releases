@@ -12,7 +12,7 @@ const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
 const { listUsers, saveUser, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
-const { checkLicense, activateLicense, startTrial, periodicCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
+const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, createReturn, removeReturn } = require('./ipc/returns')
 const { getActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
@@ -76,6 +76,7 @@ function registerIpc() {
   handle('license:startTrial', async () => startTrial(await openRealm()))
   handle('license:periodicCheck', async () => periodicCheck(await openRealm()))
   handle('license:getGraceWarning', async () => getGraceWarning(await openRealm()))
+  handle('license:serverCheck', async () => serverLicenseCheck(await openRealm()))
 
   // Print
   handle('print:a4', async (html) => {

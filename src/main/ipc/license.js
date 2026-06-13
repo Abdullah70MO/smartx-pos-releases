@@ -297,7 +297,8 @@ async function activateLicense(realm, key) {
 
   const now = new Date()
   const existing = realm.objectForPrimaryKey('License', 'license')
-  const activatedAt = existing?.activatedAt || now
+  const persistent = readPersistentLicense()
+  const activatedAt = existing?.activatedAt || (persistent?.activatedAt ? new Date(persistent.activatedAt) : null) || now
   realm.write(() => {
     realm.create('License', {
       _id: 'license',
@@ -390,16 +391,41 @@ async function periodicCheck(realm) {
       w.webContents.send('license:grace-warning', { graceWarning: false })
     )
   } else if (serverResult.valid === false && !serverResult.networkError) {
-    r.write(() => {
-      license.activated = false
-    })
+    try {
+      realm.write(() => {
+        license.activated = false
+      })
+    } catch {}
     writePersistentLicense({
       hwid,
       activated: false,
       maxDateSeen: new Date().toISOString()
     })
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:revoked', {})
+    )
   }
   return serverResult
+}
+
+async function serverLicenseCheck(realm) {
+  const license = realm.objectForPrimaryKey('License', 'license')
+  if (!license?.activated || !license?.activatedKey) return checkLicense(realm)
+  const hwid = generateHwid()
+  const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
+  if (serverResult.valid === true) {
+    const persistent = readPersistentLicense() || {}
+    persistent.lastSuccessfulCheck = new Date().toISOString()
+    persistent.cachedServerResponse = JSON.stringify(serverResult)
+    writePersistentLicense(persistent)
+  } else if (serverResult.valid === false && !serverResult.networkError) {
+    try { realm.write(() => { license.activated = false }) } catch {}
+    writePersistentLicense({ hwid, activated: false, maxDateSeen: new Date().toISOString() })
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:revoked', {})
+    )
+  }
+  return checkLicense(realm)
 }
 
 function startPeriodicCheck(realm) {
@@ -421,4 +447,4 @@ function stopPeriodicCheck() {
   }
 }
 
-module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning }
+module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning }

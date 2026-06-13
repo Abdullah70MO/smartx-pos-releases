@@ -51,24 +51,15 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'المفتاح معطل' });
     }
 
-    // Count actual active activations
-    const { count } = await supabase
-      .from('activations')
-      .select('id', { count: 'exact', head: true })
-      .eq('key_id', licenseKey.id)
-      .eq('is_active', true)
-
-    // Check if this HWID already has an activation
+    // Check if this key was EVER activated before (one-time-use)
     const { data: existingActivation } = await supabase
       .from('activations')
-      .select('id')
+      .select('*')
       .eq('key_id', licenseKey.id)
-      .eq('hwid', hwid)
-      .eq('is_active', true)
       .maybeSingle()
 
-    if (count >= licenseKey.max_activations && !existingActivation) {
-      return res.status(403).json({ error: 'تم الوصول للحد الأقصى من التفعيلات' })
+    if (existingActivation) {
+      return res.status(403).json({ error: 'المفتاح مستخدم من قبل - يمكن التفعيل مرة واحدة فقط' })
     }
 
     let expiresAt = null;
@@ -87,7 +78,7 @@ export default async function handler(req, res) {
 
     const { error: activationError } = await supabase
       .from('activations')
-      .upsert({
+      .insert({
         key_id: licenseKey.id,
         hwid,
         device_name: req.body.device_name || 'Unknown',
@@ -95,25 +86,16 @@ export default async function handler(req, res) {
         last_seen_at: new Date().toISOString(),
         is_active: true,
         license_file: licenseFile
-      }, {
-        onConflict: 'key_id,hwid'
       });
 
     if (activationError) {
       return res.status(500).json({ error: 'فشل في تسجيل التفعيل' });
     }
 
-    // Recount active activations after upsert
-    const { count: newCount } = await supabase
-      .from('activations')
-      .select('id', { count: 'exact', head: true })
-      .eq('key_id', licenseKey.id)
-      .eq('is_active', true)
-
     await supabase
       .from('license_keys')
       .update({
-        current_activations: newCount,
+        current_activations: 1,
         expires_at: expiresAt?.toISOString() || null,
         updated_at: new Date().toISOString()
       })
