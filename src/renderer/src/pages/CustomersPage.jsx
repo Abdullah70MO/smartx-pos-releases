@@ -19,7 +19,7 @@ export default function CustomersPage() {
   const [sales, setSales] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
-  const [form, setForm] = useState({ name: '', phone: '', notes: '', previousDebt: '' })
+  const [form, setForm] = useState({ name: '', phone: '', commercialReg: '', taxReg: '', address: '', notes: '', previousDebt: '' })
   const [payModal, setPayModal] = useState(null)
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
@@ -38,7 +38,7 @@ export default function CustomersPage() {
   }
 
   function openEdit(c) {
-    setEdit(c); setForm({ name: c.name, phone: c.phone || '', notes: c.notes || '', previousDebt: '' }); setShowModal(true)
+    setEdit(c); setForm({ name: c.name, phone: c.phone || '', commercialReg: c.commercialReg || '', taxReg: c.taxReg || '', address: c.address || '', notes: c.notes || '', previousDebt: '' }); setShowModal(true)
   }
 
   async function handleSave(e) {
@@ -93,7 +93,7 @@ export default function CustomersPage() {
     <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>عملاء آجل</h1>
-        {canManage && <button onClick={() => { setEdit(null); setForm({ name: '', phone: '', notes: '', previousDebt: '' }); setShowModal(true) }}
+        {canManage && <button onClick={() => { setEdit(null); setForm({ name: '', phone: '', commercialReg: '', taxReg: '', address: '', notes: '', previousDebt: '' }); setShowModal(true) }}
           style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة عميل</button>}
       </div>
 
@@ -129,10 +129,15 @@ export default function CustomersPage() {
         </table>
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل عميل' : 'إضافة عميل'}>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل عميل' : 'إضافة عميل'} width="450px">
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input placeholder="الاسم" value={form.name} onInput={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+          <input placeholder="الاسم *" value={form.name} onInput={e => setForm(f => ({ ...f, name: e.target.value }))} required />
           <input placeholder="رقم الهاتف" value={form.phone} onInput={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <input placeholder="رقم السجل التجاري" value={form.commercialReg} onInput={e => setForm(f => ({ ...f, commercialReg: e.target.value }))} />
+            <input placeholder="رقم السجل الضريبي" value={form.taxReg} onInput={e => setForm(f => ({ ...f, taxReg: e.target.value }))} />
+          </div>
+          <input placeholder="العنوان" value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} />
           {!edit && <input type="number" placeholder="مبلغ مستحق سابق (دين)" value={form.previousDebt || ''} onInput={e => setForm(f => ({ ...f, previousDebt: e.target.value }))}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />}
           <textarea placeholder="ملاحظات" value={form.notes} onInput={e => setForm(f => ({ ...f, notes: e.target.value }))} rows="3"

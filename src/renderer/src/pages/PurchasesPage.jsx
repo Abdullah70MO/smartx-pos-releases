@@ -369,7 +369,7 @@ export default function PurchasesPage() {
               onInput={handleSupplierSearch} onFocus={() => setShowSupplierDropdown(true)} onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
               style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
             {canCreate && <button type="button" onClick={() => { setSupplierForm({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' }); setShowSupplierModal(true) }}
-              style={{ background: 'var(--bg3)', color: 'var(--success)', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', whiteSpace: 'nowrap' }}>مورد جديد</button>}
+              style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', whiteSpace: 'nowrap' }}>مورد جديد</button>}
             {showSupplierDropdown && filteredSuppliers.length > 0 && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg2)', border: '1px solid var(--bg3)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflow: 'auto' }}>
                 {filteredSuppliers.map(s => (
@@ -448,7 +448,7 @@ export default function PurchasesPage() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="button" onClick={() => setPaymentMethod('cash')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
-              background: paymentMethod === 'cash' ? 'var(--success)' : 'var(--bg3)',
+              background: paymentMethod === 'cash' ? 'var(--accent)' : 'var(--bg3)',
               color: paymentMethod === 'cash' ? '#fff' : 'var(--text)', fontWeight: paymentMethod === 'cash' ? '700' : '500'
             }}>نقداً</button>
             <button type="button" onClick={() => setPaymentMethod('card')} style={{
@@ -471,7 +471,7 @@ export default function PurchasesPage() {
           </div>}
           <textarea placeholder="ملاحظة" value={note} onInput={e => setNote(e.target.value)} rows="2"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-          {canCreate && <button type="submit" style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
+          {canCreate && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
             {editPurchase ? 'تحديث الفاتورة' : 'حفظ الفاتورة'}
           </button>}
         </form>
@@ -536,7 +536,7 @@ export default function PurchasesPage() {
                 window.print()
               }
             }}
-              style={{ marginTop: '16px', background: 'var(--success)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
+              style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
               {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
             </button>
           </div>

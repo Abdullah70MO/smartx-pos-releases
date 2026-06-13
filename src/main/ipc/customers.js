@@ -5,6 +5,7 @@ function listCustomers(realm) {
   const customers = realm.objects('CreditCustomer').sorted('updatedAt', true)
   return Array.from(customers).map(c => ({
     _id: c._id, name: c.name, phone: c.phone,
+    commercialReg: c.commercialReg, taxReg: c.taxReg, address: c.address,
     totalDebt: c.totalDebt, totalPaid: c.totalPaid,
     notes: c.notes, createdAt: c.createdAt?.toISOString(),
     updatedAt: c.updatedAt?.toISOString()
@@ -19,6 +20,9 @@ function saveCustomer(realm, data) {
       _id: data._id || crypto.randomUUID(),
       name: data.name,
       phone: data.phone || '',
+      commercialReg: data.commercialReg || '',
+      taxReg: data.taxReg || '',
+      address: data.address || '',
       totalDebt: isNew ? Number(data.previousDebt || 0) : (realm.objectForPrimaryKey('CreditCustomer', data._id)?.totalDebt || 0),
       totalPaid: isNew ? 0 : (realm.objectForPrimaryKey('CreditCustomer', data._id)?.totalPaid || 0),
       notes: data.notes || '',
@@ -28,7 +32,7 @@ function saveCustomer(realm, data) {
       updatedAt: new Date()
     }, Realm.UpdateMode.Modified)
   })
-  return { _id: customer._id, name: customer.name, phone: customer.phone, totalDebt: customer.totalDebt, totalPaid: customer.totalPaid, notes: customer.notes, createdAt: customer.createdAt?.toISOString(), updatedAt: customer.updatedAt?.toISOString() }
+  return { _id: customer._id, name: customer.name, phone: customer.phone, commercialReg: customer.commercialReg, taxReg: customer.taxReg, address: customer.address, totalDebt: customer.totalDebt, totalPaid: customer.totalPaid, notes: customer.notes, createdAt: customer.createdAt?.toISOString(), updatedAt: customer.updatedAt?.toISOString() }
 }
 
 function removeCustomer(realm, id) {

@@ -234,14 +234,17 @@ const CreditCustomerSchema = {
   name: 'CreditCustomer',
   primaryKey: '_id',
   properties: {
-    _id:         'string',
-    name:        'string',
-    phone:       { type: 'string', default: '' },
-    totalDebt:   { type: 'double', default: 0 },
-    totalPaid:   { type: 'double', default: 0 },
-    notes:       { type: 'string', default: '' },
-    createdAt:   'date',
-    updatedAt:   'date'
+    _id:           'string',
+    name:          'string',
+    phone:         { type: 'string', default: '' },
+    commercialReg: { type: 'string', default: '' },
+    taxReg:        { type: 'string', default: '' },
+    address:       { type: 'string', default: '' },
+    totalDebt:     { type: 'double', default: 0 },
+    totalPaid:     { type: 'double', default: 0 },
+    notes:         { type: 'string', default: '' },
+    createdAt:     'date',
+    updatedAt:     'date'
   }
 }
 
@@ -374,6 +377,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 18
+const SCHEMA_VERSION = 19
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }
