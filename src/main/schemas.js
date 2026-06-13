@@ -374,6 +374,6 @@ const SCHEMAS = [
   TreasuryTransactionSchema
 ]
 
-const SCHEMA_VERSION = 17
+const SCHEMA_VERSION = 18
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

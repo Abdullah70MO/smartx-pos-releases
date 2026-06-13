@@ -93,6 +93,7 @@ export default function ReportsPage() {
   const totalReturnCost = filteredReturnsAll.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
   const netProfit = (totalSales - totalTax - totalCOGS) + (totalReturnCost - totalReturns) - totalExpenses - totalWithdrawals
   const totalTreasuryBalance = treasuries.reduce((sum, t) => sum + (t.balance || 0), 0)
+  const bankBalance = treasuries.filter(t => t.type === 'bank').reduce((sum, t) => sum + (t.balance || 0), 0)
 
   const PERIODS = [
     { id: 'today', label: 'اليوم' },
@@ -183,6 +184,7 @@ export default function ReportsPage() {
         <SummaryCard label="عدد الفواتير" value={filteredSalesAll.length} color="#3b82f6" />
         <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="#8b5cf6" />
         <SummaryCard label="رصيد الخزينة" value={formatMoney(totalTreasuryBalance)} color="#06b6d4" />
+        <SummaryCard label="رصيد البنك" value={formatMoney(bankBalance)} color="#3b82f6" />
       </div>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: 'var(--bg2)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
