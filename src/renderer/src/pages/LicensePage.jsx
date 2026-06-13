@@ -41,6 +41,7 @@ export default function LicensePage() {
     try {
       const result = await api.activateLicense(key.trim())
       if (result?.success) {
+        await refreshLicense()
         setMode('activated')
       } else {
         setError(result?.message || 'فشل التفعيل')
@@ -49,7 +50,8 @@ export default function LicensePage() {
     setLoading(false)
   }
 
-  function goToLogin() {
+  async function goToLogin() {
+    await refreshLicense()
     setPage('login')
   }
 
