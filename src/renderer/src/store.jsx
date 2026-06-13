@@ -119,7 +119,11 @@ export function StoreProvider({ children }) {
         // Background server check to detect revocation
         api.serverCheckLicense().then(serverLic => {
           if (serverLic?.expired && !license?.expired) {
-            setState(s => ({ ...s, license: serverLic, page: 'license' }))
+            const token = localStorage.getItem('token')
+            if (token) api.logout(token).catch(() => {})
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            setState(s => ({ ...s, token: null, user: null, license: serverLic, page: 'license' }))
           } else if (serverLic) {
             setState(s => ({ ...s, license: serverLic }))
           }
@@ -165,7 +169,13 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     const unsub = window.smartx?.onLicenseRevoked?.(() => {
       refreshLicense().then(lic => {
-        if (lic?.expired) setState(s => ({ ...s, page: 'license' }))
+        if (lic?.expired) {
+          const token = localStorage.getItem('token')
+          if (token) api.logout(token).catch(() => {})
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setState(s => ({ ...s, token: null, user: null, license: lic, page: 'license' }))
+        }
       })
     })
     return unsub

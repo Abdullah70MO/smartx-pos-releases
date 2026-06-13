@@ -102,7 +102,14 @@ export default function SettingsPage() {
       const lic = await api.serverCheckLicense()
       setLicenseStatus(lic)
       if (lic?.expired) {
-        toast('تم إلغاء الترخيص من المسؤول', 'error')
+        toast('تم إلغاء الترخيص - سيتم تسجيل الخروج', 'error')
+        setTimeout(async () => {
+          const token = localStorage.getItem('token')
+          if (token) await api.logout(token).catch(() => {})
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.reload()
+        }, 2000)
       } else {
         toast('تم تحديث حالة الترخيص', 'success')
       }

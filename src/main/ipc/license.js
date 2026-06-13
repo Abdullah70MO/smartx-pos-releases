@@ -1,1 +1,450 @@
-const z=b;(function(c,d){const y=b,e=c();while(!![]){try{const f=parseInt(y(0x12b,'Gx[L'))/0x1+-parseInt(y(0x128,'xs@q'))/0x2*(parseInt(y(0x113,'0V2r'))/0x3)+parseInt(y(0x10f,'wcZe'))/0x4+parseInt(y(0xe4,'TU4Q'))/0x5+-parseInt(y(0x16c,'DL$r'))/0x6+-parseInt(y(0x188,'Gx[L'))/0x7*(-parseInt(y(0xd9,'j*ro'))/0x8)+parseInt(y(0xf2,'G75D'))/0x9*(-parseInt(y(0xd8,'E]Pu'))/0xa);if(f===d)break;else e['push'](e['shift']());}catch(g){e['push'](e['shift']());}}}(a,0x3b10e));const crypto=require('node:crypt'+'o'),fs=require(z(0xdc,'8rX4')),path=require('node:path'),os=require('node:os'),{app,BrowserWindow}=require(z(0x12d,'TU4Q')),{LICENSE_API_URL,LICENSE_SIGNING_KEY}=require(z(0x10d,'eNrp')+'ts'),TRIAL_DAYS=0xe;function getGraceDays(c){return c==='lifetime'?0xd2:0x7;}function b(c,d){c=c-0xc4;const e=a();let f=e[c];if(b['ifuRso']===undefined){var g=function(l){const m='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let n='',o='';for(let p=0x0,q,r,s=0x0;r=l['charAt'](s++);~r&&(q=p%0x4?q*0x40+r:r,p++%0x4)?n+=String['fromCharCode'](0xff&q>>(-0x2*p&0x6)):0x0){r=m['indexOf'](r);}for(let t=0x0,u=n['length'];t<u;t++){o+='%'+('00'+n['charCodeAt'](t)['toString'](0x10))['slice'](-0x2);}return decodeURIComponent(o);};const k=function(l,m){let n=[],o=0x0,p,q='';l=g(l);let r;for(r=0x0;r<0x100;r++){n[r]=r;}for(r=0x0;r<0x100;r++){o=(o+n[r]+m['charCodeAt'](r%m['length']))%0x100,p=n[r],n[r]=n[o],n[o]=p;}r=0x0,o=0x0;for(let t=0x0;t<l['length'];t++){r=(r+0x1)%0x100,o=(o+n[r])%0x100,p=n[r],n[r]=n[o],n[o]=p,q+=String['fromCharCode'](l['charCodeAt'](t)^n[(n[r]+n[o])%0x100]);}return q;};b['IotjGO']=k,b['AYWcUF']={},b['ifuRso']=!![];}const h=e[0x0],i=c+h,j=b['AYWcUF'][i];return!j?(b['silVPF']===undefined&&(b['silVPF']=!![]),f=b['IotjGO'](f,d),b['AYWcUF'][i]=f):f=j,f;}function a(){const V=['W5bxDvaFW4hdLSohWQBcUW','ygHAa8kMWP7cQa','nSkliW','24VAMDQ526/dO9Q924ZAMDQY2OK','Cq4xl1dcNuJcT8oA','W77cSmkcDIK3WRC','mMVcJdfwEcddOW','WOVdHJVcK8kJAuubWPi','FKmqCfuQWP/dRX7dJq','2iVySnMZ2yJdQnUk2ONzSnMm25W','WPddGtxcNSkKDgSx','iJldVSk7W6r+zJNdUG','WOvZv344C2zsWROezG','W4nyWRz5ha','W6eWqSkcW5jcW5CBcCk8','nCocysRdLCkmxG','lxdcNG','WQT1WQHXkSobW7W','F8oDC8oCW7uDbI4','cSoIW4KCW5mAjCktWOJdSG','W5vsWO1KcSoaW5y','zghcO8kcW5L0FZZdH0i','mg7cGcrcBHNdQZK','bCk1ufzNb8kBW4tcRSojW7VdS1S','W4/dMSouWOS','WODrWRXrqq','W6qsW5pcPa','iCkUWPlcVq','2QRyNDIn2QdAM9IdWPlzQnI027W','ru1tW5eoCrdcPmobFG','W4/cSqrSWOS2W4ldVa','CSooWP5qwCkIWRefdG','WR7cNmkocZ7dSuJcGmkx','zCovECoqW6u','WOXwtCoDBt84WRas','W63cGs8','WQddJSkRDSoZgG','wbKvWO0yEqZcM8oBFKe','igBcNIagiW','W6GHsmkuW4HcW6e2hSkV','fCkZdCoRW543','W5FcOCkiydm3WOhcVCoNW5y','W5dcHKH7','FCklwg8','mCkOWP3dSW','CCklq0tcUeCu','W7JcIu7dPSoqedqYW7ldQG','Faqai0JcJ1K','2jpBHDMj2zdzVnM02P7cGDQj268','rmo0wSk7WPHHW6nIF8kkCHa','WOfusSoascSVWRytWRO','WQpdRrxcGvu','zCkbxgdcSeOvyIm4','2kVyMnMNWPJyHTMw2zlAGnQB2z8','W5xdRJVcNh/cPMygfsq','W6TuWQFdPeCTDmoxW7m','m9Qt2zhAMTUe2zpyRwT/WRG','WPjnWRFdUmkIW7mHW6G','W4BcQ8kiFG','mtlcV0ZdHmkEpKdcLCkR','WQddSxWsW6aTWOddJSoFkIu','WQ3dKSk2','WPHbx8km','W7GTr8oF','W6KUFvjeAdNdK8kLW4m','WPZdNsVcG0BdQmkLE8koWPa','WQxdKH7cSCknuwfaW4ldTtvvvG','2PBzSTIR2B7zG8ka26FBPDQg25K','WPvsWObkqvddPSk1','mtlcPwVdUCkKjfu','W4JcN2/dHmoPkt0YWO5FW4VdTCo0','zmkqq2JcT0mvAJ0','W4BcQ8kiCISxWQBcPCo7W4e','W6zEWRddQf8/zCoMW643','W6qoW6lcUCkdW7RcVGrP','WOWUoSogW5nQWRVcRsT0','W5hdMSo0WRyHdCoptmkjfG','WRJdMCkSCmoRiqaiW58U','2OtAPWByT9IK2yhBRTUc2A7zLW','W5yPfI96A15+WQy','2i3BHupzIDM12BRBQTQy2OG','eSoKW6mQW7i6nmk1WPJdRa','xmo2cGu','W4vhW6aiWPKR','W4WNASoQiCoovcjyba','W4vBsgOMW7pdLSoqWQVcNG','geLoW5LiFbhcR8ofuq','d8kiWOqRwCk/W51CDW','ELKqyxmsWPRdUdhdKa','jKvaW51pyr0','W6FdMSo6W4S','WOdcL8kNyWK2WP0','yGGoj0/cKLxcVmozW5i','jJxcL23dImkIlLFcVCkX','zSoVW4BcTmo3aSk3F37dHfLK','W6eWqSkcW5jcW5CjgCkG','uCoTbGiMtmoeW48','W7xdM8o2W6RcTW','e8kZoSoVW5KIW5LQz8kv','WPlBRDQM2ki','WR/cNSkjbYldKvq','W43dQbhcQL7cHNDAgcS','oSkOc8oVW4qHW5m','WOiiW57cNq','w2rBjCkNWOpcUvmAWO8','W7xcHdxdIa8','W63cMXLOWRa','E2xcTG','2OVAR2JBK9MW2PZzLTQW2Ai','yWucDbpdIG','nMJcPbz/rcBdVcL4','2OBcI9UT2l7APflzJDIT26FyNq','W7lcQutdHSo8','WPJdJclcM8kNCxObWO8','W4eLcsnO','2ONAPGByUnMa2k/BV9QJ2ivg','W5xcVmkvuISOWOxcRCoNW5e','pmkeimoqW77dNuO','W4JcQWX/WRaHW6/dTI8','iCkRh8oSW7i','g8kGemooW4SMW5nxCCkv','W5rdW70j','W7tcLZddLq4','bSkGgSo5W48','pSovDsBcNCkpxNFdMa','W4lcMLu','l8octbZcOmk5wutdHvK','W7hdISo+W4lcPCkOW5VdH8o2W58','CmovDSorW6qqoc4GW64','W5yPfI96A15+WQyF','WOddMttcIMBdTmkgD8kx','r8o1eqG8wCocW4FcTq','W5NcJ0NdQSoycJrS','W4S8AmoUjSoF','W5VcUXi','tMbka8o+W5K','l8oyWQyXgW','W4tdKmooW4HCA8kne8khgW','W4HeW7KiW4XRW4PADua','WProWRzmxvJdPCk3','WObEWQDxrvJdVmk3smkP','W5hcMs3cMIpcVvpdRexcKq','WRRcGSkDlIa','W5FdNmoqWOqCj8oWw8kz','ymokWPXvxSkMWRKxhSoC','DvqFDeqv','W4qDC8kCWQ0','W6Txwuer','W4WoECk3WR5GyCkHWQ1T','gmkZWPFdOmkRqSkh','WPaeWQzVWPP7bhO2BW','W4hdNmoAWOaDkG','WOueWR9pWP95oN0/tW','WOZdNZlcK8kLDq','omkZWPldOmkXwmkpFa','WQrnWOFcPCoGWRvM','W4ddJCoj','DwhcNSk7W6y','2zhAH9Mc243AGhlBS9Md2zdBMq','rmo0xmk6WPPMWOzEzSkXwWvL','W50WBSoVe8ocCcPQhG','W57cSmkcDIK3WRFcKmoWW4u','W6pcJY8','WPqoWQbRWPC','WQ3dImkXEmoXeWamW4K','WPVdIcJcGG','WONdHZpcGmk4zG','2QFyP9UH2yNAUq','W57cRIrwWRC','WOvyWRvFrLxdVa','pSovCq','W6aFCCk3WR5Gzq','Bv4Iz0iuWPddUG','WOHrEmoa','25ddGnIf2QtBUTMq2jVyUDUb2R4','eCkKhmoEW4m/W5m','WOyaWR9V','26RzUTMgWQVzSTUV2lhyHDIE2y4','A1qCCLKtWPFdSXFdSa','W4jcW5iz','WO/dJJRcM8k1','gdCjpSkCWONcVv0U','idNcT2S','W64uW7JcTCksW6VcIYPVWOm','zb8kj0RcR0JcS8omW7i','lmkinSkb','dYZcRfNdRW','yCoJW4hdISkMECk4tKi','WOX0WQzCxG','EeGc','ySoFWOvv','W51rB14DW4G','e8k8WRddGmkV','WQSoW5VcHCk8','pCkviSoxW63dLuS','W5dcIJVcNMhdRa','WQLAWOtcVSo8WQb4WQW','hL5kW5LnqqZcOmoqyq','iZtcMh7dPW','W4FdRGdcILhcLNO','WPCvW7tcPSkBnfTZWQ/dUG','yTMn2QxyGa','Drux','WO8tW5VcKmkGdKjK','W5lcPXK','WPjuWRrquK3dVCkGsq','2OlBSDQx25tzGnIu2O4E2QxyUq','nuxcPa1Y','F8ktwgu','W7pcHvNdL8oxdJq','WOeBW47cKmoIuW','W7HyWPPOeSosW4FcK013','g8o1W7aMW64SiSkGWPu','e8k5ha','bmkujCoNW64','WQbwWOpcO8oKWQbHWQW6W74','zaiWmLtcLvlcTq','ebpcMvVdOW','W4hcUGBcRJy','dCkoWQaAEq','W4ONxCoUjSoBCYfkaG','W7dcKZhdNqnqwmkhWQtcHq','FeKbEKiyWO3dNaq','W6apW6e','WRrfWPpcQ8oMWQq'];a=function(){return V;};return a();}const XOR_KEY=z(0x106,'*eIu'),CHECK_INTERVAL_MS=0x6*0x3c*0x3c*0x3e8,AES_ALGO=z(0x156,'@tN(')+'m',AES_KEY_LEN=0x20,AES_IV_LEN=0x10,AES_TAG_LEN=0x10,PBKDF2_ITER=0x186a0;let periodicTimer=null;function generateHwid(){const A=z,c=[os[A(0x191,'*eIu')](),os[A(0xd3,'[kP9')](),os[A(0x134,'gsvA')](),os['cpus']()[0x0]?.['model']||'',os['totalmem']()[A(0x111,'#thJ')](),os[A(0xeb,'@zG#')]()[A(0x158,'#thJ')]];return crypto['createHash']('sha256')['update'](c[A(0xf8,'@H%s')]('|'))[A(0x164,'@tN(')]('hex');}function getLicenseFilePath(){const B=z,c={'PRTgp':B(0x178,'v3yl')};return path['join'](process.env.LOCALAPPDATA||path[B(0xe5,'@tN(')](os['homedir'](),c[B(0x100,'ENsY')],'Local'),'SmartX',B(0x132,'g[F8')+'t');}function deriveAesKey(c){const C=z,d={'XrmbV':C(0x176,'#thJ'),'Htfph':C(0x13a,'bQeX')};return crypto[C(0x14c,'&*5H')](XOR_KEY,c||d['XrmbV'],PBKDF2_ITER,AES_KEY_LEN,d[C(0x18e,'gsvA')]);}function aesEncrypt(c,d){const D=z,e={'MVfwR':D(0x154,'$VoO')},f=deriveAesKey(d),g=crypto['randomByte'+'s'](AES_IV_LEN),h=crypto['createCiph'+D(0xf9,'Gx[L')](AES_ALGO,f,g);let i=h[D(0xcc,'*eIu')](c,'utf8','base64');i+=h['final'](D(0x19f,'gsvA'));const j=h['getAuthTag']()[D(0x179,'SpLH')](e['MVfwR']);return JSON['stringify']({'iv':g['toString'](e['MVfwR']),'tag':j,'data':i,'v':0x2});}function aesDecrypt(c,d){const E=z,e={'fIiEB':function(f,g){return f!==g;},'ZCeXk':E(0x190,'h%3e'),'bswvA':'utf8'};try{const f=JSON['parse'](c);if(e[E(0x13d,'wcZe')](f['v'],0x2))return null;const g=deriveAesKey(d),h=Buffer['from'](f['iv'],'base64'),i=Buffer['from'](f['tag'],e['ZCeXk']),j=crypto[E(0x15a,'h%3e')+E(0x173,'0V2r')](AES_ALGO,g,h);j['setAuthTag'](i);let k=j[E(0x166,'0V2r')](f[E(0x17d,'m&Hc')],E(0x120,'025e'),e['bswvA']);return k+=j[E(0x193,'NCbO')](E(0xe8,'Gx[L')),k;}catch{return null;}}function xorEncode(c,d){const F=z,e={'rWrOV':F(0x10c,'W!Wn')},f=Buffer['from'](c,e['rWrOV']);for(let g=0x0;g<f['length'];g++){f[g]^=d[F(0x125,'SpLH')](g%d[F(0xf1,'9Sah')]);}return f[F(0xc4,'bQeX')]('base64');}function xorDecode(c,d){const G=z,e={'kXFLz':G(0xf3,'[kP9')};try{const f=Buffer['from'](c,e['kXFLz']);for(let g=0x0;g<f[G(0x15e,'SpLH')];g++){f[g]^=d[G(0x12a,'NCbO')](g%d[G(0x18c,'zsnS')]);}return f[G(0x112,'NCbO')]('utf8');}catch{return null;}}function computeChecksum(c){const H=z;let d=c[H(0x19d,'@H%s')]+'|'+(c['trialStart'+'edAt']||'')+'|'+(c['maxDateSee'+'n']||'')+'|'+(c[H(0x124,'Ubha')]||'');if(c['lastSucces'+'sfulCheck'])d+='|'+c['lastSucces'+'sfulCheck'];return crypto[H(0x121,'KkvS')]('sha256',LICENSE_SIGNING_KEY)['update'](d)['digest']('hex');}function verifyServerLicenseFile(c){const I=z;try{const d=Buffer[I(0x127,'&*5H')](c,'base64')['toString'](I(0x186,'2NRY')),e=JSON['parse'](d),f=e[I(0x19a,'#thJ')];if(!f)return null;const g={...e};delete g['signature'];const h=crypto['createHmac']('sha256',LICENSE_SIGNING_KEY)['update'](JSON['stringify'](g))[I(0x152,'KkvS')](I(0x199,'@zG#'));return f===h?e:null;}catch{return null;}}function readPersistentLicense(){const J=z,c={'UNoDh':'read'},d=getLicenseFilePath();try{if(!fs[J(0xf6,'xs@q')](d))return null;const e=fs[J(0x16d,'KkvS')+'nc'](d,J(0x10b,'dHn0'))[J(0x107,'xs@q')]();let f=null;const g=generateHwid();e['startsWith']('{')&&e[J(0xd7,'0V2r')]('\x22v\x22')&&(f=aesDecrypt(e,c[J(0xc5,'NCbO')])||aesDecrypt(e,g));!f&&(f=xorDecode(e,XOR_KEY));if(!f)return null;const h=JSON[J(0x148,'DL$r')](f);if(!h[J(0x172,'ENsY')]||!h['checksum'])return null;const i=computeChecksum(h);if(h['checksum']!==i)return null;if(h[J(0x12c,'W!Wn')+'e']){const j=verifyServerLicenseFile(h['licenseFil'+'e']);if(!j)return null;}return h;}catch{return null;}}function writePersistentLicense(c){const K=z,d={'ffjaQ':'utf8'};try{const e=getLicenseFilePath(),f=path[K(0x18f,'2NRY')](e);if(!fs[K(0xf4,'W!Wn')](f))fs[K(0xed,'G%O)')](f,{'recursive':!![]});c['checksum']=computeChecksum(c);const g=aesEncrypt(JSON['stringify'](c),'read');fs['writeFileS'+'ync'](e,g,d['ffjaQ']);}catch{}}async function checkLicenseWithServer(c,d){const L=z,e={'tscLt':'applicatio'+'n/json'};try{const f=await fetch(LICENSE_API_URL+L(0xea,'G75D'),{'method':'POST','headers':{'Content-Type':e[L(0x12e,'&*5H')]},'body':JSON[L(0x114,'@H%s')]({'key':c,'hwid':d}),'signal':AbortSignal['timeout'](0x2710)});return await f['json']();}catch{return{'valid':![],'networkError':!![],'error':'فشل\x20الاتصا'+L(0x17b,'wcZe')};}}function checkLicense(c){const M=z,d={'mokpp':M(0xce,'$VoO'),'zMoqY':'license','iuwLl':function(l,m){return l+m;},'bASYX':function(l,m){return l<m;},'mIubm':function(l,m){return l>=m;},'ZcXxx':M(0x174,'m&Hc'),'EcXJh':function(l,m){return l-m;},'cePXV':function(l,m){return l*m;},'krZNd':'مدى\x20الحياة'+'\x20-\x20مهلة\x20','rUMmD':function(l,m){return l>m;},'sQNUa':function(l,m){return l+m;},'EMOia':function(l,m){return l<=m;},'wBIHB':function(l,m){return l/m;},'JqZFd':function(l,m){return l+m;},'mZHff':'تجربة\x20-\x20با'+'قي\x20','ojwWq':'\x20يوم','dFGjq':function(l,m){return l!==m;},'GfDEj':'جهاز\x20مختلف'+'\x20-\x20تجربة\x20غ'+'ير\x20متاحة'},e=c[M(0x10e,'ENsY')+M(0xe3,'[kP9')](d['mokpp'],d['zMoqY']),f=generateHwid(),g=readPersistentLicense(),h=new Date();if(!e&&!g)return{'activated':![],'trialUsed':![]};const i={'activated':e?.[M(0x11c,'j*ro')]||g?.['activated']||![],'activatedKey':e?.['activatedK'+'ey']||'','activatedAt':e?.[M(0x159,'#thJ')+'t']?.[M(0x195,'gsvA')+'g']()||g?.[M(0x1a0,'6qd[')+'t']||null,'expiresAt':e?.[M(0x117,'qqpC')]?.['toISOStrin'+'g']()||null,'licenseType':e?.['licenseTyp'+'e']||g?.['licenseTyp'+'e']||'','trialStartedAt':e?.[M(0x115,'xs@q')+M(0x17a,'dHn0')]?.['toISOStrin'+'g']()||g?.['trialStart'+'edAt']||null,'trialUsed':!!(e?.[M(0x11a,'9Sah')+M(0x183,'NCbO')]||g?.['trialStart'+M(0x180,'025e')]),'remainingDays':null,'remainingText':'','graceWarning':![]};let j=![];if(e?.[M(0xd1,'bQeX')]||g&&g[M(0xef,'dHn0')]){const l=e?.['expiresAt']&&e['licenseTyp'+'e']!==M(0x167,'Gx[L')?new Date(e[M(0xca,'SpLH')]):null,m=getGraceDays(i['licenseTyp'+'e']),n=g?.['lastSucces'+'sfulCheck']?new Date(g['lastSucces'+M(0x14f,'ENsY')]):null,o=n?new Date(d['iuwLl'](n['getTime'](),m*0x18*0x3c*0x3c*0x3e8)):null;let p=null;if(l&&o)p=d['bASYX'](l,o)?l:o;else{if(l)p=l;else o&&(p=o);}if(p){j=d[M(0x189,'#thJ')](h,p);if(j){i[M(0x123,'G75D')+'ays']=0x0;if(i['licenseTyp'+'e']===M(0x198,'gsvA'))i[M(0x17f,'SpLH')+'ext']=M(0x16b,'DL$r')+M(0x105,'DFGI')+'يرجى\x20الاتص'+'ال\x20بالإنتر'+'نت';else l&&h>=l?i['remainingT'+M(0x1a2,'DL$r')]=d[M(0x160,'zsnS')]:i[M(0xe2,'E]Pu')+M(0x169,'@tN(')]=M(0x110,'zsnS')+'\x20الأمان\x20-\x20'+M(0xd0,'&*5H')+M(0x11b,'4dRh')+'نت';}else{const q=d['EcXJh'](p,h);i['remainingD'+M(0x10a,'9Sah')]=Math['ceil'](q/d[M(0xc7,'Ubha')](0x3e8*0x3c*0x3c,0x18));if(i[M(0x11e,'OkTK')+'e']==='lifetime'){i['remainingT'+'ext']=n?d[M(0x15b,'G%O)')](d['krZNd']+i['remainingD'+'ays'],'\x20يوم'):'مدى\x20الحياة';if(n){const r=Math[M(0x18b,'hGv3')]((o-h)/(0x3e8*0x3c*0x3c*0x18));if(r<=0x7)i['graceWarni'+'ng']=!![];}}else{if(d[M(0x1a3,'DL$r')](i['remainingD'+M(0x14a,'4dRh')],0x1e)){const s=Math['floor'](i['remainingD'+'ays']/0x1e);i[M(0x101,'@H%s')+'ext']=d[M(0xc6,'h%3e')](s,M(0x130,'xs@q'));}else i['remainingT'+M(0x197,'bQeX')]=i['remainingD'+M(0x153,'@zG#')]+M(0x196,'[kP9');if(o){const t=Math['ceil']((o-h)/(d[M(0x16a,'E]Pu')](0x3e8,0x3c)*0x3c*0x18));if(d['EMOia'](t,0x2))i['graceWarni'+'ng']=!![];}}}}else i[M(0x16e,'xs@q')+'e']==='lifetime'&&(i['remainingT'+'ext']=M(0x17e,'KkvS'));return i[M(0x142,'2NRY')]=j,i;}const k=e?.['trialStart'+'edAt']||(g?.[M(0x192,'G75D')+M(0xe7,'qqpC')]?new Date(g[M(0x185,'bQeX')+'edAt']):null);if(k){const u=g?.[M(0x145,'DL$r')+'n']?new Date(g[M(0x161,'v3yl')+'n']):k,v=h[M(0x19e,'wcZe')]();if(v<u[M(0x17c,'DL$r')]())j=!![],i['remainingD'+M(0xcb,'qqpC')]=0x0,i[M(0xc9,'xhLx')+'ext']=M(0x140,'4dRh')+'تغيير\x20في\x20ت'+M(0xd6,'$VoO')+'م\x20-\x20الترخي'+'ص\x20ملغي';else{const w=e?new Date(Math[M(0x138,'E]Pu')](u['getTime'](),v)):u,x=Math[M(0xe6,'#thJ')](d[M(0x19c,'[kP9')](w-k,0x3e8*0x3c*0x3c*0x18));x>=TRIAL_DAYS?(j=!![],i['remainingD'+'ays']=0x0,i[M(0x129,'bQeX')+'ext']=d[M(0xda,'6qd[')]):(j=![],i['remainingD'+M(0x16f,'xhLx')]=TRIAL_DAYS-x,i['remainingT'+M(0x177,'8rX4')]=d['JqZFd'](d[M(0x187,'NCbO')](d[M(0x155,'&M@u')],i[M(0x163,'m&Hc')+M(0x18a,'SpLH')]),d['ojwWq'])),e&&writePersistentLicense({'hwid':f,'trialStartedAt':k[M(0x108,'NCbO')+'g'](),'maxDateSeen':w['toISOStrin'+'g'](),'activated':![]});}}return g&&g['hwid']&&d['dFGjq'](g[M(0x11f,'TU4Q')],f)&&(j=!![],i['remainingT'+'ext']=d[M(0x18d,'Gx[L')],i['remainingD'+'ays']=0x0),i['expired']=j,i;}async function activateLicense(c,d){const N=z,e=generateHwid(),f=await fetch(LICENSE_API_URL+('/api/activ'+'ate'),{'method':'POST','headers':{'Content-Type':N(0x15d,'hGv3')+'n/json'},'body':JSON[N(0x150,'TU4Q')]({'key':d,'hwid':e}),'signal':AbortSignal['timeout'](0x3a98)}),g=await f['json']();if(!g['success'])throw new Error(g[N(0x15f,'v3yl')]||N(0x102,'G75D')+'ل');const h=new Date(),i=c['objectForP'+N(0x15c,'@tN(')]('License','license'),j=readPersistentLicense(),k=i?.['activatedA'+'t']||(j?.['activatedA'+'t']?new Date(j[N(0x1a4,'*eIu')+'t']):null)||h;return c['write'](()=>{const O=N;c[O(0xf5,'DL$r')](O(0xe1,'6qd['),{'_id':'license','activatedKey':d,'activated':!![],'activatedAt':k,'expiresAt':g[O(0x149,'8rX4')]?new Date(g[O(0x1a1,'OkTK')]):null,'licenseType':g[O(0xdb,'W!Wn')+'e']||O(0xdf,'DFGI'),'deviceHwid':e,'lastSeenDate':h,'trialStartedAt':null},Realm['UpdateMode']['Modified']);}),writePersistentLicense({'hwid':e,'activated':!![],'activatedKey':d,'activatedAt':k['toISOStrin'+'g'](),'expiresAt':g['expiresAt']||'','licenseType':g['licenseTyp'+'e']||'lifetime','maxDateSeen':h[N(0x119,'@tN(')+'g'](),'licenseFile':g['licenseFil'+'e']||'','lastSuccessfulCheck':h[N(0xe0,'OkTK')+'g'](),'cachedServerResponse':JSON[N(0xec,'hGv3')](g)}),{'success':!![],'expiresAt':g['expiresAt'],'licenseType':g[N(0x116,')Au4')+'e'],'activatedAt':k[N(0x13b,'[kP9')+'g']()};}async function startTrial(c){const P=z,d={'KJrtW':function(i){return i();},'Ljnqn':'license'},e=readPersistentLicense(),f=d['KJrtW'](generateHwid);if(e?.[P(0x13e,'0V2r')])throw new Error(P(0x19b,'@tN(')+P(0x139,'h%3e'));const g=c[P(0x157,'025e')+'rimaryKey'](P(0x133,'DL$r'),d[P(0x175,'wZWb')]);if(g?.[P(0x171,'9Sah')])throw new Error(P(0xfd,'TU4Q')+P(0x11d,'TU4Q'));if(e){if(e['hwid']!==f)throw new Error('هذا\x20الجهاز'+'\x20مختلف\x20عن\x20'+P(0xe9,'W!Wn')+P(0x13c,'9Sah')+'\x20الترخيص');if(e['trialStart'+'edAt'])return{'success':!![],'alreadyActivated':!![]};}if(g?.['trialStart'+'edAt'])return{'success':!![],'alreadyActivated':!![]};const h=new Date();return c['write'](()=>{const Q=P;c['create'](Q(0x162,'Gx[L'),{'_id':'license','activated':![],'trialStartedAt':h,'deviceHwid':f,'lastSeenDate':h},Realm['UpdateMode'][Q(0x151,'wcZe')]);}),writePersistentLicense({'hwid':f,'trialStartedAt':h[P(0x14b,'8rX4')+'g'](),'maxDateSeen':h[P(0x122,'zsnS')+'g'](),'activated':![]}),{'success':!![],'trialStartedAt':h[P(0x119,'@tN(')+'g']()};}async function periodicCheck(c){const R=z,d={'WjwfX':function(h,i){return h(i);}},e=c[R(0x184,'qqpC')+R(0xd4,'0V2r')](R(0x126,'G75D'),R(0xfc,'bQeX'));if(!e?.['activated']||!e?.[R(0x14e,'j*ro')+'ey'])return{'valid':!![],'local':!![]};const f=generateHwid(),g=await checkLicenseWithServer(e['activatedK'+'ey'],f);if(g[R(0x181,'0V2r')]===!![]){const h=readPersistentLicense()||{};h[R(0x118,'J$fV')+'sfulCheck']=new Date()['toISOStrin'+'g'](),h[R(0x14d,'DFGI')+R(0x12f,'DL$r')]=JSON['stringify'](g),d[R(0x144,'DL$r')](writePersistentLicense,h),BrowserWindow[R(0x165,'m&Hc')+R(0xcf,'2NRY')]()[R(0xfa,'@H%s')](i=>i['webContent'+'s'][R(0x146,'025e')]('license:gr'+'ace-warnin'+'g',{'graceWarning':![]}));}else{if(g[R(0xee,'DFGI')]===![]&&!g['networkErr'+'or']){try{c['write'](()=>{const S=R;e[S(0x104,')Au4')]=![];});}catch{}writePersistentLicense({'hwid':f,'activated':![],'maxDateSeen':new Date()['toISOStrin'+'g']()}),BrowserWindow['getAllWind'+R(0xf0,'xhLx')]()['forEach'](i=>i['webContent'+'s']['send'](R(0xfb,'wcZe')+R(0x13f,'j*ro'),{}));}}return g;}async function serverLicenseCheck(c){const T=z,d={'jaLzn':function(h){return h();},'obUfj':function(h,i,j){return h(i,j);},'WYxvr':function(h,i){return h(i);}},e=c[T(0x10e,'ENsY')+T(0x143,'@zG#')](T(0xd2,'xs@q'),T(0x131,'G%O)'));if(!e?.['activated']||!e?.['activatedK'+'ey'])return checkLicense(c);const f=d['jaLzn'](generateHwid),g=await d['obUfj'](checkLicenseWithServer,e[T(0xcd,'zsnS')+'ey'],f);if(g[T(0x147,'xhLx')]===!![]){const h=readPersistentLicense()||{};h[T(0xff,'dHn0')+'sfulCheck']=new Date()['toISOStrin'+'g'](),h['cachedServ'+T(0xc8,'KkvS')]=JSON['stringify'](g),writePersistentLicense(h);}else{if(g['valid']===![]&&!g['networkErr'+'or']){try{c[T(0x136,'xhLx')](()=>{e['activated']=![];});}catch{}writePersistentLicense({'hwid':f,'activated':![],'maxDateSeen':new Date()[T(0x103,'g[F8')+'g']()}),BrowserWindow[T(0x141,'xs@q')+T(0xdd,'[kP9')]()[T(0x194,'g[F8')](i=>i[T(0x135,'$VoO')+'s'][T(0xf7,'4dRh')]('license:re'+T(0x170,'m&Hc'),{}));}}return d[T(0x137,'@zG#')](checkLicense,c);}function startPeriodicCheck(c){const d={'kcUVv':function(e,f,g){return e(f,g);}};if(periodicTimer)clearInterval(periodicTimer);periodicTimer=d['kcUVv'](setInterval,()=>{periodicCheck(c);},CHECK_INTERVAL_MS);}function getGraceWarning(c){const U=z,d=checkLicense(c);return d[U(0xd5,'SpLH')+'ng']||![];}function stopPeriodicCheck(){periodicTimer&&(clearInterval(periodicTimer),periodicTimer=null);}module[z(0x168,'*eIu')]={'checkLicense':checkLicense,'activateLicense':activateLicense,'startTrial':startTrial,'generateHwid':generateHwid,'periodicCheck':periodicCheck,'serverLicenseCheck':serverLicenseCheck,'startPeriodicCheck':startPeriodicCheck,'stopPeriodicCheck':stopPeriodicCheck,'getGraceWarning':getGraceWarning};
+﻿const crypto = require('node:crypto')
+const fs = require('node:fs')
+const path = require('node:path')
+const os = require('node:os')
+const { app, BrowserWindow } = require('electron')
+const { LICENSE_API_URL, LICENSE_SIGNING_KEY } = require('../constants')
+
+const TRIAL_DAYS = 14
+function getGraceDays(licenseType) {
+  return licenseType === 'lifetime' ? 210 : 7
+}
+const XOR_KEY = 'Sx@2024!'
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+const AES_ALGO = 'aes-256-gcm'
+const AES_KEY_LEN = 32
+const AES_IV_LEN = 16
+const AES_TAG_LEN = 16
+const PBKDF2_ITER = 100000
+
+let periodicTimer = null
+
+function generateHwid() {
+  const parts = [
+    os.hostname(),
+    os.platform(),
+    os.arch(),
+    os.cpus()[0]?.model || '',
+    os.totalmem().toString(),
+    os.userInfo().username
+  ]
+  return crypto.createHash('sha256').update(parts.join('|')).digest('hex')
+}
+
+function getLicenseFilePath() {
+  return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'SmartX', 'license.dat')
+}
+
+function deriveAesKey(hwid) {
+  return crypto.pbkdf2Sync(XOR_KEY, hwid || 'default', PBKDF2_ITER, AES_KEY_LEN, 'sha256')
+}
+
+function aesEncrypt(data, hwid) {
+  const key = deriveAesKey(hwid)
+  const iv = crypto.randomBytes(AES_IV_LEN)
+  const cipher = crypto.createCipheriv(AES_ALGO, key, iv)
+  let encrypted = cipher.update(data, 'utf8', 'base64')
+  encrypted += cipher.final('base64')
+  const tag = cipher.getAuthTag().toString('base64')
+  return JSON.stringify({ iv: iv.toString('base64'), tag, data: encrypted, v: 2 })
+}
+
+function aesDecrypt(encoded, hwid) {
+  try {
+    const parts = JSON.parse(encoded)
+    if (parts.v !== 2) return null
+    const key = deriveAesKey(hwid)
+    const iv = Buffer.from(parts.iv, 'base64')
+    const tag = Buffer.from(parts.tag, 'base64')
+    const decipher = crypto.createDecipheriv(AES_ALGO, key, iv)
+    decipher.setAuthTag(tag)
+    let decrypted = decipher.update(parts.data, 'base64', 'utf8')
+    decrypted += decipher.final('utf8')
+    return decrypted
+  } catch { return null }
+}
+
+function xorEncode(data, key) {
+  const buf = Buffer.from(data, 'utf8')
+  for (let i = 0; i < buf.length; i++) {
+    buf[i] ^= key.charCodeAt(i % key.length)
+  }
+  return buf.toString('base64')
+}
+
+function xorDecode(encoded, key) {
+  try {
+    const buf = Buffer.from(encoded, 'base64')
+    for (let i = 0; i < buf.length; i++) {
+      buf[i] ^= key.charCodeAt(i % key.length)
+    }
+    return buf.toString('utf8')
+  } catch { return null }
+}
+
+function computeChecksum(data) {
+  let input = data.hwid + '|' + (data.trialStartedAt || '') + '|' + (data.maxDateSeen || '') + '|' + (data.activated || '')
+  if (data.lastSuccessfulCheck) input += '|' + data.lastSuccessfulCheck
+  return crypto.createHmac('sha256', LICENSE_SIGNING_KEY).update(input).digest('hex')
+}
+
+function verifyServerLicenseFile(base64data) {
+  try {
+    const json = Buffer.from(base64data, 'base64').toString('utf8')
+    const data = JSON.parse(json)
+    const signature = data.signature
+    if (!signature) return null
+    const dataForSig = { ...data }
+    delete dataForSig.signature
+    const expected = crypto.createHmac('sha256', LICENSE_SIGNING_KEY)
+      .update(JSON.stringify(dataForSig))
+      .digest('hex')
+    return signature === expected ? data : null
+  } catch { return null }
+}
+
+function readPersistentLicense() {
+  const filePath = getLicenseFilePath()
+  try {
+    if (!fs.existsSync(filePath)) return null
+    const raw = fs.readFileSync(filePath, 'utf8').trim()
+    let json = null
+    const hwid = generateHwid()
+    if (raw.startsWith('{') && raw.includes('"v"')) {
+      json = aesDecrypt(raw, 'read') || aesDecrypt(raw, hwid)
+    }
+    if (!json) {
+      json = xorDecode(raw, XOR_KEY)
+    }
+    if (!json) return null
+    const data = JSON.parse(json)
+    if (!data.hwid || !data.checksum) return null
+    const expected = computeChecksum(data)
+    if (data.checksum !== expected) return null
+    if (data.licenseFile) {
+      const verified = verifyServerLicenseFile(data.licenseFile)
+      if (!verified) return null
+    }
+    return data
+  } catch { return null }
+}
+
+function writePersistentLicense(data) {
+  try {
+    const filePath = getLicenseFilePath()
+    const dir = path.dirname(filePath)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    data.checksum = computeChecksum(data)
+    const raw = aesEncrypt(JSON.stringify(data), 'read')
+    fs.writeFileSync(filePath, raw, 'utf8')
+  } catch {}
+}
+
+async function checkLicenseWithServer(key, hwid) {
+  try {
+    const response = await fetch(`${LICENSE_API_URL}/api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, hwid }),
+      signal: AbortSignal.timeout(10000)
+    })
+    return await response.json()
+  } catch {
+    return { valid: false, networkError: true, error: 'فشل الاتصال بالسيرفر' }
+  }
+}
+
+function checkLicense(realm) {
+  const license = realm.objectForPrimaryKey('License', 'license')
+  const hwid = generateHwid()
+  const persistent = readPersistentLicense()
+
+  const now = new Date()
+
+  if (!license && !persistent) {
+    return { activated: false, trialUsed: false }
+  }
+
+  const result = {
+    activated: license?.activated || persistent?.activated || false,
+    activatedKey: license?.activatedKey || '',
+    activatedAt: license?.activatedAt?.toISOString() || persistent?.activatedAt || null,
+    expiresAt: license?.expiresAt?.toISOString() || null,
+    licenseType: license?.licenseType || persistent?.licenseType || '',
+    trialStartedAt: license?.trialStartedAt?.toISOString() || persistent?.trialStartedAt || null,
+    trialUsed: !!(license?.trialStartedAt || persistent?.trialStartedAt),
+    remainingDays: null,
+    remainingText: '',
+    graceWarning: false
+  }
+
+  let expired = false
+
+  if (license?.activated || (persistent && persistent.activated)) {
+    const hardExpiry = (license?.expiresAt && license.licenseType !== 'lifetime') ? new Date(license.expiresAt) : null
+    const graceDays = getGraceDays(result.licenseType)
+    const lastCheck = persistent?.lastSuccessfulCheck ? new Date(persistent.lastSuccessfulCheck) : null
+    const networkExpiry = lastCheck ? new Date(lastCheck.getTime() + graceDays * 24 * 60 * 60 * 1000) : null
+
+    let earliestExpiry = null
+    if (hardExpiry && networkExpiry) {
+      earliestExpiry = hardExpiry < networkExpiry ? hardExpiry : networkExpiry
+    } else if (hardExpiry) {
+      earliestExpiry = hardExpiry
+    } else if (networkExpiry) {
+      earliestExpiry = networkExpiry
+    }
+
+    if (earliestExpiry) {
+      expired = now >= earliestExpiry
+      if (expired) {
+        result.remainingDays = 0
+        if (result.licenseType === 'lifetime') {
+          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+        } else if (hardExpiry && now >= hardExpiry) {
+          result.remainingText = 'منتهي'
+        } else {
+          result.remainingText = 'انتهت مهلة الأمان - يرجى الاتصال بالإنترنت'
+        }
+      } else {
+        const diffMs = earliestExpiry - now
+        result.remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+        if (result.licenseType === 'lifetime') {
+          result.remainingText = lastCheck ? ('مدى الحياة - مهلة ' + result.remainingDays + ' يوم') : 'مدى الحياة'
+          if (lastCheck) {
+            const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
+            if (graceRemaining <= 7) result.graceWarning = true
+          }
+        } else {
+          if (result.remainingDays > 30) {
+            const months = Math.floor(result.remainingDays / 30)
+            result.remainingText = months + ' شهر'
+          } else {
+            result.remainingText = result.remainingDays + ' يوم'
+          }
+          if (networkExpiry) {
+            const graceRemaining = Math.ceil((networkExpiry - now) / (1000 * 60 * 60 * 24))
+            if (graceRemaining <= 2) result.graceWarning = true
+          }
+        }
+      }
+    } else {
+      if (result.licenseType === 'lifetime') {
+        result.remainingText = 'مدى الحياة'
+      }
+    }
+    result.expired = expired
+    return result
+  }
+
+  const trialStart = license?.trialStartedAt || (persistent?.trialStartedAt ? new Date(persistent.trialStartedAt) : null)
+  if (trialStart) {
+    const maxSeen = persistent?.maxDateSeen ? new Date(persistent.maxDateSeen) : trialStart
+    const nowMs = now.getTime()
+
+    if (nowMs < maxSeen.getTime()) {
+      expired = true
+      result.remainingDays = 0
+      result.remainingText = 'تم اكتشاف تغيير في تاريخ النظام - الترخيص ملغي'
+    } else {
+      const effectiveMax = license ? new Date(Math.max(maxSeen.getTime(), nowMs)) : maxSeen
+      const elapsed = Math.floor((effectiveMax - trialStart) / (1000 * 60 * 60 * 24))
+      if (elapsed >= TRIAL_DAYS) {
+        expired = true
+        result.remainingDays = 0
+        result.remainingText = 'منتهي'
+      } else {
+        expired = false
+        result.remainingDays = TRIAL_DAYS - elapsed
+        result.remainingText = 'تجربة - باقي ' + result.remainingDays + ' يوم'
+      }
+
+      if (license) {
+        writePersistentLicense({
+          hwid,
+          trialStartedAt: trialStart.toISOString(),
+          maxDateSeen: effectiveMax.toISOString(),
+          activated: false
+        })
+      }
+    }
+  }
+
+  if (persistent && persistent.hwid && persistent.hwid !== hwid) {
+    expired = true
+    result.remainingText = 'جهاز مختلف - تجربة غير متاحة'
+    result.remainingDays = 0
+  }
+
+  result.expired = expired
+  return result
+}
+
+async function activateLicense(realm, key) {
+  const hwid = generateHwid()
+
+  const response = await fetch(`${LICENSE_API_URL}/api/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, hwid }),
+    signal: AbortSignal.timeout(15000)
+  })
+  const data = await response.json()
+
+  if (!data.success) {
+    throw new Error(data.error || 'فشل التفعيل')
+  }
+
+  const now = new Date()
+  const existing = realm.objectForPrimaryKey('License', 'license')
+  const persistent = readPersistentLicense()
+  const activatedAt = existing?.activatedAt || (persistent?.activatedAt ? new Date(persistent.activatedAt) : null) || now
+  realm.write(() => {
+    realm.create('License', {
+      _id: 'license',
+      activatedKey: key,
+      activated: true,
+      activatedAt,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      licenseType: data.licenseType || 'lifetime',
+      deviceHwid: hwid,
+      lastSeenDate: now,
+      trialStartedAt: null
+    }, Realm.UpdateMode.Modified)
+  })
+
+  writePersistentLicense({
+    hwid,
+    activated: true,
+    activatedKey: key,
+    activatedAt: activatedAt.toISOString(),
+    expiresAt: data.expiresAt || '',
+    licenseType: data.licenseType || 'lifetime',
+    maxDateSeen: now.toISOString(),
+    licenseFile: data.licenseFile || '',
+    lastSuccessfulCheck: now.toISOString(),
+    cachedServerResponse: JSON.stringify(data)
+  })
+
+  return { success: true, expiresAt: data.expiresAt, licenseType: data.licenseType, activatedAt: activatedAt.toISOString() }
+}
+
+async function startTrial(realm) {
+  const persistent = readPersistentLicense()
+  const hwid = generateHwid()
+
+  if (persistent?.activated) {
+    throw new Error('الترخيص مفعل بالفعل')
+  }
+
+  const realmLicense = realm.objectForPrimaryKey('License', 'license')
+  if (realmLicense?.activated) {
+    throw new Error('الترخيص مفعل بالفعل')
+  }
+
+  if (persistent) {
+    if (persistent.hwid !== hwid) {
+      throw new Error('هذا الجهاز مختلف عن الجهاز الذي بدأ عليه الترخيص')
+    }
+    if (persistent.trialStartedAt) {
+      return { success: true, alreadyActivated: true }
+    }
+  }
+
+  if (realmLicense?.trialStartedAt) {
+    return { success: true, alreadyActivated: true }
+  }
+
+  const now = new Date()
+  realm.write(() => {
+    realm.create('License', {
+      _id: 'license',
+      activated: false,
+      trialStartedAt: now,
+      deviceHwid: hwid,
+      lastSeenDate: now
+    }, Realm.UpdateMode.Modified)
+  })
+
+  writePersistentLicense({
+    hwid,
+    trialStartedAt: now.toISOString(),
+    maxDateSeen: now.toISOString(),
+    activated: false
+  })
+
+  return { success: true, trialStartedAt: now.toISOString() }
+}
+
+async function periodicCheck(realm) {
+  const license = realm.objectForPrimaryKey('License', 'license')
+  if (!license?.activated || !license?.activatedKey) return { valid: true, local: true }
+  const hwid = generateHwid()
+  const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
+  if (serverResult.valid === true) {
+    const persistent = readPersistentLicense() || {}
+    persistent.lastSuccessfulCheck = new Date().toISOString()
+    persistent.cachedServerResponse = JSON.stringify(serverResult)
+    writePersistentLicense(persistent)
+
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:grace-warning', { graceWarning: false })
+    )
+  } else if (serverResult.valid === false && !serverResult.networkError) {
+    try {
+      realm.write(() => {
+        license.activated = false
+      })
+    } catch {}
+    writePersistentLicense({
+      hwid,
+      activated: false,
+      maxDateSeen: new Date().toISOString()
+    })
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:revoked', {})
+    )
+  }
+  return serverResult
+}
+
+async function serverLicenseCheck(realm) {
+  const license = realm.objectForPrimaryKey('License', 'license')
+  if (!license?.activated || !license?.activatedKey) return checkLicense(realm)
+  const hwid = generateHwid()
+  const serverResult = await checkLicenseWithServer(license.activatedKey, hwid)
+  if (serverResult.valid === true) {
+    const persistent = readPersistentLicense() || {}
+    persistent.lastSuccessfulCheck = new Date().toISOString()
+    persistent.cachedServerResponse = JSON.stringify(serverResult)
+    writePersistentLicense(persistent)
+  } else if (serverResult.valid === false && !serverResult.networkError) {
+    try { realm.write(() => { license.activated = false }) } catch {}
+    writePersistentLicense({ hwid, activated: false, maxDateSeen: new Date().toISOString() })
+    BrowserWindow.getAllWindows().forEach(w =>
+      w.webContents.send('license:revoked', {})
+    )
+  }
+  return checkLicense(realm)
+}
+
+function startPeriodicCheck(realm) {
+  if (periodicTimer) clearInterval(periodicTimer)
+  periodicTimer = setInterval(() => {
+    periodicCheck(realm)
+  }, CHECK_INTERVAL_MS)
+}
+
+function getGraceWarning(realm) {
+  const result = checkLicense(realm)
+  return result.graceWarning || false
+}
+
+function stopPeriodicCheck() {
+  if (periodicTimer) {
+    clearInterval(periodicTimer)
+    periodicTimer = null
+  }
+}
+
+module.exports = { checkLicense, activateLicense, startTrial, generateHwid, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning }
