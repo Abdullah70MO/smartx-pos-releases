@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { StoreProvider, useStore } from './store.jsx'
 import { ToastProvider } from './components/Toast'
 import Modal from './components/Modal'
@@ -61,6 +62,13 @@ const PAGES = {
 
 function AppContent() {
   const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, clearUpdate } = useStore()
+  const [showUpdateNotif, setShowUpdateNotif] = useState(false)
+
+  useEffect(() => {
+    if (updateAvailable && !showUpdateNotif) {
+      setShowUpdateNotif(true)
+    }
+  }, [updateAvailable])
 
   if (page === 'loading') {
     return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:'18px',color:'var(--text2)' }}>جاري التحميل...</div>
@@ -122,6 +130,31 @@ function AppContent() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        open={showUpdateNotif}
+        onClose={() => setShowUpdateNotif(false)}
+        title="تحديث جديد"
+        width='420px'
+      >
+        <div style={{ display:'flex',flexDirection:'column',gap:'14px',alignItems:'center' }}>
+          <div style={{ fontSize:'32px' }}>📦</div>
+          <div style={{ fontSize:'16px',fontWeight:'bold',color:'var(--text)' }}>
+            الإصدار {updateAvailable} متوفر
+          </div>
+          <div style={{ color:'var(--text2)',fontSize:'14px',lineHeight:'1.8',textAlign:'center' }}>
+            يتوفر إصدار أحدث من التطبيق. يمكنك تحميله من صفحة الإصدارات.
+          </div>
+          <div style={{ display:'flex',gap:'10px',width:'100%' }}>
+            <button onClick={() => { setShowUpdateNotif(false); window.smartx?.openReleasesPage?.() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
+              فتح صفحة التحديث
+            </button>
+            <button onClick={() => setShowUpdateNotif(false)} style={{ flex:1,background:'var(--bg3)',color:'var(--text)',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
+              لاحقاً
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }
@@ -135,30 +168,3 @@ export default function App() {
     </StoreProvider>
   )
 }
-      <Modal
-        open={showUpdateNotif}
-        onClose={() => setShowUpdateNotif(false)}
-        title="????? ????"
-        width='420px'
-      >
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',alignItems:'center' }}>
-          <div style={{ fontSize:'32px' }}>??</div>
-          <div style={{ fontSize:'16px',fontWeight:'bold',color:'var(--text)' }}>
-            ????? {updateAvailable}
-          </div>
-          <div style={{ color:'var(--text2)',fontSize:'14px',lineHeight:'1.8',textAlign:'center' }}>
-            ????? ????? ???? ???????. ????? ?????? ?? ???? ?????????.
-          </div>
-          <div style={{ display:'flex',gap:'10px',width:'100%' }}>
-            <button onClick={() => { setShowUpdateNotif(false); window.smartx?.openReleasesPage?.() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
-              ??? ???? ???????
-            </button>
-            <button onClick={() => setShowUpdateNotif(false)} style={{ flex:1,background:'var(--bg3)',color:'var(--text)',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
-              ??????
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={leaveSettingsPrompt.open}
