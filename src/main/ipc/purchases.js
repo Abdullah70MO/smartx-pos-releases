@@ -7,6 +7,15 @@ function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   const treasuryType = paymentMethod === 'card' ? 'bank' : 'main'
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
+  if (amount < 0) {
+    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    if (activeShift) {
+      const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
+      if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
+    } else if (treasury.balance + amount < 0) {
+      throw new Error('الرصيد غير كافٍ في الخزينة')
+    }
+  }
   treasury.balance += amount
   treasury.updatedAt = new Date()
   realm.create('TreasuryTransaction', {
