@@ -10,7 +10,7 @@ import ActivateLicenseModal from '../components/ActivateLicenseModal'
 export default function SettingsPage() {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
-  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty, clearUpdate, setPage, refreshLicense } = useStore()
+  const { user, updateSettings, markSettingsDirty, registerSettingsLeaveAction, settingsDirty, clearUpdate, setPage, refreshLicense, pendingAutoUpdate, clearAutoUpdateFlag } = useStore()
   useEffect(() => { clearUpdate() }, [])
   const canManage = user?.permissions?.includes('settings.manage')
   const [settings, setSettings] = useState(null)
@@ -174,6 +174,14 @@ export default function SettingsPage() {
     })
     return unsub
   }, [])
+
+  useEffect(() => {
+    if (pendingAutoUpdate) {
+      clearAutoUpdateFlag()
+      const timer = setTimeout(() => handleCheckUpdates(), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [pendingAutoUpdate])
 
   async function handleCheckUpdates() {
     setCheckingUpdate(true)

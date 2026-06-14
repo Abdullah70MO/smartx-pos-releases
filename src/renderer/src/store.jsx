@@ -17,7 +17,8 @@ export function StoreProvider({ children }) {
     settingsDirty: false,
     leaveSettingsPrompt: { open: false, targetPage: null },
     settingsLeaveAction: null,
-    updateAvailable: null
+    updateAvailable: null,
+    pendingAutoUpdate: false
   })
 
   function goToReports(tab, dateFrom, dateTo) {
@@ -225,7 +226,9 @@ export function StoreProvider({ children }) {
       registerSettingsLeaveAction,
       closeSettingsPrompt,
       confirmLeaveSettings,
-      clearUpdate: () => setState(s => ({ ...s, updateAvailable: null }))
+      clearUpdate: () => setState(s => ({ ...s, updateAvailable: null })),
+      triggerAutoUpdate: () => setState(s => ({ ...s, page: 'settings', pendingAutoUpdate: true })),
+      clearAutoUpdateFlag: () => setState(s => ({ ...s, pendingAutoUpdate: false }))
     }}>
       {children}
     </StoreContext.Provider>

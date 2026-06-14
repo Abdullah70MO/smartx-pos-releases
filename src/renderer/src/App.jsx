@@ -61,7 +61,7 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, clearUpdate } = useStore()
+  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, clearUpdate, triggerAutoUpdate } = useStore()
   const [showUpdateNotif, setShowUpdateNotif] = useState(false)
 
   useEffect(() => {
@@ -146,8 +146,8 @@ function AppContent() {
             يتوفر إصدار أحدث من التطبيق. يمكنك تحميله من صفحة الإصدارات.
           </div>
           <div style={{ display:'flex',gap:'10px',width:'100%' }}>
-            <button onClick={() => { setShowUpdateNotif(false); window.smartx?.openReleasesPage?.() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
-              فتح صفحة التحديث
+            <button onClick={() => { setShowUpdateNotif(false); triggerAutoUpdate() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
+              تحديث الآن
             </button>
             <button onClick={() => setShowUpdateNotif(false)} style={{ flex:1,background:'var(--bg3)',color:'var(--text)',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
               لاحقاً
