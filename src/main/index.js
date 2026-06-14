@@ -442,7 +442,7 @@ async function seedDatabase() {
       })
     }
   } catch (e) {
-    console.error('Seed failed:', e.message)
+
   }
 }
 

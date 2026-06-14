@@ -79,7 +79,7 @@ export function StoreProvider({ children }) {
       if (settings?.currency) localStorage.setItem('currency', settings.currency)
       if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
-    } catch (e) { console.error('getSettings error:', e) }
+    } catch (e) {}
     const license = await api.serverCheckLicense()
     const targetPage = (!license?.activated && !license?.trialUsed) || license?.expired ? 'license' : 'dashboard'
     setState(s => ({ ...s, token: result.token, user: result.user, settings, license, page: targetPage }))

@@ -382,7 +382,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="checkbox" id="taxEnabled" checked={form.taxEnabled} onChange={e => setForm(f => ({ ...f, taxEnabled: e.target.checked }))} disabled={!canManage} />
-                <label for="taxEnabled" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>تفعيل ضريبة القيمة المضافة</label>
+                <label htmlFor="taxEnabled" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>تفعيل ضريبة القيمة المضافة</label>
               </div>
               {form.taxEnabled && (
                 <div>
@@ -409,7 +409,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <input type="checkbox" id="printAfter" checked={form.printAfterPayment} onChange={e => setForm(f => ({ ...f, printAfterPayment: e.target.checked }))} disabled={!canManage} />
-              <label for="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
+              <label htmlFor="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
             </div>
             <div>
               <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نص تذييل الفاتورة</label>
