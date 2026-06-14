@@ -102,7 +102,7 @@ const BusinessSettingsSchema = {
     calendarType:            { type: 'string', default: 'gregorian' },
     timeFormat:              { type: 'string', default: '24' },
     theme:                   { type: 'string', default: 'dark' },
-    fontFamily:              { type: 'string', default: 'dark' },
+    fontFamily:              { type: 'string', default: 'Cairo' },
     receiptFooter:           { type: 'string', default: '' },
     printAfterPayment:       { type: 'bool', default: true },
     taxRate:                 { type: 'float', default: 14 },
@@ -356,7 +356,6 @@ const InventoryAdjustmentSchema = {
     oldStock:   'double',
     newStock:   'double',
     reason:     { type: 'string', default: '' },
-    paymentMethod: { type: 'string', default: 'cash' },
     createdBy:   'string',
     createdAt:   'date'
   }
@@ -423,6 +422,6 @@ const SCHEMAS = [
   PurchaseReturnSchema
 ]
 
-const SCHEMA_VERSION = 22
+const SCHEMA_VERSION = 23
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

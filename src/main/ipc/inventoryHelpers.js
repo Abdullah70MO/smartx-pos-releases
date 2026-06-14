@@ -47,6 +47,7 @@ function deductFromFifo(realm, productId, quantity) {
       realm.delete(batch)
     }
   }
+  if (remaining > 0) throw new Error('المخزون غير كافٍ')
   syncProductStock(realm, productId)
   return totalCost
 }

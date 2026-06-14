@@ -277,7 +277,7 @@ export default function ProductsPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan="8" style={{ padding: '24px', color: 'var(--text2)' }}>لا توجد منتجات</td></tr>
+              <tr><td colSpan="9" style={{ padding: '24px', color: 'var(--text2)' }}>لا توجد منتجات</td></tr>
             )}
           </tbody>
         </table>

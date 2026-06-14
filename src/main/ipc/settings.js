@@ -47,7 +47,7 @@ function saveSettings(realm, data) {
       calendarType: data.calendarType || 'gregorian',
       timeFormat: data.timeFormat || '24',
       theme: data.theme || 'dark',
-      fontFamily: data.fontFamily || 'dark',
+      fontFamily: data.fontFamily || 'Cairo',
       taxRate: data.taxRate != null ? Number(data.taxRate) : 14,
       receiptFooter: data.receiptFooter || '',
       printAfterPayment: data.printAfterPayment !== false,

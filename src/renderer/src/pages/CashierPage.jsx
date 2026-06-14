@@ -175,6 +175,7 @@ const [taxRate, setTaxRate] = useState(14)
   }
 
   function addToCart(product) {
+    if (product.stock <= 0) { toast('المنتج نفد من المخزون', 'error'); return }
     const unitPrice = getProductPrice(product)
     setCart(prev => {
       const existing = prev.find(item => item.productId === product._id)
@@ -240,6 +241,16 @@ const [taxRate, setTaxRate] = useState(14)
     if (!activeShift) { setErrorModal({ show: true, message: 'يجب بدء الوردية قبل البيع' }); return }
     if (paymentMethod === 'cash' && Number(paid) < total) { setErrorModal({ show: true, message: 'المبلغ المدفوع أقل من الإجمالي' }); return }
     if (paymentMethod === 'credit' && (!customerName.trim() || !customerPhone.trim())) { setErrorModal({ show: true, message: 'يرجى تسجيل اسم العميل ورقم الهاتف للفاتورة الآجلة' }); return }
+
+    for (const item of cart) {
+      const product = products.find(p => p._id === item.productId)
+      if (!product || product.stock < item.quantity) {
+        const name = item.name
+        const available = product ? product.stock : 0
+        setErrorModal({ show: true, message: `المخزون غير كافٍ للمنتج "${name}" (المتاح: ${available}, المطلوب: ${item.quantity})` })
+        return
+      }
+    }
 
     setLoading(true)
     try {
@@ -409,15 +420,15 @@ const [taxRate, setTaxRate] = useState(14)
             </div>
           )}
           {products.filter(p => !search || /^\d+$/.test(search) || p.name.includes(search) || p.barcode?.includes(search)).map(p => (
-            <button key={p._id} onClick={() => addToCart(p)} style={{
-              background: 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
-              border: '1px solid var(--bg3)', transition: '0.15s'
+            <button key={p._id} onClick={() => addToCart(p)} disabled={p.stock <= 0} style={{
+              background: p.stock <= 0 ? 'var(--bg)' : 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
+              border: '1px solid var(--bg3)', transition: '0.15s', opacity: p.stock <= 0 ? 0.5 : 1, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer'
             }}>
               {p.image ? <img src={p.image} alt="" style={{ width:'48px',height:'48px',borderRadius:'8px',objectFit:'cover',marginBottom:'4px' }} /> : null}
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{p.name}</div>
               <div style={{ color: 'var(--accent)', fontSize: '15px' }}>{formatMoney(getProductPrice(p))}</div>
-              <div style={{ fontSize: '11px', color: p.stock <= p.reorderPoint ? 'var(--danger)' : 'var(--text2)' }}>
-                المخزون: {p.stock} {p.unit}
+              <div style={{ fontSize: '11px', color: p.stock <= 0 ? 'var(--danger)' : (p.stock <= p.reorderPoint ? 'var(--danger)' : 'var(--text2)') }}>
+                {p.stock <= 0 ? 'نفد من المخزون' : `المخزون: ${p.stock} ${p.unit}`}
               </div>
             </button>
           ))}

@@ -152,7 +152,7 @@ function savePurchase(realm, user, data) {
         const oldBatches = realm.objects('StockBatch').filtered('productId == $0 AND refId == $1', pid, purchase._id)
         const oldRemaining = Array.from(oldBatches).reduce((s, b) => s + b.quantity, 0)
         const oldOriginal = oldItemsMap[pid] || 0
-        const consumed = oldOriginal - oldRemaining
+        const consumed = Math.max(0, oldOriginal - oldRemaining)
         realm.delete(oldBatches)
 
         const newItem = newItemsMap[pid]
@@ -164,9 +164,8 @@ function savePurchase(realm, user, data) {
             addBatch(realm, product._id, netQty, newItem.cost, purchase._id)
           }
           product.updatedAt = new Date()
-        } else {
-          syncProductStock(realm, pid)
         }
+        syncProductStock(realm, pid)
       })
 
       purchase.items = data.items.map(i => ({
@@ -191,6 +190,21 @@ function savePurchase(realm, user, data) {
       }
       if (paidAmount > 0) {
         updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + purchase.invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
+      }
+      if (oldPaid > 0 && oldSupplierId) {
+        updateSupplierBalance(realm, oldSupplierId, -oldPaid, true)
+        const oldPayments = realm.objects('SupplierPayment').filtered('supplierId == $0 AND note CONTAINS $1', oldSupplierId, '#' + purchase.invoiceNo)
+        realm.delete(oldPayments)
+      }
+      if (paidAmount > 0 && data.supplierId) {
+        updateSupplierBalance(realm, data.supplierId, paidAmount, true)
+        realm.create('SupplierPayment', {
+          _id: crypto.randomUUID(),
+          supplierId: data.supplierId, supplierName: data.supplierName || '',
+          amount: paidAmount, note: 'دفعة فاتورة #' + purchase.invoiceNo,
+          paymentMethod: data.paymentMethod || 'cash',
+          createdBy: user.name, createdAt: new Date()
+        })
       }
     } else {
       const invoiceNo = getNextInvoice(realm)

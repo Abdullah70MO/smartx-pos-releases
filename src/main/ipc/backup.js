@@ -66,6 +66,8 @@ async function resetDatabase() {
       r.delete(r.objects('CreditCustomer'))
       r.delete(r.objects('Supplier'))
       r.delete(r.objects('Purchase'))
+      r.delete(r.objects('StockBatch'))
+      r.delete(r.objects('PurchaseReturn'))
       r.delete(r.objects('InventoryAdjustment'))
       r.delete(r.objects('SupplierPayment'))
       r.delete(r.objects('CustomerPayment'))

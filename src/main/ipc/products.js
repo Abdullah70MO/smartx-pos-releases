@@ -22,7 +22,7 @@ function saveProduct(realm, data) {
   let product
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('Product', data._id) : null
-    const stock = Number(data.stock) ?? (existing ? existing.stock : 0)
+    const stock = data.stock != null ? Number(data.stock) : (existing ? existing.stock : 0)
     product = realm.create('Product', {
       _id: data._id || crypto.randomUUID(),
       sku: data.sku || 'PRD-' + Date.now(),

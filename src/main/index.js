@@ -167,7 +167,7 @@ function registerIpc() {
   })
   handle('returns:remove', async ({ token, id }) => {
     const r = await openRealm(); const session = requireUser(token)
-    removeReturn(r, id)
+    removeReturn(r, id, session)
     try { logActivity(r, session, { action: 'حذف مرتجع', details: id }) } catch {}
     return true
   })
@@ -391,7 +391,7 @@ async function seedDatabase() {
       if (!settings) {
         r.create('BusinessSettings', {
           _id: 'business', currency: 'EGP', taxEnabled: true,
-          calendarType: 'gregorian', timeFormat: '24', theme: 'dark', fontFamily: 'dark',
+          calendarType: 'gregorian', timeFormat: '24', theme: 'dark', fontFamily: 'Cairo',
           printAfterPayment: true, seeded: true
         })
       } else if (!settings.seeded) {
@@ -400,6 +400,9 @@ async function seedDatabase() {
 
       if (!r.objectForPrimaryKey('Counter', 'invoice')) {
         r.create('Counter', { _id: 'invoice', value: 1000 })
+      }
+      if (!r.objectForPrimaryKey('Counter', 'purchase')) {
+        r.create('Counter', { _id: 'purchase', value: 1 })
       }
 
       if (!r.objectForPrimaryKey('Treasury', 'bank')) {

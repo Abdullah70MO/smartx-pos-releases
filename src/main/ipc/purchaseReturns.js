@@ -1,6 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
-const { returnToFifo } = require('./inventoryHelpers')
+const { returnToFifo, syncProductStock } = require('./inventoryHelpers')
 
 function deductBatches(realm, purchaseId, productId, quantity) {
   let remaining = Number(quantity)
@@ -52,16 +52,6 @@ function updateSupplierBalance(realm, supplierId, delta) {
   }
 }
 
-function syncProduct(realm, productId) {
-  const product = realm.objectForPrimaryKey('Product', productId)
-  if (!product) return
-  const batches = realm.objects('StockBatch').filtered('productId == $0 AND quantity > 0', productId).sorted('createdAt')
-  const totalQty = Array.from(batches).reduce((s, b) => s + b.quantity, 0)
-  const oldest = Array.from(batches)[0]
-  product.stock = totalQty
-  product.cost = oldest ? oldest.cost : 0
-}
-
 function listPurchaseReturns(realm) {
   const returns = realm.objects('PurchaseReturn').sorted('createdAt', true)
   return Array.from(returns).map(r => {
@@ -110,7 +100,7 @@ function createPurchaseReturn(realm, session, data) {
         const totalCost = deductBatches(realm, data.purchaseId, purchaseItem.productId, qty)
         const avgCost = totalCost / qty
         itemCosts.push({ productId: purchaseItem.productId, cost: avgCost })
-        syncProduct(realm, purchaseItem.productId)
+        syncProductStock(realm, purchaseItem.productId)
       } else {
         itemCosts.push({ productId: purchaseItem.productId, cost: 0 })
       }
@@ -156,7 +146,7 @@ function removePurchaseReturn(realm, id) {
       const cost = Number(item.cost) || 0
       if (qty > 0) {
         restoreReturnBatches(realm, item.productId, qty, cost)
-        syncProduct(realm, item.productId)
+        syncProductStock(realm, item.productId)
       }
     })
 

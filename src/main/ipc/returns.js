@@ -86,6 +86,11 @@ function createReturn(realm, session, data) {
     })
     updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session, sale.paymentMethod)
 
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+    if (activeShift) {
+      activeShift.totalSales -= Number(data.subtotal)
+    }
+
     if (sale.paymentMethod === 'credit' && data.customerName) {
       const customer = realm.objects('CreditCustomer').filtered('name == $0', data.customerName)[0]
       if (customer) {
@@ -97,7 +102,7 @@ function createReturn(realm, session, data) {
   return { _id: ret._id, invoiceNo: ret.invoiceNo, saleId: ret.saleId, subtotal: ret.subtotal, reason: ret.reason, cashierId: ret.cashierId, cashierName: ret.cashierName, customerName: ret.customerName, isFullReturn: ret.isFullReturn, createdAt: ret.createdAt?.toISOString() }
 }
 
-function removeReturn(realm, id) {
+function removeReturn(realm, id, session) {
   realm.write(() => {
     const ret = realm.objectForPrimaryKey('Return', id)
     if (ret) {
@@ -107,7 +112,19 @@ function removeReturn(realm, id) {
         if (product) {
           const qty = Number(item.quantity) || 0
           const cost = Number(item.cost) || 0
-          deductFromFifo(realm, product._id, qty)
+          const returnBatches = realm.objects('StockBatch').filtered('productId == $0 AND refId == "return" AND quantity > 0', item.productId).sorted('createdAt')
+          let remaining = qty
+          for (const batch of returnBatches) {
+            if (remaining <= 0) break
+            const take = Math.min(batch.quantity, remaining)
+            batch.quantity -= take
+            remaining -= take
+            if (batch.quantity <= 0) realm.delete(batch)
+          }
+          if (remaining > 0) {
+            deductFromFifo(realm, product._id, remaining)
+          }
+          syncProductStock(realm, product._id)
         }
       })
       if (sale && (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card')) {
@@ -132,6 +149,10 @@ function removeReturn(realm, id) {
           customer.totalDebt = (customer.totalDebt || 0) + Number(ret.subtotal)
           customer.updatedAt = new Date()
         }
+      }
+      const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+      if (activeShift) {
+        activeShift.totalSales += Number(ret.subtotal)
       }
       realm.delete(ret)
     }
