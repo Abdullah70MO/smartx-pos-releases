@@ -45,6 +45,14 @@ if (-not $check) {
   Write-Host "Source files restored from git" -ForegroundColor Green
 }
 
+# Rename exe to use hyphens so it matches latest.yml (GitHub web converts spaces to dots)
+$exeSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
+$exeDst = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART-X-POS-Setup-$n.exe"
+if (Test-Path $exeSrc) {
+  Copy-Item $exeSrc $exeDst -Force
+  Write-Host "Renamed exe for upload: SMART-X-POS-Setup-$n.exe" -ForegroundColor Green
+}
+
 # Extract GH_TOKEN from git remote
 $remoteUrl = git remote get-url origin
 $token = ($remoteUrl -split '@')[0] -replace 'https://', ''
@@ -98,7 +106,7 @@ if ($?) { git push public master }
 # Done
 Write-Host ("=" * 50) -ForegroundColor Green
 Write-Host "  DONE: v$n" -ForegroundColor Green
-$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
+$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART-X-POS-Setup-$n.exe"
 Write-Host "  Build: $exePath" -ForegroundColor Cyan
 Write-Host "  Release: https://github.com/Abdullah70MO/smartx-pos-releases/releases/tag/v$n" -ForegroundColor Cyan
 Write-Host "  " -NoNewline
