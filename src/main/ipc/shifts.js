@@ -7,6 +7,7 @@ function getActiveShift(realm, cashierId) {
     _id: shift._id, cashierId: shift.cashierId, cashierName: shift.cashierName,
     startedAt: shift.startedAt?.toISOString(), endingBalance: shift.endingBalance,
     startingBalance: shift.startingBalance, totalSales: shift.totalSales,
+    expensesTotal: shift.expensesTotal, withdrawalsTotal: shift.withdrawalsTotal,
     invoiceCount: shift.invoiceCount, isActive: shift.isActive
   }
 }
@@ -32,6 +33,7 @@ function startShift(realm, session, startingBalance) {
   return {
     _id: shift._id, cashierId: shift.cashierId, cashierName: shift.cashierName,
     startingBalance: shift.startingBalance, totalSales: shift.totalSales,
+    expensesTotal: shift.expensesTotal, withdrawalsTotal: shift.withdrawalsTotal,
     invoiceCount: shift.invoiceCount, isActive: shift.isActive,
     startedAt: shift.startedAt?.toISOString()
   }
@@ -51,7 +53,9 @@ function endShift(realm, session, endingBalance) {
     _id: shift._id, cashierId: shift.cashierId, cashierName: shift.cashierName,
     startedAt: shift.startedAt?.toISOString(), endedAt: shift.endedAt?.toISOString(),
     startingBalance: shift.startingBalance, endingBalance: shift.endingBalance,
-    totalSales: shift.totalSales, invoiceCount: shift.invoiceCount, isActive: false
+    totalSales: shift.totalSales, expensesTotal: shift.expensesTotal,
+    withdrawalsTotal: shift.withdrawalsTotal,
+    invoiceCount: shift.invoiceCount, isActive: false
   }
 }
 function listShifts(realm) {
@@ -60,7 +64,9 @@ function listShifts(realm) {
     _id: s._id, cashierId: s.cashierId, cashierName: s.cashierName,
     startedAt: s.startedAt?.toISOString(), endedAt: s.endedAt?.toISOString(),
     startingBalance: s.startingBalance, endingBalance: s.endingBalance,
-    totalSales: s.totalSales, invoiceCount: s.invoiceCount, isActive: s.isActive
+    totalSales: s.totalSales, expensesTotal: s.expensesTotal,
+    withdrawalsTotal: s.withdrawalsTotal,
+    invoiceCount: s.invoiceCount, isActive: s.isActive
   }))
 }
 

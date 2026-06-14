@@ -30,6 +30,7 @@ function listReturns(realm) {
     subtotal: r.subtotal, reason: r.reason,
     cashierId: r.cashierId, cashierName: r.cashierName,
     customerName: r.customerName, isFullReturn: r.isFullReturn,
+    paymentMethod: r.paymentMethod,
     createdAt: r.createdAt?.toISOString()
   }))
 }
@@ -82,9 +83,10 @@ function createReturn(realm, session, data) {
       cashierName: session.name,
       customerName: data.customerName || '',
       isFullReturn: data.isFullReturn || false,
+      paymentMethod: data.paymentMethod || sale.paymentMethod || 'cash',
       createdAt: new Date()
     })
-    updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session, sale.paymentMethod)
+    updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
 
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
     if (activeShift) {

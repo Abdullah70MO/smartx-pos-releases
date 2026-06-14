@@ -81,6 +81,7 @@ const ExpenseSchema = {
     note:          { type: 'string', default: '' },
     date:          'date',
     paymentMethod: { type: 'string', default: 'cash' },
+    shiftId:       { type: 'string', default: '' },
     createdAt:     'date'
   }
 }
@@ -197,6 +198,7 @@ const ReturnSchema = {
     cashierName:    'string',
     customerName:   { type: 'string', default: '' },
     isFullReturn:   { type: 'bool', default: false },
+    paymentMethod:  { type: 'string', default: 'cash' },
     createdAt:      'date'
   }
 }
@@ -213,6 +215,8 @@ const ShiftSchema = {
     startingBalance: { type: 'double', default: 0 },
     endingBalance:   { type: 'double', default: 0 },
     totalSales:      { type: 'double', default: 0 },
+    expensesTotal:   { type: 'double', default: 0 },
+    withdrawalsTotal:{ type: 'double', default: 0 },
     invoiceCount:    { type: 'int', default: 0 },
     isActive:        { type: 'bool', default: true }
   }
@@ -422,6 +426,6 @@ const SCHEMAS = [
   PurchaseReturnSchema
 ]
 
-const SCHEMA_VERSION = 23
+const SCHEMA_VERSION = 24
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

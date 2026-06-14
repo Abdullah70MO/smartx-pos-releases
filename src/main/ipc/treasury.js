@@ -94,12 +94,17 @@ function withdrawFromTreasury(realm, data, session) {
       createdBy: session.name,
       createdAt: new Date()
     })
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+    if (activeShift) {
+      activeShift.withdrawalsTotal += amount
+    }
     if (!data.isPersonal) {
       realm.create('Expense', {
         _id: crypto.randomUUID(),
         amount, category: data.withdrawCategory || 'سحب تشغيلي',
         note: 'سحب من الخزينة - ' + t.name + (data.note ? ' - ' + data.note : ''),
         date: new Date(),
+        shiftId: activeShift?._id || '',
         createdAt: new Date()
       })
     }
