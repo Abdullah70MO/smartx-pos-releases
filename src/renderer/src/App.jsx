@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { StoreProvider, useStore } from './store.jsx'
-import { ToastProvider } from './components/Toast'
+import { ToastProvider, useToast } from './components/Toast'
 import Modal from './components/Modal'
 import Sidebar from './components/Sidebar'
 import LoginPage from './pages/LoginPage'
@@ -61,12 +61,12 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, clearUpdate, triggerAutoUpdate } = useStore()
-  const [showUpdateNotif, setShowUpdateNotif] = useState(false)
+  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable } = useStore()
+  const toast = useToast()
 
   useEffect(() => {
-    if (updateAvailable && !showUpdateNotif) {
-      setShowUpdateNotif(true)
+    if (updateAvailable && page !== 'settings') {
+      toast(`يتوفر إصدار جديد v${updateAvailable} — افتح الإعدادات للتحميل`, 'info', 6000)
     }
   }, [updateAvailable])
 
@@ -131,30 +131,6 @@ function AppContent() {
         </div>
       </Modal>
 
-      <Modal
-        open={showUpdateNotif}
-        onClose={() => setShowUpdateNotif(false)}
-        title="تحديث جديد"
-        width='420px'
-      >
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',alignItems:'center' }}>
-          <div style={{ fontSize:'32px' }}>📦</div>
-          <div style={{ fontSize:'16px',fontWeight:'bold',color:'var(--text)' }}>
-            الإصدار {updateAvailable} متوفر
-          </div>
-          <div style={{ color:'var(--text2)',fontSize:'14px',lineHeight:'1.8',textAlign:'center' }}>
-            يتوفر إصدار أحدث من التطبيق. يمكنك تحميله من صفحة الإصدارات.
-          </div>
-          <div style={{ display:'flex',gap:'10px',width:'100%' }}>
-            <button onClick={() => { setShowUpdateNotif(false); triggerAutoUpdate() }} style={{ flex:1,background:'var(--accent)',color:'#fff',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
-              تحديث الآن
-            </button>
-            <button onClick={() => setShowUpdateNotif(false)} style={{ flex:1,background:'var(--bg3)',color:'var(--text)',padding:'10px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:'600' }}>
-              لاحقاً
-            </button>
-          </div>
-        </div>
-      </Modal>
     </>
   )
 }

@@ -49,7 +49,7 @@ if (-not $check) {
 $exeSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
 $exeDst = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART-X-POS-Setup-$n.exe"
 if (Test-Path $exeSrc) {
-  Copy-Item $exeSrc $exeDst -Force
+  Move-Item $exeSrc $exeDst -Force
   Write-Host "Renamed exe for upload: SMART-X-POS-Setup-$n.exe" -ForegroundColor Green
 }
 
