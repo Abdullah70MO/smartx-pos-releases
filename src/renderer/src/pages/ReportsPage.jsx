@@ -198,9 +198,6 @@ export default function ReportsPage() {
         <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
         <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
         <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
-        <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
-        <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
-        <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
         <SummaryCard label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="#f59e0b" />
         <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="#f97316" />
         <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="#8b5cf6" />
