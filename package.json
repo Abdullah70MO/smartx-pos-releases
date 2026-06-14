@@ -80,7 +80,7 @@
     "publish": {
       "provider": "github",
       "owner": "Abdullah70MO",
-      "repo": "smartx-pos"
+      "repo": "smartx-pos-releases"
     }
   }
 }
