@@ -1,6 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
-const { updateWeightedAverage, removeFromWeightedAverage } = require('./inventoryHelpers')
+const { returnToFifo, deductFromFifo } = require('./inventoryHelpers')
 
 function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount === 0) return
@@ -62,9 +62,7 @@ function createReturn(realm, session, data) {
       if (product) {
         const qty = Number(item.quantity) || 0
         const cost = Number(item.cost) || 0
-        const oldStock = product.stock || 0
-        product.stock = oldStock + qty
-        updateWeightedAverage(product, qty, cost, oldStock)
+        returnToFifo(realm, product._id, qty, cost)
       }
     })
 
@@ -109,9 +107,7 @@ function removeReturn(realm, id) {
         if (product) {
           const qty = Number(item.quantity) || 0
           const cost = Number(item.cost) || 0
-          const oldStock = product.stock || 0
-          product.stock = Math.max(0, oldStock - qty)
-          removeFromWeightedAverage(product, qty, cost, oldStock)
+          deductFromFifo(realm, product._id, qty)
         }
       })
       if (sale && (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card')) {

@@ -124,7 +124,7 @@ export default function CustomersPage() {
                 </tr>
               )
             })}
-            {filteredCustomers.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا يوجد عملاء</td></tr>}
+            {filteredCustomers.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا يوجد عملاء</td></tr>}
           </tbody>
         </table>
       </div>
@@ -194,7 +194,7 @@ export default function CustomersPage() {
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>
                   </tr>
                 ))}
-                {transactions.length === 0 && <tr><td colSpan="4" style={{ padding: '16px', color: '#475569', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
+                {transactions.length === 0 && <tr><td colSpan="4" style={{ padding: '16px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
               </tbody>
             </table>
           </div>

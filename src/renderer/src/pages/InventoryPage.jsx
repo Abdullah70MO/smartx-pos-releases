@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
+import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 
 export default function InventoryPage() {
@@ -16,8 +17,9 @@ export default function InventoryPage() {
   const [lowStock, setLowStock] = useState([])
   const [products, setProducts] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ productId: '', type: 'add', quantity: 0, reason: '', date: '' })
+  const [form, setForm] = useState({ productId: '', type: 'add', quantity: 0, reason: '', date: '', batchId: '' })
   const [editAdjustment, setEditAdjustment] = useState(null)
+  const [productBatches, setProductBatches] = useState([])
   const [searchProduct, setSearchProduct] = useState('')
   const [searchType, setSearchType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -31,6 +33,14 @@ export default function InventoryPage() {
     setLowStock(await api.getLowStockProducts(token))
     setProducts(await api.listProducts(token))
   }
+
+  useEffect(() => {
+    if (form.productId && form.type === 'remove') {
+      api.getProductBatches(localStorage.getItem('token'), form.productId).then(setProductBatches).catch(() => setProductBatches([]))
+    } else {
+      setProductBatches([])
+    }
+  }, [form.productId, form.type])
 
   async function handleSave(e) {
     e.preventDefault()
@@ -46,7 +56,8 @@ export default function InventoryPage() {
       }
       setShowModal(false)
       setEditAdjustment(null)
-      setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '' })
+      setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '', batchId: '' })
+      setProductBatches([])
       load()
     } catch (err) { toast(err.message, 'error') }
   }
@@ -85,7 +96,7 @@ export default function InventoryPage() {
     <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المخزون</h1>
-        {canAdjust && <button onClick={() => { setEditAdjustment(null); setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '' }); setShowModal(true) }}
+        {canAdjust && <button onClick={() => { setEditAdjustment(null); setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '', batchId: '' }); setProductBatches([]); setShowModal(true) }}
           style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ تسوية مخزون</button>}
       </div>
 
@@ -103,9 +114,9 @@ export default function InventoryPage() {
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <button onClick={() => setTab('adjustments')}
-          style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', background: tab === 'adjustments' ? 'var(--accent)' : 'var(--bg3)', color: '#fff' }}>التسويات</button>
+          style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', background: tab === 'adjustments' ? 'var(--accent)' : 'var(--bg3)', color: tab === 'adjustments' ? '#fff' : 'var(--text)', fontWeight: tab === 'adjustments' ? '600' : '500' }}>التسويات</button>
         <button onClick={() => setTab('stock')}
-          style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', background: tab === 'stock' ? 'var(--accent)' : 'var(--bg3)', color: '#fff' }}>المخزون الحالي</button>
+          style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', background: tab === 'stock' ? 'var(--accent)' : 'var(--bg3)', color: tab === 'stock' ? '#fff' : 'var(--text)', fontWeight: tab === 'stock' ? '600' : '500' }}>المخزون الحالي</button>
       </div>
 
       {tab === 'adjustments' && (
@@ -147,7 +158,7 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
-              {filteredAdjustments.length === 0 && <tr><td colSpan="8" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد تسويات</td></tr>}
+              {filteredAdjustments.length === 0 && <tr><td colSpan="8" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد تسويات</td></tr>}
             </tbody>
           </table>
         </div>
@@ -173,7 +184,7 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد منتجات</td></tr>}
+              {products.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد منتجات</td></tr>}
             </tbody>
           </table>
         </div>
@@ -195,6 +206,44 @@ export default function InventoryPage() {
             <option value="remove">خصم من المخزون</option>
             <option value="set">تحديد الكمية</option>
           </select>
+
+          {form.type === 'remove' && productBatches.length > 0 && (
+            <div style={{ background: 'var(--bg3)', borderRadius: '8px', padding: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '6px' }}>اختر batch للخصم (اتركها فارغة للأقدم أولاً):</div>
+              {productBatches.map(b => (
+                <label key={b._id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: form.batchId === b._id ? 'var(--accent)' : 'transparent', color: form.batchId === b._id ? '#fff' : 'var(--text)' }}>
+                  <input type="radio" name="batch" checked={form.batchId === b._id}
+                    onChange={() => setForm(f => ({ ...f, batchId: b._id }))}
+                    style={{ accentColor: 'var(--accent)' }} />
+                  <span>{b.quantity} وحدة بتكلفة {formatMoney(b.cost)}</span>
+                </label>
+              ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)' }}>
+                <input type="radio" name="batch" checked={!form.batchId}
+                  onChange={() => setForm(f => ({ ...f, batchId: '' }))} />
+                <span>تلقائي (الأقدم أولاً)</span>
+              </label>
+            </div>
+          )}
+
+          {form.type === 'set' && productBatches.length > 0 && form.quantity < (products.find(p => p._id === form.productId)?.stock || 0) && (
+            <div style={{ background: 'var(--bg3)', borderRadius: '8px', padding: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '6px' }}>اختر batch للخصم (للكمية الزائدة):</div>
+              {productBatches.map(b => (
+                <label key={b._id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: form.batchId === b._id ? 'var(--accent)' : 'transparent', color: form.batchId === b._id ? '#fff' : 'var(--text)' }}>
+                  <input type="radio" name="batch" checked={form.batchId === b._id}
+                    onChange={() => setForm(f => ({ ...f, batchId: b._id }))}
+                    style={{ accentColor: 'var(--accent)' }} />
+                  <span>{b.quantity} وحدة بتكلفة {formatMoney(b.cost)}</span>
+                </label>
+              ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)' }}>
+                <input type="radio" name="batch" checked={!form.batchId}
+                  onChange={() => setForm(f => ({ ...f, batchId: '' }))} />
+                <span>تلقائي (الأقدم أولاً)</span>
+              </label>
+            </div>
+          )}
 
           <input type="number" placeholder="الكمية" value={form.quantity || ''}
             onInput={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} required

@@ -16,6 +16,9 @@ export default function ShiftsPage() {
   const [startingBalance, setStartingBalance] = useState(0)
   const [showStartModal, setShowStartModal] = useState(false)
   const [elapsed, setElapsed] = useState('')
+  const [searchCashier, setSearchCashier] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -60,6 +63,14 @@ export default function ShiftsPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
+  const filteredShifts = shifts.filter(s => {
+    const q = searchCashier
+    const matchUser = !q || s.cashierName?.includes(q)
+    const matchDate = (!dateFrom || new Date(s.startedAt) >= new Date(dateFrom)) &&
+      (!dateTo || new Date(s.startedAt) <= new Date(dateTo + 'T23:59:59'))
+    return matchUser && matchDate
+  })
+
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
       <h1 style={{ fontSize: '20px', marginBottom: '16px' }}>الورديات</h1>
@@ -92,12 +103,20 @@ export default function ShiftsPage() {
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        <input placeholder="بحث باسم الكاشير..." value={searchCashier}
+          onInput={e => setSearchCashier(e.target.value)}
+          style={{ flex: 1, minWidth: '200px' }} />
+        <input type="date" value={dateFrom} onInput={e => setDateFrom(e.target.value)} style={{ width: '140px' }} />
+        <input type="date" value={dateTo} onInput={e => setDateTo(e.target.value)} style={{ width: '140px' }} />
+      </div>
+
       <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '8px' }}>سجل الورديات</h3>
       <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
         <table>
           <thead><tr><th>الكاشير</th><th>البداية</th><th>النهاية</th><th>المدة</th><th>بداية الرصيد</th><th>المبيعات</th><th>نهاية الرصيد</th></tr></thead>
           <tbody>
-            {shifts.map(s => {
+            {filteredShifts.map(s => {
               const start = new Date(s.startedAt)
               const end = s.endedAt ? new Date(s.endedAt) : new Date()
               const diff = Math.floor((end - start) / 1000)
@@ -115,7 +134,7 @@ export default function ShiftsPage() {
                 </tr>
               )
             })}
-            {shifts.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد ورديات</td></tr>}
+            {shifts.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد ورديات</td></tr>}
           </tbody>
         </table>
       </div>

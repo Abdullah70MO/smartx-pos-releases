@@ -1,5 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { deductFromFifo, addBatch } = require('./inventoryHelpers')
 
 function updateTreasury(realm, amount, note, session, refId, refType, paymentMethod) {
   if (amount === 0) return
@@ -54,23 +55,22 @@ function createSale(realm, session, data) {
   realm.write(() => {
     counter.value = invoiceNo
 
-    data.items.forEach(item => {
-      const product = realm.objectForPrimaryKey('Product', item.productId)
-      if (product) {
-        product.stock -= Number(item.quantity) || 0
+    const fifoItems = data.items.map(item => {
+      const qty = Number(item.quantity) || 0
+      const fifoCost = deductFromFifo(realm, item.productId, qty)
+      return {
+        productId: item.productId,
+        name: item.name,
+        quantity: qty,
+        unitPrice: Number(item.unitPrice) || 0,
+        cost: fifoCost / qty
       }
     })
 
     sale = realm.create('Sale', {
       _id: crypto.randomUUID(),
       invoiceNo,
-      items: data.items.map(item => ({
-        productId: item.productId,
-        name: item.name,
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unitPrice) || 0,
-        cost: Number(item.cost) || 0
-      })),
+      items: fifoItems,
       subtotal, discount, tax, total,
       paymentMethod: data.paymentMethod || 'cash',
       paid: data.paid != null ? Number(data.paid) : total,
@@ -124,8 +124,9 @@ function removeSale(realm, id) {
     const sale = realm.objectForPrimaryKey('Sale', id)
     if (sale) {
       sale.items.forEach(item => {
-        const product = realm.objectForPrimaryKey('Product', item.productId)
-        if (product) product.stock += item.quantity
+        const qty = item.quantity
+        const cost = item.cost || 0
+        addBatch(realm, item.productId, qty, cost)
       })
       if (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card') {
         updateTreasury(realm, -sale.paid, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', sale.paymentMethod)

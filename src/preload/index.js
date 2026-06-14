@@ -51,6 +51,10 @@ const api = {
   createReturn: (token, ret) => ipcRenderer.invoke('returns:create', { token, ret }),
   removeReturn: (token, id) => ipcRenderer.invoke('returns:remove', { token, id }),
 
+  listPurchaseReturns: (token) => ipcRenderer.invoke('purchaseReturns:list', { token }),
+  createPurchaseReturn: (token, ret) => ipcRenderer.invoke('purchaseReturns:create', { token, ret }),
+  removePurchaseReturn: (token, id) => ipcRenderer.invoke('purchaseReturns:remove', { token, id }),
+
   // Shifts
   getActiveShift: (token) => ipcRenderer.invoke('shifts:getActive', { token }),
   startShift: (token, startingBalance) => ipcRenderer.invoke('shifts:start', { token, startingBalance }),
@@ -94,6 +98,8 @@ const api = {
   saveAdjustment: (token, adjustment) => ipcRenderer.invoke('inventory:saveAdjustment', { token, adjustment }),
   removeAdjustment: (token, id) => ipcRenderer.invoke('inventory:removeAdjustment', { token, id }),
   getLowStockProducts: (token) => ipcRenderer.invoke('inventory:lowStock', { token }),
+  getInventoryBatchReport: (token, query) => ipcRenderer.invoke('inventory:batchReport', { token, query }),
+  getProductBatches: (token, productId) => ipcRenderer.invoke('inventory:productBatches', { token, productId }),
 
   // Treasury
   listTreasuries: (token) => ipcRenderer.invoke('treasury:list', { token }),

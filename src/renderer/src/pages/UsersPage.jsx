@@ -175,7 +175,7 @@ export default function UsersPage() {
                 </td>
               </tr>
             ))}
-            {users.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا يوجد مستخدمين</td></tr>}
+            {users.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا يوجد مستخدمين</td></tr>}
           </tbody>
         </table>
       </div>

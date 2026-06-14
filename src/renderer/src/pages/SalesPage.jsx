@@ -116,7 +116,7 @@ export default function SalesPage() {
             ))}
             {error && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--danger)', textAlign: 'center' }}>خطأ: {error}</td></tr>}
             {filtered.length === 0 && !error && (
-              <tr><td colSpan="7" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مبيعات</td></tr>
+              <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مبيعات</td></tr>
             )}
           </tbody>
         </table>

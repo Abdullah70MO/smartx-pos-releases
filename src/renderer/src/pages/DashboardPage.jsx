@@ -77,7 +77,7 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          ) : <div style={{ color: '#475569', fontSize: '13px' }}>لا توجد مبيعات اليوم</div>}
+          ) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد مبيعات اليوم</div>}
         </div>
 
         <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
@@ -95,7 +95,7 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          ) : <div style={{ color: '#475569', fontSize: '13px' }}>لا توجد بيانات كافية</div>}
+          ) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد بيانات كافية</div>}
         </div>
       </div>
 

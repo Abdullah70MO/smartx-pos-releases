@@ -19,7 +19,12 @@
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --outline: #2d2f36;
+  --outline: #333940; /* أفتح للتباين */
+  --outline-strong: #475569; /* للحدود المهمة */
+  --surface-container: #272a30; /* للـ zebra stripe */
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+  --elevation-3: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
   --radius: 16px;
   --radius-sm: 8px;
   --radius-lg: 24px;
@@ -38,7 +43,12 @@
   --success: #059669;
   --danger: #dc2626;
   --warning: #d97706;
-  --outline: #e2e8f0;
+  --outline: #cbd5e1; /* أغمق للتباين */
+  --outline-strong: #94a3b8; /* للحدود المهمة */
+  --surface-container: #f1f5f9; /* للـ zebra stripe */
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --elevation-3: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
 }
 
 body {
@@ -97,6 +107,7 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  background: var(--bg2); /* يغطي أي فراغات في الكارت */
 }
 
 th {
@@ -105,8 +116,9 @@ th {
   font-size: 13px;
   font-weight: 600;
   color: var(--text2);
-  border-bottom: 1px solid var(--outline);
-  background: var(--bg2);
+  border-bottom: 2px solid var(--outline-strong);
+  background: var(--bg3);
+  white-space: nowrap;
 }
 
 td {
@@ -115,10 +127,27 @@ td {
   font-size: 13px;
   border-bottom: 1px solid var(--outline);
   color: var(--text);
+  background: var(--bg2); /* قاعدة موحدة لكل الخلايا - تتطابق مع خلفية الكارت */
+}
+
+/* Zebra striping - Material 3 style */
+tbody tr:nth-child(odd) td {
+  background: var(--surface-container);
+}
+
+tbody tr:hover td {
+  background: var(--bg3);
 }
 
 tr:last-child td {
   border-bottom: none;
+}
+
+/* Sticky header for long tables */
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 ::-webkit-scrollbar {
@@ -127,7 +156,11 @@ tr:last-child td {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg2);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg2);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -139,12 +172,46 @@ tr:last-child td {
   background: var(--text2);
 }
 
-/* Material card/section utility style if needed */
+/* Material 3 Card */
 .md3-card {
   background: var(--bg2);
   border-radius: var(--radius);
   border: 1px solid var(--outline);
+  box-shadow: var(--elevation-1);
   padding: 16px;
+}
+
+/* Modal / Dialog */
+.modal-overlay, .modal, [role="dialog"] {
+  background: var(--bg2);
+  border: 1px solid var(--outline-strong);
+  box-shadow: var(--elevation-3);
+  border-radius: var(--radius);
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg3);
+  border-left: 1px solid var(--outline);
+}
+
+/* Toolbar / Top bar */
+header, .toolbar, .top-bar {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--outline);
+}
+
+/* Dropdown / Popover */
+.dropdown-menu, .popover, .select-options {
+  background: var(--bg2);
+  border: 1px solid var(--outline-strong);
+  box-shadow: var(--elevation-2);
+  border-radius: var(--radius-sm);
+}
+
+/* Sidebar inactive button */
+.sidebar-btn:hover {
+  background: var(--surface-container);
 }
 
 .settings-layout {
@@ -164,11 +231,6 @@ tr:last-child td {
 @media print {
   @page {
     size: A4;
-    margin: 0;
-  }
-
-  @page receipt {
-    size: 80mm auto;
     margin: 0;
   }
 
@@ -247,9 +309,5 @@ tr:last-child td {
   /* Hide modal overlay and all buttons when printing */
   .modal-overlay, button, .sidebar, header {
     display: none !important;
-  }
-
-  @page {
-    margin: 0;
   }
 }

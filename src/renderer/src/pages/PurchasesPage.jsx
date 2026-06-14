@@ -84,6 +84,11 @@ export default function PurchasesPage() {
   const [viewInvoice, setViewInvoice] = useState(null)
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
+  const [showReturnModal, setShowReturnModal] = useState(false)
+  const [returnPurchase, setReturnPurchase] = useState(null)
+  const [returnItems, setReturnItems] = useState([])
+  const [returnReason, setReturnReason] = useState('')
+  const [purchaseReturns, setPurchaseReturns] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [items, setItems] = useState([{ productId: '', name: '', quantity: '', cost: '' }])
   const [productSearch, setProductSearch] = useState([''])
@@ -111,7 +116,7 @@ export default function PurchasesPage() {
   const units = [...new Set(products.map(p => p.unit).filter(Boolean))]
   const categoryRef = useRef(null)
 
-  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings() }, [])
+  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns() }, [])
   useEffect(() => {
     const handler = () => { loadProducts(); loadSuppliers() }
     window.addEventListener('dataChanged', handler)
@@ -140,6 +145,14 @@ export default function PurchasesPage() {
     const token = localStorage.getItem('token')
     const s = await api.getSettings(token)
     setSettings(s)
+  }
+
+  async function loadPurchaseReturns() {
+    const token = localStorage.getItem('token')
+    try {
+      const data = await api.listPurchaseReturns(token)
+      setPurchaseReturns(data)
+    } catch {}
   }
 
   function handleProductSearch(idx, value) {
@@ -260,6 +273,42 @@ export default function PurchasesPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
+  function openReturn(p) {
+    setReturnPurchase(p)
+    setReturnItems(p.items.map(i => ({
+      productId: i.productId, name: i.name,
+      quantity: 0, unitPrice: i.cost
+    })))
+    setReturnReason('')
+    setShowReturnModal(true)
+  }
+
+  async function handleCreateReturn() {
+    const token = localStorage.getItem('token')
+    const validItems = returnItems.filter(i => Number(i.quantity) > 0)
+    if (validItems.length === 0) { toast('اختر كمية للإرجاع', 'error'); return }
+    const subtotal = validItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0)
+    try {
+      await api.createPurchaseReturn(token, {
+        purchaseId: returnPurchase._id,
+        items: validItems, subtotal,
+        reason: returnReason
+      })
+      toast('تم تسجيل مرتجع المشتريات', 'success')
+      setShowReturnModal(false); setReturnPurchase(null); loadPurchaseReturns(); loadProducts()
+      window.dispatchEvent(new Event('dataChanged'))
+    } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function handleRemovePurchaseReturn(id) {
+    if (!await confirm('حذف مرتجع المشتريات؟')) return
+    const token = localStorage.getItem('token')
+    try {
+      await api.removePurchaseReturn(token, id)
+      toast('تم الحذف', 'success'); loadPurchaseReturns(); loadProducts()
+    } catch (err) { toast(err.message, 'error') }
+  }
+
   async function handleSaveSupplier(e) {
     e.preventDefault()
     const token = localStorage.getItem('token')
@@ -351,12 +400,13 @@ export default function PurchasesPage() {
                   <div style={{ display: 'flex', gap: '4px' }}>
                     <button onClick={() => setViewInvoice(p)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>عرض</button>
                     {canDelete && <button onClick={() => handleRemove(p._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
+                    <button onClick={() => openReturn(p)} style={{ background: 'var(--bg3)', color: '#f59e0b', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>مرتجع</button>
                   </div>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan="11" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
+              <tr><td colSpan="11" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
             )}
           </tbody>
         </table>
@@ -538,6 +588,39 @@ export default function PurchasesPage() {
             }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
               {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setReturnPurchase(null) }} title={`مرتجع مشتريات - فاتورة #${returnPurchase?.invoiceNo}`} width="500px">
+        {returnPurchase && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text2)' }}>المورد: {returnPurchase.supplierName}</div>
+            {returnItems.map((item, idx) => {
+              const oldReturns = purchaseReturns.filter(r => r.purchaseId === returnPurchase._id)
+              const returnedQty = oldReturns.reduce((s, r) => s + (r.items.find(i => i.productId === item.productId)?.quantity || 0), 0)
+              const maxReturn = (returnPurchase.items.find(i => i.productId === item.productId)?.quantity || 0) - returnedQty
+              return (
+                <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px', background: 'var(--bg)', borderRadius: '8px' }}>
+                  <span style={{ flex: 2, fontSize: '13px' }}>{item.name}</span>
+                  <input type="number" placeholder="الكمية" value={item.quantity || ''}
+                    onInput={e => setReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], quantity: Math.min(Number(e.target.value) || 0, maxReturn) }; return n })}
+                    style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
+                  <input type="number" placeholder="سعر الوحدة" value={item.unitPrice || ''}
+                    onInput={e => setReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], unitPrice: Number(e.target.value) || 0 }; return n })}
+                    style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--text2)', minWidth: '60px', textAlign: 'left' }}>{formatMoney(Number(item.quantity) * Number(item.unitPrice))}</span>
+                </div>
+              )
+            })}
+            <div style={{ textAlign: 'left', fontWeight: 'bold', fontSize: '14px', color: 'var(--success)' }}>
+              الإجمالي: {formatMoney(returnItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0))}
+            </div>
+            <textarea placeholder="سبب الإرجاع (اختياري)" value={returnReason} onInput={e => setReturnReason(e.target.value)} rows="2"
+              style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
+            <button onClick={handleCreateReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+              تسجيل مرتجع
             </button>
           </div>
         )}

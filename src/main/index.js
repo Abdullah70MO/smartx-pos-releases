@@ -6,7 +6,7 @@ const { login, getSession, logout, requireUser } = require('./ipc/auth')
 const bcrypt = require('bcryptjs')
 const { listProducts, saveProduct, removeProduct } = require('./ipc/products')
 const { listPurchases, createPurchase, savePurchase, removePurchase } = require('./ipc/purchases')
-const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts } = require('./ipc/inventory')
+const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches } = require('./ipc/inventory')
 const { listSales, createSale, removeSale } = require('./ipc/sales')
 const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
 const { listUsers, saveUser, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
@@ -15,6 +15,7 @@ const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ip
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, createReturn, removeReturn } = require('./ipc/returns')
+const { listPurchaseReturns, createPurchaseReturn, removePurchaseReturn } = require('./ipc/purchaseReturns')
 const { getActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
 const { logActivity, listActivity } = require('./ipc/activity')
 const { listCustomers, saveCustomer, removeCustomer } = require('./ipc/customers')
@@ -23,6 +24,8 @@ const { listSupplierPayments, createSupplierPayment, removeSupplierPayment } = r
 const { listCustomerPayments, createCustomerPayment, removeCustomerPayment } = require('./ipc/customerPayments')
 const { listTreasuries, saveTreasury, removeTreasury, addToTreasury, withdrawFromTreasury, transferBetweenTreasuries, listTransactions } = require('./ipc/treasury')
 const { CONTACT_INFO } = require('./constants')
+
+const { addBatch } = require('./ipc/inventoryHelpers')
 
 const ALL_ADMIN_PERMISSIONS = ROLES.admin.permissions
 
@@ -169,13 +172,32 @@ function registerIpc() {
     return true
   })
 
+  // Purchase Returns
+  handle('purchaseReturns:list', async ({ token }) => (requireUser(token, 'returns.view'), listPurchaseReturns(await openRealm())))
+  handle('purchaseReturns:create', async ({ token, ret }) => {
+    const r = await openRealm(); const session = requireUser(token, 'returns.create')
+    const result = createPurchaseReturn(r, session, ret)
+    try { logActivity(r, session, { action: 'مرتجع مشتريات', details: '#' + result.invoiceNo + ' - ' + result.supplierName }) } catch {}
+    return result
+  })
+  handle('purchaseReturns:remove', async ({ token, id }) => {
+    const r = await openRealm(); const session = requireUser(token)
+    removePurchaseReturn(r, id)
+    try { logActivity(r, session, { action: 'حذف مرتجع مشتريات', details: id }) } catch {}
+    return true
+  })
+
   // Shifts
   handle('shifts:getActive', async ({ token }) => (requireUser(token), getActiveShift(await openRealm(), requireUser(token).userId)))
   handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token), startingBalance))
   handle('shifts:end', async ({ token, endingBalance }) => {
     const r = await openRealm(); const session = requireUser(token)
     const result = endShift(r, session, endingBalance)
-    const diff = result.endingBalance - result.startingBalance - result.totalSales
+    const shiftStart = new Date(result.startedAt)
+    const shiftEnd = new Date(result.endedAt)
+    const shiftExpenses = r.objects('Expense').filtered('date >= $0 AND date <= $1', shiftStart, shiftEnd)
+    const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const diff = result.endingBalance - result.startingBalance - result.totalSales + totalExpenses
     if (diff < 0) {
       saveExpense(r, session, { amount: Math.abs(diff), category: 'عجز وردية', note: 'عجز - ' + result.cashierName, date: new Date().toISOString() })
     } else if (diff > 0) {
@@ -270,6 +292,8 @@ function registerIpc() {
   handle('inventory:saveAdjustment', async ({ token, adjustment }) => saveAdjustment(await openRealm(), requireUser(token, 'inventory.adjust'), adjustment))
   handle('inventory:removeAdjustment', async ({ token, id }) => (requireUser(token, 'inventory.adjust'), removeAdjustment(await openRealm(), id)))
   handle('inventory:lowStock', async ({ token }) => (requireUser(token), getLowStockProducts(await openRealm())))
+  handle('inventory:batchReport', async ({ token, query }) => (requireUser(token, 'inventory.view'), getInventoryBatchReport(await openRealm(), query)))
+  handle('inventory:productBatches', async ({ token, productId }) => (requireUser(token, 'inventory.view'), getProductBatches(await openRealm(), productId)))
 
   // Treasury
   handle('treasury:list', async ({ token }) => (requireUser(token, 'treasury.view'), listTreasuries(await openRealm())))
@@ -401,6 +425,19 @@ async function seedDatabase() {
         existingAdmin.permissions = [...ALL_ADMIN_PERMISSIONS]
       }
     })
+
+    // FIFO migration: create StockBatch for existing products
+    const existingBatches = r.objects('StockBatch')
+    if (existingBatches.length === 0) {
+      const products = r.objects('Product')
+      products.forEach(p => {
+        const stock = p.stock || 0
+        const cost = p.cost || 0
+        if (stock > 0 && cost > 0) {
+          addBatch(r, p._id, stock, cost)
+        }
+      })
+    }
   } catch (e) {
     console.error('Seed failed:', e.message)
   }

@@ -280,6 +280,35 @@ const PurchaseItemSchema = {
   }
 }
 
+const PurchaseReturnItemSchema = {
+  name: 'PurchaseReturnItem',
+  embedded: true,
+  properties: {
+    productId:  'string',
+    name:       'string',
+    quantity:   'double',
+    unitPrice:  'double',
+    cost:       'double'
+  }
+}
+
+const PurchaseReturnSchema = {
+  name: 'PurchaseReturn',
+  primaryKey: '_id',
+  properties: {
+    _id:          'string',
+    purchaseId:   'string',
+    invoiceNo:    'int',
+    supplierId:   'string',
+    supplierName: 'string',
+    items:        { type: 'list', objectType: 'PurchaseReturnItem' },
+    subtotal:     'double',
+    reason:       { type: 'string', default: '' },
+    createdBy:    'string',
+    createdAt:    'date'
+  }
+}
+
 const PurchaseSchema = {
   name: 'Purchase',
   primaryKey: '_id',
@@ -299,6 +328,19 @@ const PurchaseSchema = {
     note:          { type: 'string', default: '' },
     createdBy:     'string',
     createdAt:     'date'
+  }
+}
+
+const StockBatchSchema = {
+  name: 'StockBatch',
+  primaryKey: '_id',
+  properties: {
+    _id:        'string',
+    productId:  'string',
+    quantity:   'double',
+    cost:       'double',
+    refId:      { type: 'string', default: '' },
+    createdAt:  'date'
   }
 }
 
@@ -357,6 +399,7 @@ const TreasuryTransactionSchema = {
 const SCHEMAS = [
   UserSchema,
   ProductSchema,
+  StockBatchSchema,
   SaleItemSchema,
   SaleSchema,
   PurchaseItemSchema,
@@ -375,9 +418,11 @@ const SCHEMAS = [
   LicenseSchema,
   CounterSchema,
   TreasurySchema,
-  TreasuryTransactionSchema
+  TreasuryTransactionSchema,
+  PurchaseReturnItemSchema,
+  PurchaseReturnSchema
 ]
 
-const SCHEMA_VERSION = 20
+const SCHEMA_VERSION = 22
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

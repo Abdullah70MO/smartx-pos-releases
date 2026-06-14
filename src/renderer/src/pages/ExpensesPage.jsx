@@ -87,7 +87,7 @@ export default function ExpensesPage() {
                 </td>
               </tr>
             ))}
-            {expenses.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مصروفات</td></tr>}
+            {expenses.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مصروفات</td></tr>}
           </tbody>
         </table>
       </div>

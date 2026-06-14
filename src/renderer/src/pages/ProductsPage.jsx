@@ -277,7 +277,7 @@ export default function ProductsPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colspan="8" style={{ padding: '24px', color: '#475569' }}>لا توجد منتجات</td></tr>
+              <tr><td colSpan="8" style={{ padding: '24px', color: 'var(--text2)' }}>لا توجد منتجات</td></tr>
             )}
           </tbody>
         </table>
@@ -319,7 +319,10 @@ export default function ProductsPage() {
               <input list="unit-list" value={form.unit} onInput={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%' }} />
               <datalist id="unit-list">{units.map(u => <option key={u} value={u} />)}</datalist>
             </div>
-            <Input label="التكلفة" type="number" value={form.cost || ''} onInput={v => setForm(f => ({ ...f, cost: Number(v) }))} placeholder="التكلفة" />
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التكلفة {form.stock > 0 && <span style={{ color: 'var(--warning)', fontSize: '10px' }}>(محسوبة من المشتريات)</span>}</label>
+              <input type="number" value={form.cost || ''} onInput={v => setForm(f => ({ ...f, cost: Number(v.target.value) }))} placeholder="التكلفة" disabled={form.stock > 0} style={{ width: '100%', opacity: form.stock > 0 ? 0.6 : 1 }} />
+            </div>
             <Input label="سعر التجزئة" type="number" value={form.priceRetail || ''} onInput={v => setForm(f => ({ ...f, priceRetail: Number(v) }))} placeholder="سعر التجزئة" />
             <Input label="سعر نصف الجملة" type="number" value={form.priceHalfWholesale || ''} onInput={v => setForm(f => ({ ...f, priceHalfWholesale: Number(v) }))} placeholder="سعر نصف الجملة" />
             <Input label="سعر الجملة" type="number" value={form.priceWholesale || ''} onInput={v => setForm(f => ({ ...f, priceWholesale: Number(v) }))} placeholder="سعر الجملة" />

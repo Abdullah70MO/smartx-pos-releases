@@ -59,7 +59,7 @@ export default function ActivityLogPage() {
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{l.details || '-'}</td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد نشاطات مطابقة</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد نشاطات مطابقة</td></tr>}
           </tbody>
         </table>
       </div>

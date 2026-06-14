@@ -337,7 +337,7 @@ const [taxRate, setTaxRate] = useState(14)
         }}>
           <div style={{ fontSize: '48px' }}>⏰</div>
           <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>لا توجد وردية نشطة</div>
-          <div style={{ fontSize: '14px', color: '#aaa' }}>يجب بدء وردية جديدة قبل البيع</div>
+          <div style={{ fontSize: '14px', color: 'var(--text2)' }}>يجب بدء وردية جديدة قبل البيع</div>
           <button onClick={() => { setStartBalance(''); setShowStartShift(true) }}
             style={{ background: 'var(--success)', color: '#fff', padding: '14px 32px', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold' }}>
             بدء وردية جديدة
@@ -447,7 +447,7 @@ const [taxRate, setTaxRate] = useState(14)
               </div>
             </div>
           ))}
-          {cart.length === 0 && <div style={{ color: '#475569', fontSize: '13px', textAlign: 'center', padding: '20px' }}>السلة فارغة</div>}
+          {cart.length === 0 && <div style={{ color: 'var(--text2)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>السلة فارغة</div>}
         </div>
 
         <div style={{ borderTop: '1px solid var(--bg3)', paddingTop: '12px' }}>
@@ -663,15 +663,15 @@ const [taxRate, setTaxRate] = useState(14)
                 returnSales.slice(0, 20).map(s => (
                   <button key={s._id} onClick={() => openReturn(s)} style={{
                     background: 'var(--bg3)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px',
-                    color: 'var(--accent)', border: '1px solid #475569'
+                    color: 'var(--accent)', border: '1px solid var(--text2)'
                   }}>
                     #{s.invoiceNo} - {formatMoney(s.total)} {s.customerName ? `(${s.customerName})` : ''}
                   </button>
                 ))
               ) : returnSearch.length >= 1 ? (
-                <div style={{ color: '#475569', padding: '20px', textAlign: 'center', width: '100%' }}>لا توجد نتائج</div>
+                <div style={{ color: 'var(--text2)', padding: '20px', textAlign: 'center', width: '100%' }}>لا توجد نتائج</div>
               ) : (
-                <div style={{ color: '#475569', padding: '20px', textAlign: 'center', width: '100%', fontSize: '12px' }}>ابدأ الكتابة للبحث...</div>
+                <div style={{ color: 'var(--text2)', padding: '20px', textAlign: 'center', width: '100%', fontSize: '12px' }}>ابدأ الكتابة للبحث...</div>
               )}
             </div>
           </div>

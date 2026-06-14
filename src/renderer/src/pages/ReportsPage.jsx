@@ -11,6 +11,7 @@ export default function ReportsPage() {
   const [sales, setSales] = useState([])
   const [expenses, setExpenses] = useState([])
   const [returns, setReturns] = useState([])
+  const [purchaseReturns, setPurchaseReturns] = useState([])
   const [withdrawals, setWithdrawals] = useState([])
   const [customers, setCustomers] = useState([])
   const [suppliers, setSuppliers] = useState([])
@@ -32,7 +33,7 @@ export default function ReportsPage() {
     async function load() {
       const token = localStorage.getItem('token')
       try {
-        const [s, salesData, expensesData, returnsData, txns, customersData, suppliersData, treasuriesData] = await Promise.all([
+        const [s, salesData, expensesData, returnsData, txns, customersData, suppliersData, treasuriesData, pReturnsData] = await Promise.all([
           api.dashboardSummary(token),
           api.listSales(token),
           api.listExpenses(token),
@@ -40,10 +41,12 @@ export default function ReportsPage() {
           api.listTreasuryTransactions(token, '', 0),
           api.listCustomers(token),
           api.listSuppliers(token),
-          api.listTreasuries(token)
+          api.listTreasuries(token),
+          api.listPurchaseReturns(token).catch(() => [])
         ])
         setSummary(s); setSales(salesData)
         setExpenses(expensesData); setReturns(returnsData)
+        setPurchaseReturns(pReturnsData || [])
         setWithdrawals((txns || []).filter(t => t.type === 'personal_withdraw'))
         setTreasuryTxns(txns || [])
         setCustomers(customersData || [])
@@ -88,6 +91,7 @@ export default function ReportsPage() {
   const totalTax = filteredSalesAll.reduce((sum, s) => sum + (s.tax || 0), 0)
   const totalExpenses = filteredExpensesAll.reduce((sum, e) => sum + e.amount, 0)
   const totalReturns = filteredReturnsAll.reduce((sum, r) => sum + r.subtotal, 0)
+  const totalPurchaseReturns = purchaseReturns.filter(r => inRange(r.createdAt)).reduce((sum, r) => sum + r.subtotal, 0)
   const totalWithdrawals = filteredWithdrawalsAll.reduce((sum, w) => sum + Math.abs(w.amount), 0)
   const totalCOGS = filteredSalesAll.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
   const totalReturnCost = filteredReturnsAll.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
@@ -148,12 +152,27 @@ export default function ReportsPage() {
     return true
   })
 
+  const [batchSearch, setBatchSearch] = useState('')
+  const [batchData, setBatchData] = useState([])
+
+  useEffect(() => {
+    async function loadBatchReport() {
+      try {
+        const token = localStorage.getItem('token')
+        const data = await api.getInventoryBatchReport(token, batchSearch || undefined)
+        setBatchData(data || [])
+      } catch {}
+    }
+    loadBatchReport()
+  }, [batchSearch])
+
   const TABS = [
     { id: 'overview', label: 'نظرة عامة' },
     { id: 'sales', label: 'المبيعات' },
     { id: 'expenses', label: 'المصروفات' },
     { id: 'withdrawals', label: 'المسحوبات الشخصية' },
     { id: 'returns', label: 'المرتجعات' },
+    { id: 'inventory', label: 'المخزون' },
     { id: 'customers', label: 'العملاء' },
     { id: 'suppliers', label: 'الموردين' },
     { id: 'treasury', label: 'الخزينة' }
@@ -179,7 +198,12 @@ export default function ReportsPage() {
         <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
         <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
         <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
-        <SummaryCard label="إجمالي المرتجعات" value={formatMoney(totalReturns)} color="#f59e0b" />
+        <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
+        <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
+        <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
+        <SummaryCard label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="#f59e0b" />
+        <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="#f97316" />
+        <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="#8b5cf6" />
         <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? '#22c55e' : '#ef4444'} />
         <SummaryCard label="عدد الفواتير" value={filteredSalesAll.length} color="#3b82f6" />
         <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="#8b5cf6" />
@@ -209,7 +233,7 @@ export default function ReportsPage() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
                 <span>{p.name}</span><span style={{ color: 'var(--success)' }}>{formatMoney(p.revenue)}</span>
               </div>
-            )) : <div style={{ color: '#475569', fontSize: '13px' }}>لا توجد بيانات</div>}
+            )) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد بيانات</div>}
           </div>
         </div>
       )}
@@ -237,7 +261,7 @@ export default function ReportsPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{s.cashierName}</td>
                   </tr>
                 ))}
-                {filteredSales.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مبيعات</td></tr>}
+                {filteredSales.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مبيعات</td></tr>}
               </tbody>
             </table>
           </div>
@@ -265,7 +289,7 @@ export default function ReportsPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{e.note || '-'}</td>
                   </tr>
                 ))}
-                {filteredExpenses.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مصروفات</td></tr>}
+                {filteredExpenses.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مصروفات</td></tr>}
               </tbody>
             </table>
           </div>
@@ -294,7 +318,7 @@ export default function ReportsPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{w.treasuryName}</td>
                   </tr>
                 ))}
-                {filteredWithdrawals.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مسحوبات شخصية</td></tr>}
+                {filteredWithdrawals.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مسحوبات شخصية</td></tr>}
               </tbody>
             </table>
           </div>
@@ -324,7 +348,7 @@ export default function ReportsPage() {
                     </tr>
                   )
                 })}
-                {filteredCustomers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد بيانات عملاء</td></tr>}
+                {filteredCustomers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات عملاء</td></tr>}
               </tbody>
             </table>
           </div>
@@ -354,7 +378,7 @@ export default function ReportsPage() {
                     </tr>
                   )
                 })}
-                {filteredSuppliers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد بيانات موردين</td></tr>}
+                {filteredSuppliers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات موردين</td></tr>}
               </tbody>
             </table>
           </div>
@@ -383,10 +407,73 @@ export default function ReportsPage() {
                     <td>{r.isFullReturn ? 'كامل' : 'جزئي'}</td>
                   </tr>
                 ))}
-                {filteredReturns.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد مرتجعات</td></tr>}
+                {filteredReturns.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مرتجعات</td></tr>}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {tab === 'inventory' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input placeholder="بحث باسم المنتج أو SKU أو الباركود..." value={batchSearch}
+              onInput={e => setBatchSearch(e.target.value)}
+              style={{ flex: 1, minWidth: '200px' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text2)', alignSelf: 'center' }}>{batchData.length} منتج</span>
+          </div>
+          {(() => {
+            const totalValue = batchData.reduce((s, p) => s + p.batches.reduce((ss, b) => ss + b.total, 0), 0)
+            return (
+              <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>إجمالي تكلفة المخزون (بالقيمة الحقيقية)</span>
+                <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(totalValue)}</span>
+              </div>
+            )
+          })()}
+          {batchData.map(p => (
+            <div key={p._id} style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+                <div>
+                  <strong style={{ fontSize: '14px' }}>{p.name}</strong>
+                  {p.sku && <span style={{ fontSize: '11px', color: 'var(--text2)', marginRight: '8px' }}>SKU: {p.sku}</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--text2)' }}>
+                  <span>إجمالي المخزون: <strong style={{ color: 'var(--text)' }}>{p.stock} {p.unit}</strong></span>
+                  <span>تكلفة الأقدم: <strong style={{ color: 'var(--accent)' }}>{formatMoney(p.cost)}</strong></span>
+                </div>
+              </div>
+              {p.batches.length > 0 ? (
+                <div style={{ overflow: 'auto' }}>
+                  <table style={{ fontSize: '12px' }}>
+                    <thead>
+                      <tr>
+                        <th>الكمية</th>
+                        <th>تكلفة الوحدة</th>
+                        <th>الإجمالي</th>
+                        <th>تاريخ الشراء</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.batches.map((b, i) => (
+                        <tr key={i}>
+                          <td>{b.quantity} {p.unit}</td>
+                          <td style={{ color: 'var(--accent)' }}>{formatMoney(b.cost)}</td>
+                          <td style={{ fontWeight: 'bold' }}>{formatMoney(b.total)}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(b.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '12px', color: 'var(--text2)', fontSize: '12px', textAlign: 'center' }}>لا توجد batches (المخزون صفر)</div>
+              )}
+            </div>
+          ))}
+          {batchData.length === 0 && (
+            <div style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد منتجات</div>
+          )}
         </div>
       )}
 
@@ -424,7 +511,7 @@ export default function ReportsPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy || '-'}</td>
                   </tr>
                 ))}
-                {filteredTreasury.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد حركات</td></tr>}
+                {filteredTreasury.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد حركات</td></tr>}
               </tbody>
             </table>
           </div>

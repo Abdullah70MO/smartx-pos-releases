@@ -1,4 +1,5 @@
 const crypto = require('node:crypto')
+const { addBatch, deductFromFifo, deductFromBatch, syncProductStock } = require('./inventoryHelpers')
 
 function listAdjustments(realm) {
   return Array.from(realm.objects('InventoryAdjustment').sorted('createdAt', true)).map(a => ({
@@ -9,7 +10,7 @@ function listAdjustments(realm) {
   }))
 }
 
-function createAdjustment(realm, user, { productId, productName, type, quantity, reason, date }) {
+function createAdjustment(realm, user, { productId, productName, type, quantity, reason, date, batchId }) {
   let adjustment
   realm.write(() => {
     const product = realm.objectForPrimaryKey('Product', productId)
@@ -17,10 +18,26 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
     const oldStock = product.stock || 0
     const qty = Number(quantity)
     let newStock
-    if (type === 'add') newStock = oldStock + qty
-    else if (type === 'remove') newStock = Math.max(0, oldStock - qty)
-    else newStock = qty
-    product.stock = newStock
+    if (type === 'add') {
+      const avgCost = product.cost || 0
+      addBatch(realm, productId, qty, avgCost)
+      newStock = oldStock + qty
+    } else if (type === 'remove') {
+      if (batchId) {
+        deductFromBatch(realm, batchId, qty)
+      } else {
+        deductFromFifo(realm, productId, qty)
+      }
+      newStock = Math.max(0, oldStock - qty)
+    } else {
+      const diff = qty - oldStock
+      if (diff > 0) {
+        addBatch(realm, productId, diff, product.cost || 0)
+      } else if (diff < 0) {
+        deductFromFifo(realm, productId, -diff)
+      }
+      newStock = qty
+    }
     product.updatedAt = new Date()
     adjustment = realm.create('InventoryAdjustment', {
       _id: crypto.randomUUID(), productId, productName,
@@ -32,26 +49,63 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
   return { _id: adjustment._id, productId: adjustment.productId, productName: adjustment.productName, type: adjustment.type, quantity: adjustment.quantity, oldStock: adjustment.oldStock, newStock: adjustment.newStock, reason: adjustment.reason, createdBy: adjustment.createdBy, createdAt: adjustment.createdAt?.toISOString() }
 }
 
+function revertAdjustment(realm, adj) {
+  if (adj.type === 'add') {
+    deductFromFifo(realm, adj.productId, adj.quantity)
+  } else if (adj.type === 'remove') {
+    const product = realm.objectForPrimaryKey('Product', adj.productId)
+    addBatch(realm, adj.productId, adj.quantity, product ? product.cost || 0 : 0)
+  } else {
+    const product = realm.objectForPrimaryKey('Product', adj.productId)
+    if (product) {
+      const diff = adj.oldStock - (product.stock || 0)
+      if (diff > 0) {
+        addBatch(realm, adj.productId, diff, product.cost || 0)
+      } else if (diff < 0) {
+        deductFromFifo(realm, adj.productId, -diff)
+      }
+    }
+  }
+}
+
 function saveAdjustment(realm, user, data) {
   let adjustment
   realm.write(() => {
     adjustment = realm.objectForPrimaryKey('InventoryAdjustment', data._id)
     if (!adjustment) throw new Error('التسوية غير موجودة')
 
-    // Revert old adjustment on product stock
     const product = realm.objectForPrimaryKey('Product', data.productId)
     if (product) {
-      if (adjustment.type === 'add') product.stock -= adjustment.quantity
-      else if (adjustment.type === 'remove') product.stock += adjustment.quantity
-      else product.stock = adjustment.oldStock
+      revertAdjustment(realm, adjustment)
 
       const oldStock = product.stock || 0
       const qty = Number(data.quantity)
       let newStock
-      if (data.type === 'add') newStock = oldStock + qty
-      else if (data.type === 'remove') newStock = Math.max(0, oldStock - qty)
-      else newStock = qty
-      product.stock = newStock
+      if (data.type === 'add') {
+        addBatch(realm, data.productId, qty, product.cost || 0)
+        newStock = oldStock + qty
+      } else if (data.type === 'remove') {
+        const removeBatchId = data.batchId
+        if (removeBatchId) {
+          deductFromBatch(realm, removeBatchId, qty)
+        } else {
+          deductFromFifo(realm, data.productId, qty)
+        }
+        newStock = Math.max(0, oldStock - qty)
+      } else {
+        const diff = qty - oldStock
+        if (diff > 0) {
+          addBatch(realm, data.productId, diff, product.cost || 0)
+        } else if (diff < 0) {
+          const removeBatchId = data.batchId
+          if (removeBatchId) {
+            deductFromBatch(realm, removeBatchId, -diff)
+          } else {
+            deductFromFifo(realm, data.productId, -diff)
+          }
+        }
+        newStock = qty
+      }
       product.updatedAt = new Date()
 
       adjustment.productId = data.productId
@@ -80,11 +134,7 @@ function removeAdjustment(realm, id) {
     if (adjustment) {
       const product = realm.objectForPrimaryKey('Product', adjustment.productId)
       if (product) {
-        // Revert the adjustment on the product stock
-        if (adjustment.type === 'add') product.stock -= adjustment.quantity
-        else if (adjustment.type === 'remove') product.stock += adjustment.quantity
-        else product.stock = adjustment.oldStock
-        product.stock = Math.max(0, product.stock || 0)
+        revertAdjustment(realm, adjustment)
         product.updatedAt = new Date()
       }
       realm.delete(adjustment)
@@ -101,4 +151,32 @@ function getLowStockProducts(realm, threshold) {
   }))
 }
 
-module.exports = { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts }
+function getInventoryBatchReport(realm, query) {
+  let products
+  if (query) {
+    products = realm.objects('Product')
+      .filtered('name CONTAINS[c] $0 OR sku CONTAINS[c] $0 OR barcode CONTAINS[c] $0', query)
+  } else {
+    products = realm.objects('Product').filtered('active == true')
+  }
+  return Array.from(products).map(p => {
+    const batches = realm.objects('StockBatch').filtered('productId == $0 AND quantity > 0', p._id).sorted('createdAt')
+    return {
+      _id: p._id, name: p.name, sku: p.sku, unit: p.unit,
+      stock: p.stock, cost: p.cost,
+      batches: Array.from(batches).map(b => ({
+        quantity: b.quantity, cost: b.cost, total: b.quantity * b.cost,
+        createdAt: b.createdAt?.toISOString()
+      }))
+    }
+  })
+}
+
+function getProductBatches(realm, productId) {
+  const batches = realm.objects('StockBatch').filtered('productId == $0 AND quantity > 0', productId).sorted('createdAt')
+  return Array.from(batches).map(b => ({
+    _id: b._id, quantity: b.quantity, cost: b.cost, createdAt: b.createdAt?.toISOString()
+  }))
+}
+
+module.exports = { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches }

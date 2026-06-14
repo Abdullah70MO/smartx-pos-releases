@@ -1,6 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
-const { updateWeightedAverage, removeFromWeightedAverage } = require('./inventoryHelpers')
+const { addBatch, syncProductStock, removeBatchesByRef } = require('./inventoryHelpers')
 
 function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   if (amount === 0) return
@@ -106,9 +106,7 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
       const product = getOrCreateProduct(realm, i)
       const qty = Number(i.quantity) || 0
       const cost = Number(i.cost) || 0
-      const oldStock = product.stock || 0
-      product.stock = oldStock + qty
-      updateWeightedAverage(product, qty, cost, oldStock)
+      addBatch(realm, product._id, qty, cost, purchase._id)
       product.updatedAt = new Date()
     })
     if (supplierId) updateSupplierBalance(realm, supplierId, netCost < 0 ? 0 : netCost)
@@ -144,17 +142,33 @@ function savePurchase(realm, user, data) {
       const oldNetCost = (purchase.totalCost - (purchase.discount || 0))
       const oldSupplierId = purchase.supplierId
       const oldPaid = purchase.paid || 0
-      purchase.items.forEach(i => {
-        const product = realm.objectForPrimaryKey('Product', i.productId)
-        if (product) {
-          const qty = Number(i.quantity) || 0
-          const cost = Number(i.cost) || 0
-          const oldStock = product.stock || 0
-          product.stock = Math.max(0, oldStock - qty)
-          removeFromWeightedAverage(product, qty, cost, oldStock)
+      const oldItemsMap = {}
+      purchase.items.forEach(i => { oldItemsMap[i.productId] = Number(i.quantity) || 0 })
+      const newItemsMap = {}
+      data.items.forEach(i => { newItemsMap[i.productId] = { qty: Number(i.quantity) || 0, cost: Number(i.cost) || 0, name: i.name } })
+      const allProductIds = [...new Set([...Object.keys(oldItemsMap), ...Object.keys(newItemsMap)])]
+
+      allProductIds.forEach(pid => {
+        const oldBatches = realm.objects('StockBatch').filtered('productId == $0 AND refId == $1', pid, purchase._id)
+        const oldRemaining = Array.from(oldBatches).reduce((s, b) => s + b.quantity, 0)
+        const oldOriginal = oldItemsMap[pid] || 0
+        const consumed = oldOriginal - oldRemaining
+        realm.delete(oldBatches)
+
+        const newItem = newItemsMap[pid]
+        if (newItem) {
+          const product = getOrCreateProduct(realm, { productId: pid, name: newItem.name, cost: newItem.cost })
+          const newQty = newItem.qty
+          const netQty = Math.max(0, newQty - consumed)
+          if (netQty > 0) {
+            addBatch(realm, product._id, netQty, newItem.cost, purchase._id)
+          }
           product.updatedAt = new Date()
+        } else {
+          syncProductStock(realm, pid)
         }
       })
+
       purchase.items = data.items.map(i => ({
         productId: i.productId, name: i.name,
         quantity: Number(i.quantity), cost: Number(i.cost),
@@ -170,15 +184,6 @@ function savePurchase(realm, user, data) {
       purchase.paid = paidAmount
       purchase.paymentStatus = getPaymentStatus(newNetCost < 0 ? 0 : newNetCost, paidAmount)
       purchase.note = data.note || ''
-      data.items.forEach(i => {
-        const product = getOrCreateProduct(realm, i)
-        const qty = Number(i.quantity) || 0
-        const cost = Number(i.cost) || 0
-        const oldStock = product.stock || 0
-        product.stock = oldStock + qty
-        updateWeightedAverage(product, qty, cost, oldStock)
-        product.updatedAt = new Date()
-      })
       if (oldSupplierId) updateSupplierBalance(realm, oldSupplierId, -oldNetCost)
       if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (oldPaid > 0) {
@@ -210,9 +215,7 @@ function savePurchase(realm, user, data) {
         const product = getOrCreateProduct(realm, i)
         const qty = Number(i.quantity) || 0
         const cost = Number(i.cost) || 0
-        const oldStock = product.stock || 0
-        product.stock = oldStock + qty
-        updateWeightedAverage(product, qty, cost, oldStock)
+        addBatch(realm, product._id, qty, cost, purchase._id)
         product.updatedAt = new Date()
       })
       if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
@@ -244,16 +247,9 @@ function removePurchase(realm, id) {
   realm.write(() => {
     const purchase = realm.objectForPrimaryKey('Purchase', id)
     if (purchase) {
-      purchase.items.forEach(i => {
-        const product = realm.objectForPrimaryKey('Product', i.productId)
-        if (product) {
-          const qty = Number(i.quantity) || 0
-          const cost = Number(i.cost) || 0
-          const oldStock = product.stock || 0
-          product.stock = Math.max(0, oldStock - qty)
-          removeFromWeightedAverage(product, qty, cost, oldStock)
-        }
-      })
+      const productIds = [...new Set(purchase.items.map(i => i.productId))]
+      removeBatchesByRef(realm, purchase._id)
+      productIds.forEach(pid => syncProductStock(realm, pid))
       const remNetCost = (purchase.totalCost - (purchase.discount || 0))
       if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -remNetCost)
       const paidAmount = purchase.paid || 0

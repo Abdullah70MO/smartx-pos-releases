@@ -125,7 +125,7 @@ export default function TreasuryPage() {
           </div>
         ))}
         {treasuries.length === 0 && (
-          <div style={{ width: '100%', padding: '24px', color: '#475569', textAlign: 'center' }}>
+          <div style={{ width: '100%', padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>
             لا توجد خزائن. أضف خزينة جديدة للبدء.
           </div>
         )}
@@ -180,7 +180,7 @@ export default function TreasuryPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy || '-'}</td>
                   </tr>
                 ))}
-                {filteredTransactions.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: '#475569', textAlign: 'center' }}>لا توجد حركات</td></tr>}
+                {filteredTransactions.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد حركات</td></tr>}
               </tbody>
             </table>
           </div>

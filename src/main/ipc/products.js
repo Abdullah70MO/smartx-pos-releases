@@ -21,6 +21,8 @@ function listProducts(realm, query) {
 function saveProduct(realm, data) {
   let product
   realm.write(() => {
+    const existing = data._id ? realm.objectForPrimaryKey('Product', data._id) : null
+    const stock = Number(data.stock) ?? (existing ? existing.stock : 0)
     product = realm.create('Product', {
       _id: data._id || crypto.randomUUID(),
       sku: data.sku || 'PRD-' + Date.now(),
@@ -28,11 +30,11 @@ function saveProduct(realm, data) {
       name: data.name,
       category: data.category || '',
       unit: data.unit || '',
-      cost: Number(data.cost) || 0,
+      cost: stock > 0 && existing ? existing.cost : (Number(data.cost) || 0),
       priceRetail: Number(data.priceRetail) || 0,
       priceHalfWholesale: Number(data.priceHalfWholesale) || Number(data.priceRetail) || 0,
       priceWholesale: Number(data.priceWholesale) || Number(data.priceRetail) || 0,
-      stock: Number(data.stock) || 0,
+      stock,
       reorderPoint: Number(data.reorderPoint) || 0,
       active: data.active !== false,
       image: data.image || '',
