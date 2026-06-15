@@ -50,7 +50,7 @@ export default function Sidebar({ currentPage, onNavigate, open, onClose }) {
               />
             </div>
           ) : null}
-          <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--accent)', letterSpacing: '0.5px' }}>SMART X</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--accent)', letterSpacing: '0.5px' }}>{settings?.businessName || 'SMART X'}</div>
           <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px', fontWeight: '500' }}>{user?.name}</div>
         </div>
 

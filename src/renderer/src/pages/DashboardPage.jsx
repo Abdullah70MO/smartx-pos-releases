@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
-import { formatDateTime } from '../utils/date'
 import { formatMoney } from '../utils/money'
 
 export default function DashboardPage() {
-  const { user, license, goToReports, setPage } = useStore()
+  const { goToReports, setPage } = useStore()
   const [summary, setSummary] = useState(null)
-  const [time, setTime] = useState(new Date())
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000)
@@ -28,24 +26,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>لوحة التحكم</div>
-          <div style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDateTime(time)}</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {license?.remainingText && (
-            <span style={{
-              fontSize: '12px', fontWeight: '600', padding: '4px 12px', borderRadius: '6px',
-              background: license.remainingDays !== null && license.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
-              color: license.remainingDays !== null && license.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)'
-            }}>
-              {license.remainingText}
-            </span>
-          )}
-          <span style={{ fontSize: '13px', color: 'var(--text2)' }}>{user?.name}</span>
-        </div>
-      </div>
+      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>لوحة التحكم</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         <StatCard label="مبيعات اليوم" value={summary ? formatMoney(summary.todaySales) : '...'} color="#3b82f6" onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('sales', d, d) }} />

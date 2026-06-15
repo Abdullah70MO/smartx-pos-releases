@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './store.jsx'
 import { ToastProvider, useToast } from './components/Toast'
 import Modal from './components/Modal'
 import Sidebar from './components/Sidebar'
+import { formatDateTime } from './utils/date'
 import LoginPage from './pages/LoginPage'
 import LicensePage from './pages/LicensePage'
 import DashboardPage from './pages/DashboardPage'
@@ -61,8 +62,10 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable } = useStore()
+  const { page, setPage, user, license, settings, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable } = useStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+  useEffect(() => { const id = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(id) }, [])
   const toast = useToast()
 
   useEffect(() => {
@@ -97,11 +100,23 @@ function AppContent() {
         {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }} />}
         <Sidebar currentPage={safePage} onNavigate={(p) => { setPage(p); setSidebarOpen(false) }} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: 'var(--bg2)', borderBottom: '1px solid var(--outline)', minHeight: '40px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: 'var(--bg2)', borderBottom: '1px solid var(--outline)', minHeight: '40px', flexShrink: 0, gap: '8px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', color: 'var(--text)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>
               ☰
             </button>
-            <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '600', color: 'var(--accent)' }}>SMART X</span>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--accent)' }}>{settings?.businessName || 'SMART X'}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text2)', marginRight: '12px' }}>{formatDateTime(currentTime)}</span>
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: '12px', color: 'var(--text)', fontWeight: '500', marginLeft: '8px' }}>{user?.name}</span>
+            {license?.remainingText && (
+              <span style={{
+                fontSize: '11px', fontWeight: '600', padding: '2px 10px', borderRadius: '4px',
+                background: license.remainingDays !== null && license.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                color: license.remainingDays !== null && license.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)'
+              }}>
+                {license.remainingText}
+              </span>
+            )}
           </div>
           {license?.graceWarning && (
             <div style={{

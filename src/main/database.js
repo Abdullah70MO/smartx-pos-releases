@@ -1,6 +1,7 @@
 const Realm = require('realm')
 const path = require('path')
 const os = require('os')
+const fs = require('fs')
 const { SCHEMAS, SCHEMA_VERSION } = require('./schemas')
 
 let realm = null
@@ -11,21 +12,27 @@ function getRealmPath() {
 
 async function openRealm() {
   if (realm && !realm.isClosed) return realm
-  realm = await Realm.open({
-    path: getRealmPath(),
-    schema: SCHEMAS,
-      schemaVersion: SCHEMA_VERSION,
-      migration: (oldRealm, newRealm) => {
-        const oldVersion = oldRealm.schemaVersion
-        // Realm handles additive changes (new fields with defaults) automatically.
-        // Add manual migration cases here for breaking changes:
-        // if (oldVersion < 25) { /* rename field X to Y */ }
-        // if (oldVersion < 26) { /* change type of field Z */ }
-        if (oldVersion < 24) {
-          // v24: Added Shift.expensesTotal/withdrawalsTotal, Expense.shiftId, Return.paymentMethod
+  try {
+    realm = await Realm.open({
+      path: getRealmPath(),
+      schema: SCHEMAS,
+        schemaVersion: SCHEMA_VERSION,
+        migration: (oldRealm, newRealm) => {
+          const oldVersion = oldRealm.schemaVersion
+          if (oldVersion < 24) {
+            // v24: Added Shift.expensesTotal/withdrawalsTotal, Expense.shiftId, Return.paymentMethod
+          }
         }
-      }
-  })
+    })
+  } catch (e) {
+    if (e.message && e.message.includes('header has invalid mnemonic')) {
+      const p = getRealmPath()
+      try { if (fs.existsSync(p)) fs.unlinkSync(p) } catch {}
+      realm = await Realm.open({ path: p, schema: SCHEMAS, schemaVersion: SCHEMA_VERSION })
+    } else {
+      throw e
+    }
+  }
   return realm
 }
 
