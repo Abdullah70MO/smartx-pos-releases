@@ -76,9 +76,8 @@ function saveAdjustment(realm, user, data) {
 
     const product = realm.objectForPrimaryKey('Product', data.productId)
     if (product) {
-      revertAdjustment(realm, adjustment)
-
       const oldStock = product.stock || 0
+      revertAdjustment(realm, adjustment)
       const qty = Number(data.quantity)
       let newStock
       if (data.type === 'add') {

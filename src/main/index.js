@@ -52,7 +52,7 @@ function handle(channel, handler) {
     try {
       return await handler(...args)
     } catch (err) {
-      throw new Error(err.message)
+      throw typeof err === 'object' && err ? err : new Error(String(err))
     }
   })
 }
@@ -82,7 +82,9 @@ function registerIpc() {
   handle('license:serverCheck', async () => serverLicenseCheck(await openRealm()))
 
   // Print
-  handle('print:a4', async (html) => {
+  handle('print:a4', async ({ token, html }) => {
+    if (!html) return
+    requireUser(token, 'sales.view')
     const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
     setTimeout(() => {
@@ -106,7 +108,7 @@ function registerIpc() {
   })
 
   // Sales
-  handle('sales:list', async ({ token }) => (requireUser(token, 'sales.view'), listSales(await openRealm())))
+  handle('sales:list', async ({ token, filter }) => (requireUser(token, 'sales.view'), listSales(await openRealm(), filter)))
   handle('sales:create', async ({ token, sale }) => {
     const r = await openRealm(); const session = requireUser(token, 'sales.create')
     const result = createSale(r, session, sale)
@@ -158,7 +160,7 @@ function registerIpc() {
   handle('backup:reset', async ({ token }) => (requireUser(token, 'backup.manage'), resetDatabase()))
 
   // Returns
-  handle('returns:list', async ({ token }) => (requireUser(token, 'returns.view'), listReturns(await openRealm())))
+  handle('returns:list', async ({ token, saleId }) => (requireUser(token, 'returns.view'), listReturns(await openRealm(), saleId)))
   handle('returns:create', async ({ token, ret }) => {
     const r = await openRealm(); const session = requireUser(token, 'returns.create')
     const result = createReturn(r, session, ret)
@@ -166,7 +168,7 @@ function registerIpc() {
     return result
   })
   handle('returns:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token)
+    const r = await openRealm(); const session = requireUser(token, 'returns.create')
     removeReturn(r, id, session)
     try { logActivity(r, session, { action: 'حذف مرتجع', details: id }) } catch {}
     return true
@@ -181,25 +183,25 @@ function registerIpc() {
     return result
   })
   handle('purchaseReturns:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token)
+    const r = await openRealm(); const session = requireUser(token, 'returns.create')
     removePurchaseReturn(r, id)
     try { logActivity(r, session, { action: 'حذف مرتجع مشتريات', details: id }) } catch {}
     return true
   })
 
   // Shifts
-  handle('shifts:getActive', async ({ token }) => (requireUser(token), getActiveShift(await openRealm(), requireUser(token).userId)))
-  handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token), startingBalance))
+  handle('shifts:getActive', async ({ token }) => { const session = requireUser(token, 'shifts.view'); return getActiveShift(await openRealm(), session.userId) })
+  handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token, 'shifts.manage'), startingBalance))
   handle('shifts:end', async ({ token, endingBalance }) => {
-    const r = await openRealm(); const session = requireUser(token)
+    const r = await openRealm(); const session = requireUser(token, 'shifts.manage')
     const result = endShift(r, session, endingBalance)
     const shiftStart = new Date(result.startedAt)
     const shiftEnd = new Date(result.endedAt)
     const shiftExpenses = r.objects('Expense').filtered('date >= $0 AND date <= $1', shiftStart, shiftEnd)
     const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0)
-    const diff = result.endingBalance - result.startingBalance - result.totalSales + totalExpenses
+    const diff = result.endingBalance - result.startingBalance - result.totalSales + totalExpenses + result.withdrawalsTotal
     if (diff < 0) {
-      saveExpense(r, session, { amount: Math.abs(diff), category: 'عجز وردية', note: 'عجز - ' + result.cashierName, date: new Date().toISOString() })
+      saveExpense(r, session, { amount: Math.abs(diff), category: 'عجز وردية', note: 'عجز - ' + result.cashierName, date: new Date() })
     } else if (diff > 0) {
       const mainTreasury = r.objects('Treasury').filtered('type == "main"')[0]
       if (mainTreasury) {
@@ -209,11 +211,11 @@ function registerIpc() {
     return result
   })
   handle('shifts:list', async ({ token }) => (requireUser(token, 'shifts.view'), listShifts(await openRealm())))
-  handle('shifts:sales', async ({ token }) => (requireUser(token, 'shifts.view'), getShiftSales(await openRealm(), requireUser(token).userId)))
+  handle('shifts:sales', async ({ token }) => { const session = requireUser(token, 'shifts.view'); return getShiftSales(await openRealm(), session.userId) })
 
   // Activity
   handle('activity:list', async ({ token }) => (requireUser(token, 'activity.view'), listActivity(await openRealm())))
-  handle('activity:log', async ({ token, action, details }) => { const session = requireUser(token); logActivity(await openRealm(), session, { action, details }) })
+  handle('activity:log', async ({ token, action, details }) => { const session = requireUser(token, 'activity.view'); logActivity(await openRealm(), session, { action, details }) })
 
   // Customers
   handle('customers:list', async ({ token }) => (requireUser(token, 'customers.view'), listCustomers(await openRealm())))
@@ -291,7 +293,7 @@ function registerIpc() {
   handle('inventory:createAdjustment', async ({ token, adjustment }) => createAdjustment(await openRealm(), requireUser(token, 'inventory.adjust'), adjustment))
   handle('inventory:saveAdjustment', async ({ token, adjustment }) => saveAdjustment(await openRealm(), requireUser(token, 'inventory.adjust'), adjustment))
   handle('inventory:removeAdjustment', async ({ token, id }) => (requireUser(token, 'inventory.adjust'), removeAdjustment(await openRealm(), id)))
-  handle('inventory:lowStock', async ({ token }) => (requireUser(token), getLowStockProducts(await openRealm())))
+  handle('inventory:lowStock', async ({ token }) => (requireUser(token, 'inventory.view'), getLowStockProducts(await openRealm())))
   handle('inventory:batchReport', async ({ token, query }) => (requireUser(token, 'inventory.view'), getInventoryBatchReport(await openRealm(), query)))
   handle('inventory:productBatches', async ({ token, productId }) => (requireUser(token, 'inventory.view'), getProductBatches(await openRealm(), productId)))
 
@@ -427,22 +429,21 @@ async function seedDatabase() {
       } else if (existingAdmin.role === 'admin') {
         existingAdmin.permissions = [...ALL_ADMIN_PERMISSIONS]
       }
+      // FIFO migration: create StockBatch for existing products
+      const existingBatches = r.objects('StockBatch')
+      if (existingBatches.length === 0) {
+        const products = r.objects('Product')
+        products.forEach(p => {
+          const stock = p.stock || 0
+          const cost = p.cost || 0
+          if (stock > 0 && cost > 0) {
+            addBatch(r, p._id, stock, cost)
+          }
+        })
+      }
     })
-
-    // FIFO migration: create StockBatch for existing products
-    const existingBatches = r.objects('StockBatch')
-    if (existingBatches.length === 0) {
-      const products = r.objects('Product')
-      products.forEach(p => {
-        const stock = p.stock || 0
-        const cost = p.cost || 0
-        if (stock > 0 && cost > 0) {
-          addBatch(r, p._id, stock, cost)
-        }
-      })
-    }
   } catch (e) {
-
+    console.error('Seed error:', e)
   }
 }
 
@@ -453,15 +454,8 @@ app.whenReady().then(async () => {
   await seedDatabase()
   createWindow()
   startPeriodicCheck(await openRealm())
-  // Auto check for updates on startup (after 5s delay)
-  setTimeout(async () => {
-    try {
-      const r = await autoUpdater.checkForUpdates()
-      if (r?.updateInfo?.version && r.updateInfo.version !== app.getVersion()) {
-        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-status', { type: 'available', info: r.updateInfo }))
-      }
-    } catch {}
-  }, 5000)
+  // Auto check for updates on startup (after 5s delay) - event listener handles the response
+  setTimeout(async () => { try { await autoUpdater.checkForUpdates() } catch {} }, 5000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -469,15 +463,11 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    try {
-      openRealm().then(r => {
-        const activeShifts = r.objects('Shift').filtered('isActive == true')
-        r.write(() => {
-          activeShifts.forEach(s => { s.isActive = false; s.endedAt = new Date() })
-        })
-        closeRealm()
-      })
-    } catch(e) {}
+    openRealm().then(r => {
+      const activeShifts = r.objects('Shift').filtered('isActive == true')
+      r.write(() => { activeShifts.forEach(s => { s.isActive = false; s.endedAt = new Date() }) })
+      closeRealm()
+    }).catch(() => {})
     stopPeriodicCheck()
     app.quit()
   }

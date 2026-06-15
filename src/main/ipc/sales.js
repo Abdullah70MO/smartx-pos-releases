@@ -8,7 +8,7 @@ function updateTreasury(realm, amount, note, session, refId, refType, paymentMet
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
   if (amount < 0) {
-    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
@@ -29,8 +29,13 @@ function updateTreasury(realm, amount, note, session, refId, refType, paymentMet
   })
 }
 
-function listSales(realm) {
-  const sales = realm.objects('Sale').sorted('createdAt', true)
+function listSales(realm, filter) {
+  let sales
+  if (filter?.paidOnly) {
+    sales = realm.objects('Sale').filtered('paymentMethod != "credit" AND paid > 0').sorted('createdAt', true)
+  } else {
+    sales = realm.objects('Sale').sorted('createdAt', true)
+  }
   return Array.from(sales).map(s => ({
     _id: s._id, invoiceNo: s.invoiceNo,
     items: Array.from(s.items).map(item => ({
@@ -72,7 +77,7 @@ function createSale(realm, session, data) {
         name: item.name,
         quantity: qty,
         unitPrice: Number(item.unitPrice) || 0,
-        cost: fifoCost / qty
+        cost: qty > 0 ? fifoCost / qty : 0
       }
     })
 

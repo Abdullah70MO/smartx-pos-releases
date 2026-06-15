@@ -285,7 +285,7 @@ const [taxRate, setTaxRate] = useState(14)
   async function loadReturnSales(search) {
     if (!search || search.length < 1) { setReturnSales([]); return }
     const token = localStorage.getItem('token')
-    const data = await api.listSales(token)
+    const data = await api.listSales(token, { paidOnly: true })
     setReturnSales(data.filter(s =>
       String(s.invoiceNo).includes(search) ||
       s.customerName?.includes(search) ||
@@ -296,8 +296,7 @@ const [taxRate, setTaxRate] = useState(14)
   async function openReturn(sale) {
     setSelectedReturnSale(sale)
     const token = localStorage.getItem('token')
-    const allReturns = await api.listReturns(token)
-    const saleReturns = allReturns.filter(r => r.saleId === sale._id)
+    const saleReturns = await api.listReturns(token, sale._id)
     const returnedQtyMap = new Map()
     saleReturns.forEach(r => {
       r.items.forEach(item => {
@@ -398,14 +397,18 @@ const [taxRate, setTaxRate] = useState(14)
             </div>
           )}
           <div style={{ display: 'flex', gap: '6px', marginRight: 'auto' }}>
-            <button onClick={() => { loadReturnSales(); setShowReturnModal(true) }}
-              style={{ background: 'var(--warning)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
-              مرتجع
-            </button>
-            <button onClick={() => setShowExpenseModal(true)}
-              style={{ background: '#f59e0b', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
-              مصروف
-            </button>
+            {user?.permissions?.includes('cashier.return') && (
+              <button onClick={() => { loadReturnSales(); setShowReturnModal(true) }}
+                style={{ background: 'var(--warning)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                مرتجع
+              </button>
+            )}
+            {user?.permissions?.includes('expenses.manage') && (
+              <button onClick={() => setShowExpenseModal(true)}
+                style={{ background: '#f59e0b', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                مصروف
+              </button>
+            )}
             {!activeShift ? (
               <button onClick={() => setShowStartShift(true)}
                 style={{ background: 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>

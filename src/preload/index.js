@@ -19,7 +19,7 @@ const api = {
   removeProduct: (token, id) => ipcRenderer.invoke('products:remove', { token, id }),
 
   // Sales
-  listSales: (token) => ipcRenderer.invoke('sales:list', { token }),
+  listSales: (token, filter) => ipcRenderer.invoke('sales:list', { token, filter }),
   createSale: (token, sale) => ipcRenderer.invoke('sales:create', { token, sale }),
   removeSale: (token, id) => ipcRenderer.invoke('sales:remove', { token, id }),
 
@@ -47,7 +47,7 @@ const api = {
   resetDatabase: (token) => ipcRenderer.invoke('backup:reset', { token }),
 
   // Returns
-  listReturns: (token) => ipcRenderer.invoke('returns:list', { token }),
+  listReturns: (token, saleId) => ipcRenderer.invoke('returns:list', { token, saleId }),
   createReturn: (token, ret) => ipcRenderer.invoke('returns:create', { token, ret }),
   removeReturn: (token, id) => ipcRenderer.invoke('returns:remove', { token, id }),
 
@@ -139,7 +139,7 @@ const api = {
   },
 
   // Print
-  printA4: (html) => ipcRenderer.invoke('print:a4', html)
+  printA4: (token, html) => ipcRenderer.invoke('print:a4', { token, html })
 }
 
 contextBridge.exposeInMainWorld('smartx', api)

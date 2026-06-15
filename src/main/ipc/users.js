@@ -29,6 +29,7 @@ const ALL_PERMISSIONS = [
   'inventory.view',
   'inventory.adjust',
   'shifts.view',
+  'shifts.manage',
   'activity.view',
   'settings.view',
   'settings.manage',
@@ -56,7 +57,7 @@ const ROLES = {
       'customers.view', 'customers.manage', 'customers.payments',
       'suppliers.view', 'suppliers.manage', 'suppliers.payments',
       'inventory.view', 'inventory.adjust',
-      'shifts.view', 'activity.view',
+      'shifts.view', 'shifts.manage', 'activity.view',
       'settings.view', 'reports.view',
       'treasury.view', 'treasury.manage', 'treasury.transfer'
     ]
@@ -70,7 +71,7 @@ const ROLES = {
       'returns.view', 'returns.create',
       'expenses.view',
       'customers.view', 'suppliers.view',
-      'inventory.view', 'shifts.view',
+      'inventory.view', 'shifts.view', 'shifts.manage',
       'activity.view', 'reports.view',
       'treasury.view'
     ]

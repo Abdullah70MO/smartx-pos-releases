@@ -426,6 +426,12 @@ const SCHEMAS = [
   PurchaseReturnSchema
 ]
 
+// SCHEMA_VERSION changelog:
+//   1-23  Historical versions (additive changes only)
+//   24    Added Shift.expensesTotal, Shift.withdrawalsTotal, Expense.shiftId, Return.paymentMethod
+// When adding a breaking change (rename/type change/delete field):
+//   1. Increment SCHEMA_VERSION
+//   2. Add a case in the migration function in database.js
 const SCHEMA_VERSION = 24
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

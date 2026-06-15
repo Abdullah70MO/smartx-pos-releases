@@ -87,19 +87,23 @@ export default function ShiftsPage() {
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '13px', color: 'var(--text2)' }}>مبيعات الوردية</div>
               <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(activeShift.totalSales)}</div>
-              <button onClick={() => setShowEndModal(true)}
-                style={{ marginTop: '8px', background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>
-                إنهاء الوردية
-              </button>
+              {user?.permissions?.includes('shifts.manage') && (
+                <button onClick={() => setShowEndModal(true)}
+                  style={{ marginTop: '8px', background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>
+                  إنهاء الوردية
+                </button>
+              )}
             </div>
           </div>
         </div>
       ) : (
         <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
           <div style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px' }}>لا توجد وردية نشطة</div>
-          <button onClick={() => setShowStartModal(true)} style={{ background: 'var(--success)', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
-            بدء وردية
-          </button>
+          {user?.permissions?.includes('shifts.manage') && (
+            <button onClick={() => setShowStartModal(true)} style={{ background: 'var(--success)', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+              بدء وردية
+            </button>
+          )}
         </div>
       )}
 

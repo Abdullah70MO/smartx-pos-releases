@@ -160,11 +160,11 @@ export default function LicensePage() {
           </button>
           {showContact && (
             <div style={{ background:'var(--bg2)',padding:'20px',borderRadius:'16px',textAlign:'center',border:'1px solid var(--bg3)',marginTop:'8px' }}>
-              {(Array.isArray(contact) ? contact : []).map((item, i) => (
-                <div key={i} style={{ fontSize:'12px',color:'var(--text2)',marginBottom:'4px' }}>
-                  {item.label}: {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{item.value}</a> : item.value}
-                </div>
-              ))}
+        {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+          <div key={i} style={{ fontSize:'12px',color:'var(--text2)',marginBottom:'4px' }}>
+            {item.label}: {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{item.value}</a> : item.value}
+          </div>
+        ))}
             </div>
           )}
         </div>

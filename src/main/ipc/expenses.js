@@ -7,7 +7,7 @@ function updateTreasury(realm, amount, note, session, refId, paymentMethod) {
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
   if (amount < 0) {
-    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')

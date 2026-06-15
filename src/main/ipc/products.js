@@ -1,5 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { addBatch, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
 
 function listProducts(realm, query) {
   let products
@@ -23,6 +24,17 @@ function saveProduct(realm, data) {
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('Product', data._id) : null
     const stock = data.stock != null ? Number(data.stock) : (existing ? existing.stock : 0)
+
+    if (existing && existing.stock !== stock) {
+      const diff = stock - existing.stock
+      if (diff > 0) {
+        addBatch(realm, existing._id, diff, existing.cost || Number(data.cost) || 0)
+      } else if (diff < 0) {
+        deductFromFifo(realm, existing._id, -diff)
+      }
+      syncProductStock(realm, existing._id)
+    }
+
     product = realm.create('Product', {
       _id: data._id || crypto.randomUUID(),
       sku: data.sku || 'PRD-' + Date.now(),
@@ -53,7 +65,11 @@ function saveProduct(realm, data) {
 function removeProduct(realm, id) {
   realm.write(() => {
     const product = realm.objectForPrimaryKey('Product', id)
-    if (product) realm.delete(product)
+    if (product) {
+      const batches = realm.objects('StockBatch').filtered('productId == $0', id)
+      realm.delete(batches)
+      realm.delete(product)
+    }
   })
   return true
 }

@@ -28,7 +28,7 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
   if (amount < 0) {
-    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
@@ -136,8 +136,9 @@ function createPurchaseReturn(realm, session, data) {
 
     updateSupplierBalance(realm, purchase.supplierId, -Number(data.subtotal))
 
-    if (purchase.paymentMethod !== 'credit' && Number(data.subtotal) > 0) {
-      updateTreasury(realm, -Number(data.subtotal), 'مرتجع مشتريات فاتورة #' + purchase.invoiceNo, session, purchase.paymentMethod)
+    if ((purchase.paid || 0) > 0 && Number(data.subtotal) > 0) {
+      const refund = Math.min(Number(data.subtotal), purchase.paid || 0)
+      updateTreasury(realm, refund, 'مرتجع مشتريات فاتورة #' + purchase.invoiceNo, session, purchase.paymentMethod)
     }
   })
   return { _id: ret._id, invoiceNo: ret.invoiceNo, purchaseId: ret.purchaseId, supplierName: ret.supplierName, subtotal: ret.subtotal, reason: ret.reason, createdAt: ret.createdAt?.toISOString() }
@@ -161,16 +162,17 @@ function removePurchaseReturn(realm, id) {
 
     updateSupplierBalance(realm, ret.supplierId, Number(ret.subtotal))
 
-    if (purchase && purchase.paymentMethod !== 'credit' && Number(ret.subtotal) > 0) {
+    if (purchase && (purchase.paid || 0) > 0 && Number(ret.subtotal) > 0) {
+      const refund = Math.min(Number(ret.subtotal), purchase.paid || 0)
       const treasuryType = purchase.paymentMethod === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
       if (treasury) {
-        treasury.balance += Number(ret.subtotal)
+        treasury.balance -= refund
         treasury.updatedAt = new Date()
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
-          type: 'deposit', amount: Number(ret.subtotal),
+          type: 'withdraw', amount: -refund,
           note: 'إلغاء مرتجع مشتريات #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
           paymentMethod: purchase.paymentMethod,
           createdBy: 'system', createdAt: new Date()

@@ -68,7 +68,7 @@ function AppContent() {
     if (updateAvailable && page !== 'settings') {
       toast(`يتوفر إصدار جديد v${updateAvailable} — افتح الإعدادات للتحميل`, 'info', 6000)
     }
-  }, [updateAvailable])
+  }, [updateAvailable, page])
 
   if (page === 'loading') {
     return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:'18px',color:'var(--text2)' }}>جاري التحميل...</div>

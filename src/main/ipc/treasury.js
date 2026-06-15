@@ -120,6 +120,7 @@ function withdrawFromTreasury(realm, data, session) {
 function transferBetweenTreasuries(realm, data, session) {
   const amount = Number(data.amount)
   if (amount <= 0) throw new Error('المبلغ يجب أن يكون أكبر من صفر')
+  if (data.fromTreasuryId === data.toTreasuryId) throw new Error('لا يمكن التحويل إلى نفس الخزينة')
   realm.write(() => {
     const from = realm.objectForPrimaryKey('Treasury', data.fromTreasuryId)
     const to = realm.objectForPrimaryKey('Treasury', data.toTreasuryId)

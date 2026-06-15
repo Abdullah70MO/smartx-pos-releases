@@ -575,8 +575,8 @@ export default function SettingsPage() {
         <Section title="الدعم الفني">
           {contact.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {contact.map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', padding: '10px 14px', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--outline)' }}>
+      {contact.filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', padding: '10px 14px', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--outline)' }}>
                   <span style={{ color: 'var(--text2)', minWidth: '80px' }}>{item.label}:</span>
                   <span style={{ color: 'var(--text)', fontWeight: '500' }}>{item.value}</span>
                   {item.link && (

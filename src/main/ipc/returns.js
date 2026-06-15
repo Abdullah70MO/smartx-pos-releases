@@ -1,6 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
-const { returnToFifo, deductFromFifo } = require('./inventoryHelpers')
+const { returnToFifo, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
 
 function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount === 0) return
@@ -8,7 +8,7 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
   if (amount < 0) {
-    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
@@ -28,8 +28,13 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   })
 }
 
-function listReturns(realm) {
-  const returns = realm.objects('Return').sorted('createdAt', true)
+function listReturns(realm, saleId) {
+  let returns
+  if (saleId) {
+    returns = realm.objects('Return').filtered('saleId == $0', saleId).sorted('createdAt', true)
+  } else {
+    returns = realm.objects('Return').sorted('createdAt', true)
+  }
   return Array.from(returns).map(r => ({
     _id: r._id, saleId: r.saleId, invoiceNo: r.invoiceNo,
     items: Array.from(r.items).map(item => ({
