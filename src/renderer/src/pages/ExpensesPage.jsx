@@ -60,7 +60,7 @@ export default function ExpensesPage() {
   const pmLabel = { cash: 'نقداً', card: 'بطاقة' }
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المصروفات</h1>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

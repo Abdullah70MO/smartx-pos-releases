@@ -9,7 +9,7 @@ const { listPurchases, createPurchase, savePurchase, removePurchase } = require(
 const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches } = require('./ipc/inventory')
 const { listSales, createSale, removeSale } = require('./ipc/sales')
 const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
-const { listUsers, saveUser, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
+const { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
@@ -145,6 +145,7 @@ function registerIpc() {
     try { logActivity(r, session, { action: user._id ? 'تعديل مستخدم' : 'إضافة مستخدم', details: user.username }) } catch {}
     return result
   })
+  handle('users:toggleActive', async ({ token, id }) => { const r = await openRealm(); requireUser(token, 'users.manage'); return toggleUserActive(r, id) })
 
   // Settings
   handle('settings:get', async ({ token }) => (requireUser(token, 'settings.view'), getSettings(await openRealm())))

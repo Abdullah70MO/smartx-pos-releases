@@ -3,6 +3,7 @@ import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
+import { useConfirm } from '../components/ConfirmModal'
 
 const SECTIONS = [
   { id: 'dashboard', label: 'لوحة التحكم' },
@@ -43,7 +44,7 @@ function getManagePerms(sectionId) {
     treasury: ['treasury.view', 'treasury.manage', 'treasury.transfer'],
     reports: ['reports.view'],
     users: ['users.view', 'users.manage'],
-    shifts: ['shifts.view'],
+    shifts: ['shifts.view', 'shifts.manage'],
     activity: ['activity.view'],
     settings: ['settings.view', 'settings.manage']
   }
@@ -73,7 +74,7 @@ function getRolePerms(role) {
       level: (s.id === 'products' || s.id === 'expenses' || s.id === 'treasury') ? 'manage' : 'view'
     })),
     cashier: SECTIONS.map(s => {
-      const levels = { cashier: 'manage', sales: 'view', returns: 'view', products: 'view', customers: 'view', shifts: 'view', dashboard: 'view', treasury: 'view' }
+      const levels = { cashier: 'manage', sales: 'view', returns: 'view', products: 'view', customers: 'view', expenses: 'manage', shifts: 'manage', dashboard: 'view', treasury: 'view' }
       return { section: s.id, level: levels[s.id] || 'hidden' }
     }),
     employee: SECTIONS.map(s => {
@@ -99,6 +100,7 @@ const ROLE_COLORS = { admin: 'var(--accent)', general_manager: '#8b5cf6', superv
 export default function UsersPage() {
   const { user } = useStore()
   const toast = useToast()
+  const { showConfirm, ConfirmDialog } = useConfirm()
   const canManage = user?.permissions?.includes('users.manage')
   const [users, setUsers] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -110,6 +112,13 @@ export default function UsersPage() {
   async function load() {
     const token = localStorage.getItem('token')
     try { setUsers(await api.listUsers(token)) } catch {}
+  }
+
+  async function handleToggleActive(u) {
+    const confirmed = await showConfirm({ title: u.active ? 'تعطيل المستخدم' : 'تفعيل المستخدم', message: `هل أنت متأكد من ${u.active ? 'تعطيل' : 'تفعيل'} المستخدم "${u.name}"؟` })
+    if (!confirmed) return
+    const token = localStorage.getItem('token')
+    try { await api.toggleUserActive(token, u._id); load(); toast(`${u.active ? 'تم التعطيل' : 'تم التفعيل'}`, 'success') } catch (e) { toast(e.message, 'error') }
   }
 
   function openEdit(u) {
@@ -145,7 +154,7 @@ export default function UsersPage() {
   const roleKeys = ['admin', 'general_manager', 'supervisor', 'cashier', 'employee']
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المستخدمين</h1>
         {canManage && <button onClick={() => {
@@ -171,7 +180,10 @@ export default function UsersPage() {
                 </td>
                 <td>{u.active ? <span style={{ color: 'var(--success)' }}>نشط</span> : <span style={{ color: 'var(--danger)' }}>غير نشط</span>}</td>
                 <td>
-                  {canManage && <button onClick={() => openEdit(u)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>تعديل</button>}
+                  {canManage && <>
+                    <button onClick={() => openEdit(u)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', marginLeft: '4px' }}>تعديل</button>
+                    <button onClick={() => handleToggleActive(u)} style={{ background: 'var(--bg3)', color: u.active ? 'var(--danger)' : 'var(--success)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>{u.active ? 'تعطيل' : 'تفعيل'}</button>
+                  </>}
                 </td>
               </tr>
             ))}
@@ -247,6 +259,7 @@ export default function UsersPage() {
           </button>}
         </form>
       </Modal>
+      <ConfirmDialog />
     </div>
   )
 }

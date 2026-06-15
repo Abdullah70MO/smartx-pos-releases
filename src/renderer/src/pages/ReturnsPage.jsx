@@ -137,7 +137,7 @@ export default function ReturnsPage() {
   })
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <h1 style={{ fontSize: '20px', marginBottom: '16px' }}>المرتجع</h1>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>

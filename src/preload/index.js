@@ -31,6 +31,7 @@ const api = {
   // Users
   listUsers: (token) => ipcRenderer.invoke('users:list', { token }),
   saveUser: (token, user) => ipcRenderer.invoke('users:save', { token, user }),
+  toggleUserActive: (token, id) => ipcRenderer.invoke('users:toggleActive', { token, id }),
 
   // Settings
   getSettings: (token) => ipcRenderer.invoke('settings:get', { token }),

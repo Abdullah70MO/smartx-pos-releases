@@ -90,7 +90,7 @@ export default function CustomersPage() {
   )
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>عملاء آجل</h1>
         {canManage && <button onClick={() => { setEdit(null); setForm({ name: '', phone: '', commercialReg: '', taxReg: '', address: '', notes: '', previousDebt: '' }); setShowModal(true) }}

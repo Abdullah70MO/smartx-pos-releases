@@ -360,7 +360,7 @@ export default function PurchasesPage() {
   })
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>فواتير الشراء</h1>
         {canCreate && <button onClick={openNew} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ فاتورة شراء</button>}

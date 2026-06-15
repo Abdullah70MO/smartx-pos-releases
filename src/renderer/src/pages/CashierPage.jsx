@@ -365,7 +365,7 @@ const [taxRate, setTaxRate] = useState(14)
     : []
 
   return (
-    <div style={{ display: 'flex', height: '100vh', position: 'relative' }}>
+    <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
       {!activeShift && shiftLoaded && !showStartShift && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 500,
@@ -397,13 +397,13 @@ const [taxRate, setTaxRate] = useState(14)
             </div>
           )}
           <div style={{ display: 'flex', gap: '6px', marginRight: 'auto' }}>
-            {user?.permissions?.includes('cashier.return') && (
+            {user?.permissions?.includes('cashier.access') && (
               <button onClick={() => { loadReturnSales(); setShowReturnModal(true) }}
                 style={{ background: 'var(--warning)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                 مرتجع
               </button>
             )}
-            {user?.permissions?.includes('expenses.manage') && (
+            {user?.permissions?.includes('cashier.access') && (
               <button onClick={() => setShowExpenseModal(true)}
                 style={{ background: '#f59e0b', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                 مصروف

@@ -93,7 +93,7 @@ export default function InventoryPage() {
   const typeColors = { add: '#22c55e', remove: '#ef4444', set: '#3b82f6' }
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المخزون</h1>
         {canAdjust && <button onClick={() => { setEditAdjustment(null); setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '', batchId: '' }); setProductBatches([]); setShowModal(true) }}

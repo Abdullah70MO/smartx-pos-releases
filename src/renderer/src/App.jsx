@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { StoreProvider, useStore } from './store.jsx'
 import { ToastProvider, useToast } from './components/Toast'
 import Modal from './components/Modal'
@@ -62,6 +62,7 @@ const PAGES = {
 
 function AppContent() {
   const { page, setPage, user, license, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable } = useStore()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -93,8 +94,15 @@ function AppContent() {
   return (
     <>
       <div style={{ display: 'flex', height: '100vh' }}>
-        <Sidebar currentPage={safePage} onNavigate={setPage} />
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }} />}
+        <Sidebar currentPage={safePage} onNavigate={(p) => { setPage(p); setSidebarOpen(false) }} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: 'var(--bg2)', borderBottom: '1px solid var(--outline)', minHeight: '40px', flexShrink: 0 }}>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', color: 'var(--text)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>
+              ☰
+            </button>
+            <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '600', color: 'var(--accent)' }}>SMART X</span>
+          </div>
           {license?.graceWarning && (
             <div style={{
               background: '#f97316', color: '#fff', padding: '8px 16px',
@@ -103,7 +111,7 @@ function AppContent() {
               سيتم تعطيل التطبيق خلال يومين بسبب انقطاع الإنترنت - يرجى الاتصال بالإنترنت لتجديد الترخيص
             </div>
           )}
-          <PageComponent />
+          <div style={{ flex: 1, height: 0 }}><PageComponent /></div>
         </div>
       </div>
 

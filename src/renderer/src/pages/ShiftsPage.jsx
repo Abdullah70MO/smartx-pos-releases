@@ -72,7 +72,7 @@ export default function ShiftsPage() {
   })
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <h1 style={{ fontSize: '20px', marginBottom: '16px' }}>الورديات</h1>
 
       {/* Active shift */}

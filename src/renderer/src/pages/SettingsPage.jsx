@@ -270,7 +270,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div style={{ padding: '24px', overflow: 'auto', height: '100vh', background: 'var(--bg)' }}>
+    <div style={{ padding: '24px', overflow: 'auto', height: '100%', background: 'var(--bg)' }}>
       <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '24px', color: 'var(--text)' }}>الإعدادات</h1>
 
       <div className="settings-layout" style={{ display: 'grid', gap: '20px', maxWidth: '1120px' }}>

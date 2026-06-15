@@ -27,7 +27,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>لوحة التحكم</div>

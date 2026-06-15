@@ -82,7 +82,8 @@ const ROLES = {
       'dashboard.view', 'cashier.access', 'cashier.return',
       'products.view',
       'sales.create', 'returns.create',
-      'customers.view', 'shifts.view'
+      'expenses.manage',
+      'customers.view', 'shifts.view', 'shifts.manage'
     ]
   },
   employee: {
@@ -134,4 +135,11 @@ function saveUser(realm, data) {
   return { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], active: user.active, createdAt: user.createdAt?.toISOString() }
 }
 
-module.exports = { listUsers, saveUser, ROLES, ALL_PERMISSIONS }
+function toggleUserActive(realm, id) {
+  const user = realm.objectForPrimaryKey('User', id)
+  if (!user) throw new Error('المستخدم غير موجود')
+  realm.write(() => { user.active = !user.active })
+  return { _id: user._id, name: user.name, active: user.active }
+}
+
+module.exports = { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS }

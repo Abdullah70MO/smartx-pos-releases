@@ -229,7 +229,7 @@ export default function ProductsPage() {
   )
 
   return (
-    <div style={{ padding: '20px', overflow: 'auto', height: '100vh' }}>
+    <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المنتجات</h1>
         <div style={{ display: 'flex', gap: '6px' }}>
