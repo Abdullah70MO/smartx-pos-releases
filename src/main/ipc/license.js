@@ -247,7 +247,7 @@ function checkLicense(realm) {
       result.remainingDays = 0
       result.remainingText = 'تم اكتشاف تغيير في تاريخ النظام - الترخيص ملغي'
     } else {
-      const effectiveMax = license ? new Date(Math.max(maxSeen.getTime(), nowMs)) : maxSeen
+      const effectiveMax = new Date(Math.max(maxSeen.getTime(), nowMs))
       const elapsed = Math.floor((effectiveMax - trialStart) / (1000 * 60 * 60 * 24))
       if (elapsed >= TRIAL_DAYS) {
         expired = true
@@ -259,14 +259,12 @@ function checkLicense(realm) {
         result.remainingText = 'تجربة - باقي ' + result.remainingDays + ' يوم'
       }
 
-      if (license) {
-        writePersistentLicense({
-          hwid,
-          trialStartedAt: trialStart.toISOString(),
-          maxDateSeen: effectiveMax.toISOString(),
-          activated: false
-        })
-      }
+      writePersistentLicense({
+        hwid,
+        trialStartedAt: trialStart.toISOString(),
+        maxDateSeen: effectiveMax.toISOString(),
+        activated: false
+      })
     }
   }
 
