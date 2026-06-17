@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'preact/hooks'
+import { Fragment } from 'preact'
+import { useState, useEffect, useMemo } from 'preact/hooks'
 import api from '../api'
 import { useToast } from '../components/Toast'
 import Modal from '../components/Modal'
@@ -7,7 +8,8 @@ import { formatMoney } from '../utils/money'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
-import { printA4 } from '../utils/print'
+import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import { printA4, printThermal } from '../utils/print'
 
 export default function SalesPage() {
   const { user } = useStore()
@@ -19,6 +21,7 @@ export default function SalesPage() {
   const [error, setError] = useState(null)
   const [viewInvoice, setViewInvoice] = useState(null)
   const [settings, setSettings] = useState(null)
+  const [customers, setCustomers] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
 
   useEffect(() => { load() }, [])
@@ -31,6 +34,8 @@ export default function SalesPage() {
       setError(null)
       const s = await api.getSettings(token)
       setSettings(s)
+      const c = await api.listCustomers(token)
+      setCustomers(c)
     } catch (err) { setError(err.message) }
   }
 
@@ -44,13 +49,13 @@ export default function SalesPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filtered = sales.filter(s => {
+  const filtered = useMemo(() => sales.filter(s => {
     const q = search.q
     const matchQ = !q || String(s.invoiceNo).includes(q) || s.customerName?.includes(q) || s.cashierName?.includes(q) || s.customerPhone?.includes(q)
     const matchDate = (!search.dateFrom || new Date(s.createdAt) >= new Date(search.dateFrom)) &&
       (!search.dateTo || new Date(s.createdAt) <= new Date(search.dateTo + 'T23:59:59'))
     return matchQ && matchDate
-  })
+  }), [sales, search])
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
@@ -77,8 +82,8 @@ export default function SalesPage() {
           </thead>
           <tbody>
             {filtered.map(s => (
-              <>
-                <tr key={s._id} onClick={() => setExpanded(expanded === s._id ? null : s._id)} style={{ cursor: 'pointer' }}>
+              <Fragment key={s._id}>
+                <tr onClick={() => setExpanded(expanded === s._id ? null : s._id)} style={{ cursor: 'pointer' }}>
                   <td style={{ fontWeight: 'bold', color: 'var(--accent)' }}>#{s.invoiceNo}</td>
                   <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(s.createdAt)}</td>
                   <td>{s.customerName || '-'}</td>
@@ -91,7 +96,7 @@ export default function SalesPage() {
                   </td>
                 </tr>
                 {expanded === s._id && (
-                  <tr key={`items-${s._id}`}>
+                  <tr>
                     <td colSpan="7" style={{ padding: '12px 24px', background: 'var(--bg)' }}>
                       <table style={{ maxWidth: '500px', margin: '0 auto' }}>
                         <thead>
@@ -112,7 +117,7 @@ export default function SalesPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
             {error && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--danger)', textAlign: 'center' }}>خطأ: {error}</td></tr>}
             {filtered.length === 0 && !error && (
@@ -125,12 +130,30 @@ export default function SalesPage() {
       <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة #${viewInvoice?.invoiceNo}`} width="380px">
         {viewInvoice && (
           <div style={{ fontSize: '12px', textAlign: 'center' }} id="invoice-print">
-            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '2px' }}>{settings?.businessName || 'SMART X'}</div>
-            {settings?.phone && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>هاتف: {settings.phone}</div>}
-            {settings?.address && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>{settings.address}</div>}
+            {settings?.showBusinessName !== false && <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '2px' }}>{settings?.businessName || 'SMART X'}</div>}
+            {settings?.showLogo !== false && settings?.logoDataUrl && <div style={{ marginBottom: '4px' }}><img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '50px' }} /></div>}
+            {settings?.showPhone !== false && settings?.phone && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>هاتف: {settings.phone}</div>}
+            {settings?.showEmail !== false && settings?.email && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>بريد: {settings.email}</div>}
+            {settings?.showAddress !== false && settings?.address && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>{settings.address}</div>}
+            {settings?.showCommercialReg && settings?.commercialRegistration && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>سجل تجاري: {settings.commercialRegistration}</div>}
+            {settings?.showTaxReg && settings?.taxNumber && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>رقم ضريبي: {settings.taxNumber}</div>}
             <div style={{ color: 'var(--text2)', margin: '6px 0 10px' }}>فاتورة #{viewInvoice.invoiceNo}</div>
             <div style={{ color: 'var(--text2)', marginBottom: '4px', fontSize: '11px' }}>{formatDateTime(viewInvoice.createdAt)}</div>
-            {viewInvoice.customerName && <div style={{ marginBottom: '8px', color: 'var(--text2)' }}>العميل: {viewInvoice.customerName}{viewInvoice.customerPhone ? ` - ${viewInvoice.customerPhone}` : ''}</div>}
+            {settings?.showClientInfo !== false && viewInvoice.customerName && <div style={{ marginBottom: '8px', color: 'var(--text2)', fontSize: '11px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--text)' }}>{viewInvoice.customerName}</div>
+              {viewInvoice.customerPhone && <div>الهاتف: {viewInvoice.customerPhone}</div>}
+              {(() => {
+                if (!customers) return null
+                const c = customers.find(x => x.name === viewInvoice.customerName)
+                if (!c) return null
+                return <>
+                  {c.commercialReg && <div>سجل تجاري: {c.commercialReg}</div>}
+                  {c.taxReg && <div>سجل ضريبي: {c.taxReg}</div>}
+                  {c.address && <div>العنوان: {c.address}</div>}
+                </>
+              })()}
+            </div>}
+            {settings?.showProductsTable !== false && (<>
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
             {viewInvoice.items?.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
@@ -139,27 +162,41 @@ export default function SalesPage() {
               </div>
             ))}
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
+            </>)}
+            {settings?.showTotals !== false && (<>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}><span>المجموع</span><span>{formatMoney(viewInvoice.subtotal)}</span></div>
             {viewInvoice.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(viewInvoice.discount)}</span></div>}
             {viewInvoice.tax > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الضريبة</span><span>{formatMoney(viewInvoice.tax)}</span></div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 'bold', marginTop: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '4px', borderTop: '2px solid var(--bg3)', paddingTop: '4px' }}>
               <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.total)}</span>
             </div>
-            {viewInvoice.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>المدفوع</span><span>{formatMoney(viewInvoice.paid)}</span></div>}
+            {viewInvoice.previousDebt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل</span><span style={{ color: 'var(--danger)' }}>{formatMoney(viewInvoice.previousDebt)}</span></div>}
+            {viewInvoice.previousCredit > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--success)' }}>دين مستحق للعميل</span><span style={{ color: 'var(--success)' }}>-{formatMoney(viewInvoice.previousCredit)}</span></div>}
+            {settings?.showPaid !== false && viewInvoice.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>المدفوع</span><span>{formatMoney(viewInvoice.paid)}</span></div>}
+            {settings?.showPaid !== false && viewInvoice.paymentMethod === 'credit' && (viewInvoice.paid || 0) < viewInvoice.total && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: 'var(--danger)' }}><span>رصيد مستحق من العميل</span><span>{formatMoney(viewInvoice.total - (viewInvoice.paid || 0))}</span></div>}
+            {(() => {
+              const rem = (viewInvoice.total || 0) - (viewInvoice.paid || 0)
+              const totalRem = rem + (viewInvoice.previousDebt || 0) - (viewInvoice.previousCredit || 0)
+              if (totalRem <= 0 && rem <= 0) return null
+              return <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', fontWeight: 'bold', borderTop: '1px solid var(--bg3)', paddingTop: '4px' }}>
+                <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
+              </div>
+            })()}
             <div style={{ marginTop: '4px', color: 'var(--text2)' }}>طريقة الدفع: {viewInvoice.paymentMethod === 'card' ? 'بطاقة' : viewInvoice.paymentMethod === 'credit' ? 'آجل' : 'نقداً'}</div>
-            {viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316' }}>ملاحظة: {viewInvoice.note}</div>}
-            <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>
-            {settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
+            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316' }}>ملاحظة: {viewInvoice.note}</div>}
+            {settings?.showCashier !== false && <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>}
+            {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
             <button onClick={() => {
               if (settings?.printDefaultSize === 'a4') {
-                printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} />)
+                printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
               } else {
-                window.print()
+                printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
               }
             }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
               {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
             </button>
+            </>)}
           </div>
         )}
       </Modal>

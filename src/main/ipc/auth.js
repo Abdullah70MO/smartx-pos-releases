@@ -31,11 +31,21 @@ function logout(token) {
   return true
 }
 
-function requireUser(token, permission) {
+function requireUser(token, permission, realm) {
   const session = sessions.get(token)
   if (!session) throw new Error('انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى')
-  if (permission && !session.permissions.includes(permission) && session.role !== 'admin') {
-    throw new Error('ليس لديك صلاحية للقيام بهذا الإجراء')
+  if (realm) {
+    const user = realm.objectForPrimaryKey('User', session.userId)
+    if (!user || !user.active) {
+      sessions.delete(token)
+      throw new Error('تم تعطيل هذا الحساب')
+    }
+  }
+  if (permission) {
+    const perms = Array.isArray(permission) ? permission : [permission]
+    if (!perms.some(p => session.permissions.includes(p)) && session.role !== 'admin') {
+      throw new Error('ليس لديك صلاحية للقيام بهذا الإجراء')
+    }
   }
   return session
 }

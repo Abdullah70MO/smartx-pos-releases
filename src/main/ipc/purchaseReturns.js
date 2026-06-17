@@ -73,6 +73,25 @@ function listPurchaseReturns(realm) {
         quantity: item.quantity, unitPrice: item.unitPrice, cost: item.cost
       })),
       subtotal: r.subtotal, reason: r.reason,
+      refundAmount: r.refundAmount, paymentMethod: r.paymentMethod,
+      createdBy: r.createdBy, createdAt: r.createdAt?.toISOString()
+    }
+  })
+}
+
+function listPurchaseReturnsBySupplier(realm, supplierName) {
+  const returns = realm.objects('PurchaseReturn').filtered('supplierName == $0', supplierName).sorted('createdAt', true)
+  return Array.from(returns).map(r => {
+    const purchase = realm.objectForPrimaryKey('Purchase', r.purchaseId)
+    return {
+      _id: r._id, purchaseId: r.purchaseId, purchaseInvoiceNo: purchase?.invoiceNo || 0,
+      invoiceNo: r.invoiceNo, supplierId: r.supplierId, supplierName: r.supplierName,
+      items: Array.from(r.items).map(item => ({
+        productId: item.productId, name: item.name,
+        quantity: item.quantity, unitPrice: item.unitPrice, cost: item.cost
+      })),
+      subtotal: r.subtotal, reason: r.reason,
+      refundAmount: r.refundAmount, paymentMethod: r.paymentMethod,
       createdBy: r.createdBy, createdAt: r.createdAt?.toISOString()
     }
   })
@@ -116,32 +135,53 @@ function createPurchaseReturn(realm, session, data) {
     })
 
     const invoiceNo = getNextInvoiceNo(realm)
+    const purchaseTaxRate = purchase.tax > 0 && purchase.totalCost > 0 ? (purchase.tax / purchase.totalCost * 100) : 0
+    const returnTaxAmount = purchaseTaxRate > 0 ? (data.subtotal * purchaseTaxRate / 100) : 0
+
+    const isCreditReturn = data.paymentMethod === 'credit'
+    const refundAmount = isCreditReturn ? 0 : Math.min(Number(data.subtotal), Number(purchase.paid || 0))
+
+    const itemsWithCost = data.items.map((item, idx) => ({
+      productId: item.productId, name: item.name,
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      cost: itemCosts[idx]?.cost || 0
+    }))
+
     ret = realm.create('PurchaseReturn', {
       _id: crypto.randomUUID(),
       purchaseId: data.purchaseId,
       invoiceNo,
       supplierId: purchase.supplierId,
       supplierName: purchase.supplierName,
-      items: data.items.map((item, idx) => ({
-        productId: item.productId, name: item.name,
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unitPrice) || 0,
-        cost: itemCosts.find(c => c.productId === item.productId)?.cost || 0
-      })),
+      items: itemsWithCost,
       subtotal: Number(data.subtotal) || 0,
       reason: data.reason || '',
+      refundAmount,
+      paymentMethod: data.paymentMethod || 'cash',
       createdBy: session.name || session.userId || 'system',
       createdAt: new Date()
     })
 
-    updateSupplierBalance(realm, purchase.supplierId, -Number(data.subtotal))
+    if (refundAmount > 0) {
+      const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
+      updateTreasury(realm, refundAmount, 'مرتجع مشتريات فاتورة #' + purchase.invoiceNo, session, pm)
+    }
+    if (purchase.tax > 0 && purchaseTaxRate > 0) {
+      const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
+      updateTreasury(realm, returnTaxAmount, 'ضريبة مرتجع مشتريات #' + purchase.invoiceNo, session, pm)
+    }
 
-    if ((purchase.paid || 0) > 0 && Number(data.subtotal) > 0) {
-      const refund = Math.min(Number(data.subtotal), purchase.paid || 0)
-      updateTreasury(realm, refund, 'مرتجع مشتريات فاتورة #' + purchase.invoiceNo, session, purchase.paymentMethod)
+    updateSupplierBalance(realm, purchase.supplierId, -Number(data.subtotal))
+    if (refundAmount > 0 && purchase.supplierId) {
+      const supplier = realm.objectForPrimaryKey('Supplier', purchase.supplierId)
+      if (supplier) {
+        supplier.totalPaid = Math.max(0, (supplier.totalPaid || 0) - refundAmount)
+        supplier.updatedAt = new Date()
+      }
     }
   })
-  return { _id: ret._id, invoiceNo: ret.invoiceNo, purchaseId: ret.purchaseId, supplierName: ret.supplierName, subtotal: ret.subtotal, reason: ret.reason, createdAt: ret.createdAt?.toISOString() }
+  return { _id: ret._id, invoiceNo: ret.invoiceNo, purchaseId: ret.purchaseId, supplierName: ret.supplierName, subtotal: ret.subtotal, reason: ret.reason, refundAmount: ret.refundAmount, paymentMethod: ret.paymentMethod, createdAt: ret.createdAt?.toISOString() }
 }
 
 function removePurchaseReturn(realm, id) {
@@ -162,21 +202,29 @@ function removePurchaseReturn(realm, id) {
 
     updateSupplierBalance(realm, ret.supplierId, Number(ret.subtotal))
 
-    if (purchase && (purchase.paid || 0) > 0 && Number(ret.subtotal) > 0) {
-      const refund = Math.min(Number(ret.subtotal), purchase.paid || 0)
-      const treasuryType = purchase.paymentMethod === 'card' ? 'bank' : 'main'
+    const retRefund = ret.refundAmount != null ? Number(ret.refundAmount) : Number(ret.subtotal)
+    if (retRefund > 0) {
+      const pm = ret.paymentMethod === 'card' ? 'card' : 'cash'
+      const treasuryType = pm === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
       if (treasury) {
-        treasury.balance -= refund
+        treasury.balance -= retRefund
         treasury.updatedAt = new Date()
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
-          type: 'withdraw', amount: -refund,
+          type: 'withdraw', amount: retRefund,
           note: 'إلغاء مرتجع مشتريات #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
-          paymentMethod: purchase.paymentMethod,
+          paymentMethod: pm,
           createdBy: 'system', createdAt: new Date()
         })
+      }
+    }
+    if (ret.supplierId && retRefund > 0) {
+      const supplier = realm.objectForPrimaryKey('Supplier', ret.supplierId)
+      if (supplier) {
+        supplier.totalPaid = (supplier.totalPaid || 0) + retRefund
+        supplier.updatedAt = new Date()
       }
     }
 
@@ -185,4 +233,4 @@ function removePurchaseReturn(realm, id) {
   return true
 }
 
-module.exports = { listPurchaseReturns, createPurchaseReturn, removePurchaseReturn }
+module.exports = { listPurchaseReturns, listPurchaseReturnsBySupplier, createPurchaseReturn, removePurchaseReturn }

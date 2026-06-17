@@ -46,6 +46,7 @@ function listSales(realm, filter) {
     paymentMethod: s.paymentMethod, paid: s.paid,
     cashierId: s.cashierId, cashierName: s.cashierName,
     customerName: s.customerName, customerPhone: s.customerPhone,
+    previousCredit: s.previousCredit, previousDebt: s.previousDebt,
     note: s.note, createdAt: s.createdAt?.toISOString()
   }))
 }
@@ -81,6 +82,15 @@ function createSale(realm, session, data) {
       }
     })
 
+    let previousDebt = 0
+    if (data.customerName) {
+      const existing = realm.objects('CreditCustomer').filtered('name == $0', data.customerName)[0]
+      if (existing) {
+        const balance = existing.totalDebt - existing.totalPaid
+        previousDebt = Math.max(0, balance)
+      }
+    }
+
     sale = realm.create('Sale', {
       _id: crypto.randomUUID(),
       invoiceNo,
@@ -92,6 +102,8 @@ function createSale(realm, session, data) {
       cashierName: session.name,
       customerName: data.customerName || '',
       customerPhone: data.customerPhone || '',
+      previousCredit: Number(data.previousCredit || 0),
+      previousDebt,
       note: data.note || '',
       createdAt: new Date()
     })
@@ -99,29 +111,35 @@ function createSale(realm, session, data) {
     if (data.paymentMethod === 'credit' && data.customerName) {
       const existing = realm.objects('CreditCustomer').filtered('name == $0', data.customerName)[0]
       if (existing) {
-        existing.totalDebt += total - Number(data.paid || 0)
-        existing.totalPaid += Number(data.paid || 0)
+        existing.totalDebt += total
+        existing.totalPaid += (Number(data.paid || 0) + Number(data.previousCredit || 0))
         existing.updatedAt = new Date()
       } else {
         realm.create('CreditCustomer', {
           _id: crypto.randomUUID(),
           name: data.customerName,
           phone: data.customerPhone || '',
-          totalDebt: total - Number(data.paid || 0),
-          totalPaid: Number(data.paid || 0),
+          totalDebt: total,
+          totalPaid: Number(data.paid || 0) + Number(data.previousCredit || 0),
           createdAt: new Date(),
           updatedAt: new Date()
         })
       }
     }
 
-    if (data.paymentMethod === 'cash' || data.paymentMethod === 'card') {
-      updateTreasury(realm, data.paid != null ? Number(data.paid) : total, 'مبيعات فاتورة #' + invoiceNo, session, sale._id, 'sale', data.paymentMethod)
+    const paidAmount = data.paid != null ? Number(data.paid) : 0
+    if (paidAmount > 0) {
+      const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
+      updateTreasury(realm, paidAmount, 'مبيعات فاتورة #' + invoiceNo, session, sale._id, 'sale', pm)
     }
 
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
     if (activeShift) {
-      activeShift.totalSales += total
+      const paid = Number(data.paid || 0)
+      activeShift.totalSales += paid
+      if (data.paymentMethod === 'cash') activeShift.cashTotal += paid
+      else if (data.paymentMethod === 'card') activeShift.cardTotal += paid
+      else if (data.paymentMethod === 'credit') activeShift.creditPaidTotal += paid
       activeShift.invoiceCount += 1
     }
   })
@@ -129,6 +147,7 @@ function createSale(realm, session, data) {
     _id: sale._id, invoiceNo: sale.invoiceNo, total: sale.total,
     paid: sale.paid, paymentMethod: sale.paymentMethod,
     customerName: sale.customerName, customerPhone: sale.customerPhone,
+    previousCredit: sale.previousCredit, previousDebt: sale.previousDebt,
     note: sale.note, createdAt: sale.createdAt?.toISOString()
   }
 }
@@ -138,25 +157,38 @@ function removeSale(realm, id) {
     const sale = realm.objectForPrimaryKey('Sale', id)
     if (sale) {
       sale.items.forEach(item => {
-        const qty = item.quantity
-        const cost = item.cost || 0
-        addBatch(realm, item.productId, qty, cost)
+        const returns = realm.objects('Return').filtered('saleId == $0', sale._id)
+        let returnedQty = 0
+        returns.forEach(r => {
+          r.items.forEach(ri => {
+            if (ri.productId === item.productId) returnedQty += ri.quantity
+          })
+        })
+        const remaining = item.quantity - returnedQty
+        if (remaining > 0) {
+          const cost = item.cost || 0
+          addBatch(realm, item.productId, remaining, cost)
+        }
       })
-      if (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card') {
-        updateTreasury(realm, -sale.paid, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', sale.paymentMethod)
+      if ((sale.paid || 0) > 0) {
+        const pm = sale.paymentMethod === 'card' ? 'card' : 'cash'
+        updateTreasury(realm, -sale.paid, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
       }
       if (sale.paymentMethod === 'credit' && sale.customerName) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
         if (customer) {
-          customer.totalDebt -= sale.total - sale.paid
-          customer.totalPaid -= sale.paid
+          customer.totalDebt -= sale.total
+          customer.totalPaid -= (sale.paid + (sale.previousCredit || 0))
           if (customer.totalDebt < 0) customer.totalDebt = 0
           if (customer.totalPaid < 0) customer.totalPaid = 0
         }
       }
       const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', sale.cashierId)[0]
       if (activeShift) {
-        activeShift.totalSales -= sale.total
+        activeShift.totalSales -= sale.paid
+        if (sale.paymentMethod === 'cash') activeShift.cashTotal -= sale.paid
+        else if (sale.paymentMethod === 'card') activeShift.cardTotal -= sale.paid
+        else if (sale.paymentMethod === 'credit') activeShift.creditPaidTotal -= sale.paid
         activeShift.invoiceCount -= 1
       }
       realm.delete(sale)

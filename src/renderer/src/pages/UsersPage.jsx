@@ -100,7 +100,7 @@ const ROLE_COLORS = { admin: 'var(--accent)', general_manager: '#8b5cf6', superv
 export default function UsersPage() {
   const { user } = useStore()
   const toast = useToast()
-  const { showConfirm, ConfirmDialog } = useConfirm()
+  const { confirm: showConfirm, ConfirmDialog } = useConfirm()
   const canManage = user?.permissions?.includes('users.manage')
   const [users, setUsers] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -115,7 +115,7 @@ export default function UsersPage() {
   }
 
   async function handleToggleActive(u) {
-    const confirmed = await showConfirm({ title: u.active ? 'تعطيل المستخدم' : 'تفعيل المستخدم', message: `هل أنت متأكد من ${u.active ? 'تعطيل' : 'تفعيل'} المستخدم "${u.name}"؟` })
+    const confirmed = await showConfirm(`هل أنت متأكد من ${u.active ? 'تعطيل' : 'تفعيل'} المستخدم "${u.name}"؟`)
     if (!confirmed) return
     const token = localStorage.getItem('token')
     try { await api.toggleUserActive(token, u._id); load(); toast(`${u.active ? 'تم التعطيل' : 'تم التفعيل'}`, 'success') } catch (e) { toast(e.message, 'error') }

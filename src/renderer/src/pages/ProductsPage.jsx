@@ -95,11 +95,6 @@ export default function ProductsPage() {
   })
 
   useEffect(() => { load() }, [])
-  useEffect(() => {
-    const handler = () => load()
-    window.addEventListener('dataChanged', handler)
-    return () => window.removeEventListener('dataChanged', handler)
-  }, [])
   useEffect(() => { if (!showModal) { setEdit(null); resetForm(); setGeneratedBarcode(''); setShowPrintBarcode(false) } }, [showModal])
 
   async function load() {
@@ -252,7 +247,7 @@ export default function ProductsPage() {
         <table>
           <thead>
             <tr>
-              <th></th><th>الاسم</th><th>الباركود</th><th>التصنيف</th><th>الوحدة</th><th>سعر التجزئة</th><th>نصف جملة</th><th>المخزون</th><th></th>
+              <th></th><th>الاسم</th><th>الباركود</th><th>التصنيف</th><th>الوحدة</th><th>التكلفة</th><th>التجزئة</th><th>نصف جملة</th><th>الجملة</th><th>المخزون</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -263,8 +258,10 @@ export default function ProductsPage() {
                 <td style={{ color: 'var(--text2)', fontSize: '12px' }}>{p.barcode || '-'}</td>
                 <td>{p.category || '-'}</td>
                 <td>{p.unit || '-'}</td>
+                <td>{formatMoney(p.cost)}</td>
                 <td>{formatMoney(p.priceRetail)}</td>
                 <td>{formatMoney(p.priceHalfWholesale)}</td>
+                <td>{formatMoney(p.priceWholesale)}</td>
                 <td>
                   <span style={{ color: p.stock <= p.reorderPoint ? 'var(--danger)' : 'var(--success)' }}>{p.stock}</span>
                 </td>
@@ -277,7 +274,7 @@ export default function ProductsPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan="9" style={{ padding: '24px', color: 'var(--text2)' }}>لا توجد منتجات</td></tr>
+              <tr><td colSpan="11" style={{ padding: '24px', color: 'var(--text2)' }}>لا توجد منتجات</td></tr>
             )}
           </tbody>
         </table>

@@ -92,6 +92,16 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
   const discAmount = Number(discount) || 0
   const netCost = Number(totalCost) - discAmount
   const pm = paymentMethod || 'credit'
+  let previousCredit = 0
+  let previousDebt = 0
+  if (supplierId) {
+    const sup = realm.objectForPrimaryKey('Supplier', supplierId)
+    if (sup) {
+      const credit = (sup.totalPaid || 0) - (sup.totalPurchases || 0)
+      previousCredit = Math.max(0, credit)
+      previousDebt = Math.max(0, -credit)
+    }
+  }
   realm.write(() => {
     const invoiceNo = getNextInvoice(realm)
     purchase = realm.create('Purchase', {
@@ -103,6 +113,8 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
       discount: discAmount,
       netCost: netCost < 0 ? 0 : netCost,
       paid: paidAmount,
+      previousCredit,
+      previousDebt,
       paymentStatus: getPaymentStatus(netCost < 0 ? 0 : netCost, paidAmount),
       items: items.map(i => ({
         productId: i.productId, name: i.name,
@@ -217,6 +229,16 @@ function savePurchase(realm, user, data) {
       }
     } else {
       const invoiceNo = getNextInvoice(realm)
+      let prevCredit = 0
+      let prevDebt = 0
+      if (data.supplierId) {
+        const sup = realm.objectForPrimaryKey('Supplier', data.supplierId)
+        if (sup) {
+          const credit = (sup.totalPaid || 0) - (sup.totalPurchases || 0)
+          prevCredit = Math.max(0, credit)
+          prevDebt = Math.max(0, -credit)
+        }
+      }
       purchase = realm.create('Purchase', {
         _id: crypto.randomUUID(),
         invoiceNo, supplierName: data.supplierName || '', supplierPhone: data.supplierPhone || '',
@@ -226,6 +248,8 @@ function savePurchase(realm, user, data) {
         discount: discAmount,
         netCost: newNetCost < 0 ? 0 : newNetCost,
         paid: paidAmount,
+        previousCredit: prevCredit,
+        previousDebt: prevDebt,
         paymentStatus: getPaymentStatus(newNetCost < 0 ? 0 : newNetCost, paidAmount),
         items: data.items.map(i => ({
           productId: i.productId, name: i.name,
@@ -244,6 +268,16 @@ function savePurchase(realm, user, data) {
       if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (paidAmount > 0) {
         updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
+        if (data.supplierId) {
+          realm.create('SupplierPayment', {
+            _id: crypto.randomUUID(),
+            supplierId: data.supplierId, supplierName: data.supplierName || '',
+            amount: paidAmount, note: 'دفعة فاتورة #' + invoiceNo,
+            paymentMethod: data.paymentMethod || 'cash',
+            createdBy: user.name, createdAt: new Date()
+          })
+          updateSupplierBalance(realm, data.supplierId, paidAmount, true)
+        }
       }
     }
   })
@@ -259,7 +293,8 @@ function flattenPurchase(p) {
       quantity: i.quantity, cost: i.cost, subtotal: i.subtotal
     })),
     totalCost: p.totalCost, discount: p.discount || 0, netCost: p.netCost || p.totalCost,
-    paid: p.paid, paymentMethod: p.paymentMethod,
+    paid: p.paid, previousCredit: p.previousCredit || 0, previousDebt: p.previousDebt || 0,
+    paymentMethod: p.paymentMethod,
     paymentStatus: p.paymentStatus || 'credit',
     note: p.note, createdBy: p.createdBy,
     createdAt: p.createdAt?.toISOString()
@@ -278,6 +313,7 @@ function removePurchase(realm, id) {
       const paidAmount = purchase.paid || 0
       if (paidAmount > 0) {
         updateTreasury(realm, paidAmount, 'إلغاء مشتريات #' + purchase.invoiceNo, 'system', purchase._id, purchase.paymentMethod)
+        if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -paidAmount, true)
       }
       realm.delete(purchase)
     }

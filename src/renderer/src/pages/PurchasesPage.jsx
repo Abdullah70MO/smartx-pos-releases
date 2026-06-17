@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks'
+import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -88,6 +88,9 @@ export default function PurchasesPage() {
   const [returnPurchase, setReturnPurchase] = useState(null)
   const [returnItems, setReturnItems] = useState([])
   const [returnReason, setReturnReason] = useState('')
+  const [returnRefundCash, setReturnRefundCash] = useState(false)
+  const [returnPaymentMethod, setReturnPaymentMethod] = useState('cash')
+  const [supplierPaidForReturn, setSupplierPaidForReturn] = useState(0)
   const [purchaseReturns, setPurchaseReturns] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [items, setItems] = useState([{ productId: '', name: '', quantity: '', cost: '' }])
@@ -112,15 +115,19 @@ export default function PurchasesPage() {
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
   const [settings, setSettings] = useState(null)
-  const categories = [...new Set(products.map(p => p.category).filter(Boolean))]
-  const units = [...new Set(products.map(p => p.unit).filter(Boolean))]
+  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products])
+  const units = useMemo(() => [...new Set(products.map(p => p.unit).filter(Boolean))], [products])
   const categoryRef = useRef(null)
 
   useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns() }, [])
   useEffect(() => {
-    const handler = () => { loadProducts(); loadSuppliers() }
+    let timer
+    const handler = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadPurchaseReturns() }, 300)
+    }
     window.addEventListener('dataChanged', handler)
-    return () => window.removeEventListener('dataChanged', handler)
+    return () => { window.removeEventListener('dataChanged', handler); clearTimeout(timer) }
   }, [])
 
   async function loadPurchases() {
@@ -203,16 +210,26 @@ export default function PurchasesPage() {
     const v = e.target.value
     setSupplierSearch(v)
     setShowSupplierDropdown(true)
-    if (supplierName && v !== supplierName) { setSupplierName(''); setSupplierPhone('') }
+    if (supplierName && v !== supplierName) { setSupplierName(''); setSupplierId(''); setSupplierPhone('') }
     const exact = suppliers.find(s => s.name === v)
     if (exact) {
       setSupplierName(exact.name)
+      setSupplierId(exact._id)
       setSupplierPhone(exact.phone || '')
     }
   }
 
   function selectSupplier(s) {
     setSupplierName(s.name); setSupplierId(s._id); setSupplierSearch(s.name); setSupplierPhone(s.phone || ''); setShowSupplierDropdown(false)
+    const credit = (s.totalPaid || 0) - (s.totalPurchases || 0)
+    const debt = (s.totalPurchases || 0) - (s.totalPaid || 0)
+    if (credit > 0) {
+      toast(`رصيد مستحق من المورد: ${formatMoney(credit)} - سيتم خصمه من قيمة الفاتورة`, 'info')
+      const remaining = Math.max(0, totalCost - credit)
+      setPaid(String(remaining))
+    } else if (debt > 0) {
+      toast(`دين مستحق للمورد: ${formatMoney(debt)}`, 'info')
+    }
   }
 
   const totalCost = items.reduce((s, i) => s + Number(i.quantity) * Number(i.cost), 0)
@@ -259,7 +276,6 @@ export default function PurchasesPage() {
       }
       setShowModal(false)
       setEditPurchase(null)
-      loadPurchases(); loadProducts()
       window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
   }
@@ -269,12 +285,15 @@ export default function PurchasesPage() {
     const token = localStorage.getItem('token')
     try {
       await api.removePurchase(token, id)
-      toast('تم الحذف', 'success'); loadPurchases(); loadProducts(); window.dispatchEvent(new Event('dataChanged'))
+      toast('تم الحذف', 'success'); window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
   }
 
   function openReturn(p) {
     setReturnPurchase(p)
+    setReturnRefundCash(false)
+    const paid = p.paymentMethod === 'credit' ? Number(p.paid || 0) : 0
+    setSupplierPaidForReturn(paid)
     setReturnItems(p.items.map(i => ({
       productId: i.productId, name: i.name,
       quantity: 0, unitPrice: i.cost
@@ -284,28 +303,21 @@ export default function PurchasesPage() {
   }
 
   async function handleCreateReturn() {
-    const token = localStorage.getItem('token')
     const validItems = returnItems.filter(i => Number(i.quantity) > 0)
     if (validItems.length === 0) { toast('اختر كمية للإرجاع', 'error'); return }
     const subtotal = validItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0)
+
+    const token = localStorage.getItem('token')
     try {
       await api.createPurchaseReturn(token, {
         purchaseId: returnPurchase._id,
         items: validItems, subtotal,
-        reason: returnReason
+        reason: returnReason,
+        paymentMethod: returnPaymentMethod === 'supplier_balance' ? 'credit' : returnPaymentMethod
       })
       toast('تم تسجيل مرتجع المشتريات', 'success')
-      setShowReturnModal(false); setReturnPurchase(null); loadPurchaseReturns(); loadProducts()
+      setShowReturnModal(false); setReturnPurchase(null)
       window.dispatchEvent(new Event('dataChanged'))
-    } catch (err) { toast(err.message, 'error') }
-  }
-
-  async function handleRemovePurchaseReturn(id) {
-    if (!await confirm('حذف مرتجع المشتريات؟')) return
-    const token = localStorage.getItem('token')
-    try {
-      await api.removePurchaseReturn(token, id)
-      toast('تم الحذف', 'success'); loadPurchaseReturns(); loadProducts()
     } catch (err) { toast(err.message, 'error') }
   }
 
@@ -313,11 +325,15 @@ export default function PurchasesPage() {
     e.preventDefault()
     const token = localStorage.getItem('token')
     try {
-      await api.saveSupplier(token, supplierForm)
+      const saved = await api.saveSupplier(token, supplierForm)
       toast('تمت إضافة المورد', 'success')
       setShowSupplierModal(false)
       setSupplierForm({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' })
-      loadSuppliers(); window.dispatchEvent(new Event('dataChanged'))
+      setSupplierName(saved.name)
+      setSupplierId(saved._id)
+      setSupplierSearch(saved.name)
+      setSupplierPhone(saved.phone || '')
+      window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
   }
 
@@ -347,7 +363,7 @@ export default function PurchasesPage() {
       setShowProductModal(false)
       setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 })
       setGeneratedBarcode(''); setShowPrintBarcode(false)
-      loadProducts(); window.dispatchEvent(new Event('dataChanged'))
+      window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
   }
 
@@ -378,7 +394,7 @@ export default function PurchasesPage() {
 
       <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
         <table>
-            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
+            <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>نوع الدفع</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p._id}>
@@ -390,6 +406,7 @@ export default function PurchasesPage() {
                 <td style={{ fontWeight: 'bold' }}>{formatMoney(p.totalCost)}</td>
                 <td style={{ fontSize: '12px', color: 'var(--danger)' }}>{p.discount > 0 ? formatMoney(p.discount) : '-'}</td>
                 <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(p.netCost)}</td>
+                <td style={{ fontSize: '12px' }}>{p.paymentMethod === 'credit' ? 'آجل' : p.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</td>
                 <td style={{ fontSize: '12px' }}>{formatMoney(p.paid || 0)}</td>
                 <td>{(s => {
                   const c = s === 'paid' ? 'var(--success)' : s === 'partial' ? 'var(--warning)' : 'var(--text2)'
@@ -406,7 +423,7 @@ export default function PurchasesPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan="11" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
+              <tr><td colSpan="12" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
             )}
           </tbody>
         </table>
@@ -438,10 +455,19 @@ export default function PurchasesPage() {
               <div style={{ flex: 2, position: 'relative', display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <input placeholder="ابحث أو اكتب اسم المنتج..." value={productSearch[idx] || ''}
                   onInput={e => handleProductSearch(idx, e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = productSearch[idx]
+                      if (/^\d{5,}$/.test(val)) {
+                        const match = products.find(p => p.barcode === val)
+                        if (match) { selectProductFromSearch(idx, match); e.preventDefault() }
+                      }
+                    }
+                  }}
                   onFocus={() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = true; return n })}
                   onBlur={() => setTimeout(() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = false; return n }), 200)}
                   style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
-                {canCreate && <button type="button" onClick={() => { setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }}
+                {canCreate && <button type="button" onClick={() => { setProductForm({ name: productSearch[idx] || '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }}
                   style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap' }}>+</button>}
                 {showProductDropdown[idx] && filteredProducts(productSearch[idx]).length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg2)', border: '1px solid var(--bg3)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflow: 'auto' }}>
@@ -491,7 +517,7 @@ export default function PurchasesPage() {
               الصافي: {formatMoney(n)}
             </div>
             if (p > 0 && p < n) return <div style={{ fontSize: '12px', color: '#f59e0b', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-              الباقي: {formatMoney(n - p)} دين على المورد
+              باقي دين مستحق للمورد: {formatMoney(n - p)}
             </div>
             return null
           })()}
@@ -530,10 +556,10 @@ export default function PurchasesPage() {
       <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة شراء #${viewInvoice?.invoiceNo}`} width="380px">
         {viewInvoice && (
           <div style={{ fontSize: '12px', textAlign: 'center' }} id="purchase-print">
-            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>فاتورة شراء</div>
+            {settings?.showBusinessName !== false && <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>فاتورة شراء</div>}
             <div style={{ color: 'var(--text2)', marginBottom: '4px' }}>رقم: #{viewInvoice.invoiceNo}</div>
             <div style={{ color: 'var(--text2)', marginBottom: '8px' }}>{formatDate(viewInvoice.createdAt)}</div>
-            {viewInvoice.supplierName && ((s => (
+            {settings?.showSupplierInfo !== false && viewInvoice.supplierName && ((s => (
               <div style={{ marginBottom: '8px', color: 'var(--text2)', fontSize: '11px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--text)' }}>{viewInvoice.supplierName}</div>
                 {viewInvoice.supplierPhone && <div>الهاتف: {viewInvoice.supplierPhone}</div>}
@@ -543,6 +569,7 @@ export default function PurchasesPage() {
                 {s?.address && <div>العنوان: {s.address}</div>}
               </div>
             ))(suppliers.find(s => s._id === viewInvoice.supplierId)))}
+            {settings?.showProductsTable !== false && (<>
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
             {viewInvoice.items?.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
@@ -551,6 +578,8 @@ export default function PurchasesPage() {
               </div>
             ))}
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
+            </>)}
+            {settings?.showTotals !== false && (<>
             {(s => {
               const l = s === 'paid' ? 'مدفوعة' : s === 'partial' ? 'مدفوعة جزئياً' : 'آجل'
               return <div style={{ marginTop: '4px', color: 'var(--text2)', fontSize: '11px' }}>الحالة: {l}</div>
@@ -567,18 +596,37 @@ export default function PurchasesPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
               <span>الصافي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.netCost)}</span>
             </div>
-            {viewInvoice.paid > 0 && (
+            {viewInvoice.previousCredit > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
+                <span style={{ color: 'var(--success)' }}>رصيد مستحق من المورد (خصم)</span><span style={{ color: 'var(--success)' }}>-{formatMoney(viewInvoice.previousCredit)}</span>
+              </div>
+            )}
+            {viewInvoice.previousDebt > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
+                <span style={{ color: 'var(--warning)' }}>دين مستحق للمورد (سابق)</span><span style={{ color: 'var(--warning)' }}>{formatMoney(viewInvoice.previousDebt)}</span>
+              </div>
+            )}
+            </>)}
+            {settings?.showPaid !== false && viewInvoice.paid > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
                 <span>المدفوع</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.paid)}</span>
               </div>
             )}
-            {(viewInvoice.paid || 0) < viewInvoice.netCost && (
+            {settings?.showPaid !== false && (viewInvoice.paid || 0) < viewInvoice.netCost && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', color: 'var(--warning)' }}>
-                <span>الباقي</span><span>{formatMoney(viewInvoice.netCost - (viewInvoice.paid || 0))}</span>
+                <span>دين مستحق للمورد</span><span>{formatMoney(viewInvoice.netCost - (viewInvoice.paid || 0))}</span>
               </div>
             )}
-            {viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{viewInvoice.note}</div>}
-            <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>
+            {(() => {
+              const rem = (viewInvoice.netCost || 0) - (viewInvoice.paid || 0)
+              const totalRem = rem + (viewInvoice.previousDebt || 0) - (viewInvoice.previousCredit || 0)
+              if (totalRem <= 0 && rem <= 0) return null
+              return <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', fontWeight: 'bold', borderTop: '1px solid var(--bg3)', paddingTop: '4px' }}>
+                <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
+              </div>
+            })()}
+            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{viewInvoice.note}</div>}
+            {settings?.showCashier !== false && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>}
             <button onClick={() => {
               if (settings?.printDefaultSize === 'a4') {
                 printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
@@ -593,10 +641,15 @@ export default function PurchasesPage() {
         )}
       </Modal>
 
-      <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setReturnPurchase(null) }} title={`مرتجع مشتريات - فاتورة #${returnPurchase?.invoiceNo}`} width="500px">
+      <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setReturnPurchase(null); setReturnRefundCash(false); setSupplierPaidForReturn(0) }} title={`مرتجع مشتريات - فاتورة #${returnPurchase?.invoiceNo}`} width="500px">
         {returnPurchase && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ fontSize: '12px', color: 'var(--text2)' }}>المورد: {returnPurchase.supplierName}</div>
+            {returnPurchase.paymentMethod === 'credit' && (
+              <div style={{ fontSize: '12px', color: 'var(--text2)', padding: '4px 0' }}>
+                المبلغ المدفوع للمورد: <strong style={{ color: 'var(--text)' }}>{formatMoney(supplierPaidForReturn)}</strong>
+              </div>
+            )}
             {returnItems.map((item, idx) => {
               const oldReturns = purchaseReturns.filter(r => r.purchaseId === returnPurchase._id)
               const returnedQty = oldReturns.reduce((s, r) => s + (r.items.find(i => i.productId === item.productId)?.quantity || 0), 0)
@@ -619,6 +672,12 @@ export default function PurchasesPage() {
             </div>
             <textarea placeholder="سبب الإرجاع (اختياري)" value={returnReason} onInput={e => setReturnReason(e.target.value)} rows="2"
               style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
+            <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)}
+              style={{ width: '100%' }}>
+              <option value="cash">نقداً</option>
+              <option value="card">بطاقة</option>
+              <option value="supplier_balance">دين مستحق للمورد</option>
+            </select>
             <button onClick={handleCreateReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
               تسجيل مرتجع
             </button>

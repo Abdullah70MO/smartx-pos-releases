@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useMemo } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -73,18 +73,27 @@ export default function SuppliersPage() {
 
   async function openTransactions(s) {
     const token = localStorage.getItem('token')
-    const sups = purchases.filter(p => p.supplierId === s._id).map(p => ({ type: 'شراء', desc: `فاتورة #${p.invoiceNo}`, amount: p.netCost || p.totalCost, date: p.createdAt }))
+    const sups = purchases.filter(p => p.supplierId === s._id).map(p => [
+      { type: 'شراء', desc: `فاتورة #${p.invoiceNo}`, amount: p.netCost || p.totalCost, date: p.createdAt, paymentMethod: p.paymentMethod },
+      ...(p.previousCredit > 0 ? [{ type: 'خصم رصيد سابق', desc: `خصم رصيد مستحق من المورد فاتورة #${p.invoiceNo}`, amount: -p.previousCredit, date: p.createdAt, paymentMethod: p.paymentMethod }] : []),
+      ...(p.previousDebt > 0 ? [{ type: 'دين سابق', desc: `دين مستحق للمورد فاتورة #${p.invoiceNo}`, amount: p.previousDebt, date: p.createdAt, paymentMethod: p.paymentMethod }] : [])
+    ]).flat()
     const pays = await api.listSupplierPayments(token, s._id)
-    const pymts = pays.map(p => ({ type: 'دفعة', desc: p.note || 'دفعة', amount: -p.amount, date: p.createdAt }))
-    const all = [...sups, ...pymts].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const pymts = pays.map(p => ({ type: 'دفعة', desc: p.note || 'دفعة', amount: -p.amount, date: p.createdAt, paymentMethod: p.paymentMethod }))
+    const returns = await api.listPurchaseReturnsBySupplier(token, s.name)
+    const rets = returns.flatMap(r => [
+      { type: 'مرتجع شراء', desc: `مرتجع #${r.invoiceNo}`, amount: -(r.subtotal + (r.tax || 0)), date: r.createdAt, paymentMethod: r.paymentMethod },
+      ...(r.refundAmount > 0 ? [{ type: 'استرداد نقدي', desc: `استرداد مرتجع #${r.invoiceNo}`, amount: r.refundAmount, date: r.createdAt, paymentMethod: r.paymentMethod }] : [])
+    ])
+    const all = [...sups, ...pymts, ...rets].sort((a, b) => new Date(a.date) - new Date(b.date))
     let bal = 0
     setTransactions(all.map(t => { bal += t.amount; return { ...t, balance: bal } }))
     setTransModal(s)
   }
 
-  const filteredSuppliers = suppliers.filter(s =>
+  const filteredSuppliers = useMemo(() => suppliers.filter(s =>
     !search || s.name.includes(search) || s.phone?.includes(search)
-  )
+  ), [suppliers, search])
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
@@ -153,7 +162,7 @@ export default function SuppliersPage() {
           <div style={{ textAlign: 'center', marginBottom: '8px' }}>
             <div style={{ fontSize: '13px', color: 'var(--text2)' }}>إجمالي المشتريات: <span style={{ color: '#f97316' }}>{(payModal?.totalPurchases || 0).toFixed(2)}</span></div>
             <div style={{ fontSize: '13px', color: 'var(--text2)' }}>المدفوع سابقاً: <span style={{ color: 'var(--success)' }}>{(payModal?.totalPaid || 0).toFixed(2)}</span></div>
-            <div style={{ fontSize: '13px', color: 'var(--text2)' }}>المتبقي: <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{((payModal?.totalPurchases || 0) - (payModal?.totalPaid || 0)).toFixed(2)}</span></div>
+            {(() => { const r = (payModal?.totalPurchases || 0) - (payModal?.totalPaid || 0); return <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{r > 0 ? 'دين مستحق للمورد' : r < 0 ? 'رصيد مستحق من المورد' : 'المتبقي'}: <span style={{ color: r > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{Math.abs(r).toFixed(2)}</span></div> })()}
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="button" onClick={() => setPayMethod('cash')} style={{
@@ -177,24 +186,25 @@ export default function SuppliersPage() {
 
       <Modal open={!!transModal} onClose={() => setTransModal(null)} title={`عمليات المورد: ${transModal?.name}`} width="500px">
         <div style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '8px' }}>
-          الرصيد الحالي: <span style={{ color: transactions.length > 0 ? (transactions[transactions.length - 1]?.balance > 0 ? 'var(--danger)' : 'var(--success)') : 'var(--text2)', fontWeight: 'bold' }}>
-            {transactions.length > 0 ? transactions[transactions.length - 1]?.balance?.toFixed(2) : '0.00'}
+          {(() => { const b = transactions.length > 0 ? transactions[transactions.length - 1]?.balance : 0; return b > 0 ? 'دين مستحق للمورد' : b < 0 ? 'رصيد مستحق من المورد' : 'الرصيد الحالي' })()}: <span style={{ color: transactions.length > 0 ? (transactions[transactions.length - 1]?.balance > 0 ? 'var(--danger)' : 'var(--success)') : 'var(--text2)', fontWeight: 'bold' }}>
+            {transactions.length > 0 ? Math.abs(transactions[transactions.length - 1]?.balance)?.toFixed(2) : '0.00'}
           </span>
         </div>
         <div id="supplier-print">
           <div style={{ background: 'var(--bg)', borderRadius: '8px', overflow: 'auto', maxHeight: '400px' }}>
             <table>
-              <thead><tr><th>البيان</th><th>المبلغ</th><th>الرصيد</th><th>التاريخ</th></tr></thead>
+              <thead><tr><th>البيان</th><th>المبلغ</th><th>الرصيد</th><th>نوع الدفع</th><th>التاريخ</th></tr></thead>
               <tbody>
                 {transactions.map((t, i) => (
                   <tr key={i}>
                     <td style={{ fontSize: '12px' }}>{t.desc}</td>
                     <td style={{ color: t.amount > 0 ? '#f97316' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
                     <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold', fontSize: '12px' }}>{t.balance.toFixed(2)}</td>
+                    <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{t.paymentMethod === 'credit' ? 'آجل' : t.paymentMethod === 'card' ? 'بطاقة' : t.paymentMethod ? 'نقداً' : '-'}</td>
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>
                   </tr>
                 ))}
-                {transactions.length === 0 && <tr><td colSpan="4" style={{ padding: '16px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
+                {transactions.length === 0 && <tr><td colSpan="5" style={{ padding: '16px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
               </tbody>
             </table>
           </div>

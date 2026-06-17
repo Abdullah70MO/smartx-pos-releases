@@ -22,6 +22,7 @@ const api = {
   listSales: (token, filter) => ipcRenderer.invoke('sales:list', { token, filter }),
   createSale: (token, sale) => ipcRenderer.invoke('sales:create', { token, sale }),
   removeSale: (token, id) => ipcRenderer.invoke('sales:remove', { token, id }),
+  getSalePaidAmount: (token, saleId) => ipcRenderer.invoke('sales:paidForSale', { token, saleId }),
 
   // Expenses
   listExpenses: (token) => ipcRenderer.invoke('expenses:list', { token }),
@@ -49,17 +50,18 @@ const api = {
 
   // Returns
   listReturns: (token, saleId) => ipcRenderer.invoke('returns:list', { token, saleId }),
+listReturnsByCustomer: (token, customerName) => ipcRenderer.invoke('returns:listByCustomer', { token, customerName }),
   createReturn: (token, ret) => ipcRenderer.invoke('returns:create', { token, ret }),
   removeReturn: (token, id) => ipcRenderer.invoke('returns:remove', { token, id }),
 
   listPurchaseReturns: (token) => ipcRenderer.invoke('purchaseReturns:list', { token }),
+listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purchaseReturns:listBySupplier', { token, supplierName }),
   createPurchaseReturn: (token, ret) => ipcRenderer.invoke('purchaseReturns:create', { token, ret }),
-  removePurchaseReturn: (token, id) => ipcRenderer.invoke('purchaseReturns:remove', { token, id }),
 
   // Shifts
   getActiveShift: (token) => ipcRenderer.invoke('shifts:getActive', { token }),
   startShift: (token, startingBalance) => ipcRenderer.invoke('shifts:start', { token, startingBalance }),
-  endShift: (token, endingBalance) => ipcRenderer.invoke('shifts:end', { token, endingBalance }),
+  endShift: (token, endingCashBalance, endingCardBalance) => ipcRenderer.invoke('shifts:end', { token, endingCashBalance, endingCardBalance }),
   listShifts: (token) => ipcRenderer.invoke('shifts:list', { token }),
   getShiftSales: (token) => ipcRenderer.invoke('shifts:sales', { token }),
 
@@ -140,7 +142,7 @@ const api = {
   },
 
   // Print
-  printA4: (token, html) => ipcRenderer.invoke('print:a4', { token, html })
+  printA4: (token, html, silent) => ipcRenderer.invoke('print:a4', { token, html, silent })
 }
 
 contextBridge.exposeInMainWorld('smartx', api)

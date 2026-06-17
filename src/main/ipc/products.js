@@ -24,19 +24,25 @@ function saveProduct(realm, data) {
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('Product', data._id) : null
     const stock = data.stock != null ? Number(data.stock) : (existing ? existing.stock : 0)
+    const productId = data._id || crypto.randomUUID()
 
-    if (existing && existing.stock !== stock) {
-      const diff = stock - existing.stock
-      if (diff > 0) {
-        addBatch(realm, existing._id, diff, existing.cost || Number(data.cost) || 0)
-      } else if (diff < 0) {
-        deductFromFifo(realm, existing._id, -diff)
+    if (stock > 0) {
+      if (!existing) {
+        addBatch(realm, productId, stock, Number(data.cost) || 0)
+        syncProductStock(realm, productId)
+      } else if (existing.stock !== stock) {
+        const diff = stock - existing.stock
+        if (diff > 0) {
+          addBatch(realm, existing._id, diff, existing.cost || Number(data.cost) || 0)
+        } else if (diff < 0) {
+          deductFromFifo(realm, existing._id, -diff)
+        }
+        syncProductStock(realm, existing._id)
       }
-      syncProductStock(realm, existing._id)
     }
 
     product = realm.create('Product', {
-      _id: data._id || crypto.randomUUID(),
+      _id: productId,
       sku: data.sku || 'PRD-' + Date.now(),
       barcode: data.barcode || '',
       name: data.name,
@@ -44,8 +50,8 @@ function saveProduct(realm, data) {
       unit: data.unit || '',
       cost: stock > 0 && existing ? existing.cost : (Number(data.cost) || 0),
       priceRetail: Number(data.priceRetail) || 0,
-      priceHalfWholesale: Number(data.priceHalfWholesale) || Number(data.priceRetail) || 0,
-      priceWholesale: Number(data.priceWholesale) || Number(data.priceRetail) || 0,
+      priceHalfWholesale: (data.priceHalfWholesale != null && Number(data.priceHalfWholesale) > 0) ? Number(data.priceHalfWholesale) : Number(data.priceRetail) || 0,
+      priceWholesale: (data.priceWholesale != null && Number(data.priceWholesale) > 0) ? Number(data.priceWholesale) : Number(data.priceRetail) || 0,
       stock,
       reorderPoint: Number(data.reorderPoint) || 0,
       active: data.active !== false,

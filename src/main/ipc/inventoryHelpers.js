@@ -14,7 +14,7 @@ function addBatch(realm, productId, quantity, cost, refId) {
 
 function deductFromBatch(realm, batchId, quantity) {
   const batch = realm.objectForPrimaryKey('StockBatch', batchId)
-  if (!batch) throw new Error('Batch غير موجود')
+  if (!batch) throw new Error('الدفعة غير موجودة')
   const qty = Number(quantity)
   const take = Math.min(batch.quantity, qty)
   const cost = take * batch.cost

@@ -44,7 +44,23 @@ function listReturns(realm, saleId) {
     subtotal: r.subtotal, reason: r.reason,
     cashierId: r.cashierId, cashierName: r.cashierName,
     customerName: r.customerName, isFullReturn: r.isFullReturn,
-    paymentMethod: r.paymentMethod,
+    paymentMethod: r.paymentMethod, refundAmount: r.refundAmount, tax: r.tax,
+    createdAt: r.createdAt?.toISOString()
+  }))
+}
+
+function listReturnsByCustomer(realm, customerName) {
+  const returns = realm.objects('Return').filtered('customerName == $0', customerName).sorted('createdAt', true)
+  return Array.from(returns).map(r => ({
+    _id: r._id, saleId: r.saleId, invoiceNo: r.invoiceNo,
+    items: Array.from(r.items).map(item => ({
+      productId: item.productId, name: item.name,
+      quantity: item.quantity, unitPrice: item.unitPrice, cost: item.cost
+    })),
+    subtotal: r.subtotal, reason: r.reason,
+    cashierId: r.cashierId, cashierName: r.cashierName,
+    customerName: r.customerName, isFullReturn: r.isFullReturn,
+    paymentMethod: r.paymentMethod, refundAmount: r.refundAmount, tax: r.tax,
     createdAt: r.createdAt?.toISOString()
   }))
 }
@@ -81,6 +97,16 @@ function createReturn(realm, session, data) {
       }
     })
 
+    const saleTaxRate = sale.tax > 0 && sale.subtotal > 0 ? (sale.tax / sale.subtotal * 100) : 0
+    const returnSubtotal = Number(data.subtotal) || 0
+    const returnTaxAmount = saleTaxRate > 0 ? (returnSubtotal * saleTaxRate / 100) : 0
+
+    let refundAmount = Number(data.subtotal)
+    let totalPaidForSale = Number(sale.paid || 0)
+    if (sale.paymentMethod === 'credit') {
+      refundAmount = data.cashRefund ? Math.min(Number(data.subtotal), totalPaidForSale) : 0
+    }
+
     ret = realm.create('Return', {
       _id: crypto.randomUUID(),
       saleId: data.saleId,
@@ -92,30 +118,80 @@ function createReturn(realm, session, data) {
         cost: Number(item.cost) || 0
       })),
       subtotal: Number(data.subtotal) || 0,
+      tax: returnTaxAmount,
       reason: data.reason || '',
       cashierId: session.userId,
       cashierName: session.name,
       customerName: data.customerName || '',
       isFullReturn: data.isFullReturn || false,
       paymentMethod: data.paymentMethod || sale.paymentMethod || 'cash',
+      refundAmount,
       createdAt: new Date()
     })
-    updateTreasury(realm, -Number(data.subtotal), 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
 
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
-    if (activeShift) {
-      activeShift.totalSales -= Number(data.subtotal)
+    const isCreditReturn = data.paymentMethod === 'credit' || sale.paymentMethod === 'credit'
+
+    if (refundAmount > 0) {
+      if (activeShift && !isCreditReturn) {
+        const fullAmount = refundAmount + (sale.tax > 0 ? returnTaxAmount : 0)
+        activeShift.totalSales -= fullAmount
+        if (data.paymentMethod === 'card') activeShift.cardTotal -= refundAmount
+        else activeShift.cashTotal -= refundAmount
+      } else {
+        updateTreasury(realm, -refundAmount, 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
+      }
+      if (activeShift && sale.paymentMethod === 'credit') {
+        activeShift.totalSales -= refundAmount
+        activeShift.creditPaidTotal -= refundAmount
+      }
+      if (activeShift && isCreditReturn && sale.paymentMethod !== 'credit') {
+        const fullAmount = refundAmount + (sale.tax > 0 ? returnTaxAmount : 0)
+        activeShift.totalSales -= fullAmount
+        if (sale.paymentMethod === 'card') activeShift.cardTotal -= fullAmount
+        else activeShift.cashTotal -= fullAmount
+      }
     }
 
-    if (sale.paymentMethod === 'credit' && data.customerName) {
+    if (sale.tax > 0 && saleTaxRate > 0) {
+      const taxReturn = returnTaxAmount
+      if (activeShift && !isCreditReturn) {
+        if (data.paymentMethod === 'card') activeShift.cardTotal -= taxReturn
+        else activeShift.cashTotal -= taxReturn
+      } else if (!isCreditReturn) {
+        updateTreasury(realm, -taxReturn, 'ضريبة مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod === 'card' ? 'card' : 'cash')
+      }
+    }
+
+    if (data.customerName) {
       const customer = realm.objects('CreditCustomer').filtered('name == $0', data.customerName)[0]
-      if (customer) {
-        customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - Number(data.subtotal))
-        customer.updatedAt = new Date()
+      if (sale.paymentMethod === 'credit') {
+        if (customer) {
+          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - Number(data.subtotal) - returnTaxAmount)
+          customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - refundAmount)
+          customer.updatedAt = new Date()
+        }
+      } else if (data.paymentMethod === 'credit') {
+        const creditAmount = Number(data.subtotal) + returnTaxAmount
+        if (customer) {
+          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - Number(data.subtotal))
+          customer.totalPaid = Math.max(0, (customer.totalPaid || 0) + creditAmount)
+          customer.updatedAt = new Date()
+        } else {
+          realm.create('CreditCustomer', {
+            _id: crypto.randomUUID(),
+            name: data.customerName,
+            phone: sale.customerPhone || '',
+            totalDebt: 0,
+            totalPaid: creditAmount,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+        }
       }
     }
   })
-  return { _id: ret._id, invoiceNo: ret.invoiceNo, saleId: ret.saleId, subtotal: ret.subtotal, reason: ret.reason, cashierId: ret.cashierId, cashierName: ret.cashierName, customerName: ret.customerName, isFullReturn: ret.isFullReturn, createdAt: ret.createdAt?.toISOString() }
+  return { _id: ret._id, invoiceNo: ret.invoiceNo, saleId: ret.saleId, subtotal: ret.subtotal, reason: ret.reason, cashierId: ret.cashierId, cashierName: ret.cashierName, customerName: ret.customerName, isFullReturn: ret.isFullReturn, refundAmount: ret.refundAmount, tax: ret.tax, createdAt: ret.createdAt?.toISOString() }
 }
 
 function removeReturn(realm, id, session) {
@@ -143,32 +219,60 @@ function removeReturn(realm, id, session) {
           syncProductStock(realm, product._id)
         }
       })
-      if (sale && (sale.paymentMethod === 'cash' || sale.paymentMethod === 'card')) {
-        const treasuryType = sale.paymentMethod === 'card' ? 'bank' : 'main'
+      const retRefundAmount = ret.refundAmount != null ? Number(ret.refundAmount) : Number(ret.subtotal)
+      const retTax = Number(ret.tax || 0)
+      const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+      const isCreditReturn = ret.paymentMethod === 'credit' || (sale && sale.paymentMethod === 'credit')
+
+      if (activeShift && !isCreditReturn) {
+        const fullAmount = retRefundAmount + retTax
+        activeShift.totalSales += fullAmount
+        if (ret.paymentMethod === 'card') activeShift.cardTotal += fullAmount
+        else activeShift.cashTotal += fullAmount
+      } else if (retRefundAmount > 0) {
+        const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
+        const treasuryType = pm === 'card' ? 'bank' : 'main'
         const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
         if (treasury) {
-          treasury.balance += Number(ret.subtotal)
+          treasury.balance += retRefundAmount
           treasury.updatedAt = new Date()
           realm.create('TreasuryTransaction', {
             _id: crypto.randomUUID(),
             treasuryId: treasury._id, treasuryName: treasury.name,
-            type: 'deposit', amount: Number(ret.subtotal),
+            type: 'deposit', amount: retRefundAmount,
             note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
-            paymentMethod: sale.paymentMethod,
+            paymentMethod: pm,
             createdBy: 'system', createdAt: new Date()
           })
         }
       }
+      if (activeShift && isCreditReturn && sale && sale.paymentMethod !== 'credit' && retRefundAmount > 0) {
+        const fullAmount = retRefundAmount + retTax
+        activeShift.totalSales += fullAmount
+        if (sale.paymentMethod === 'card') activeShift.cardTotal += fullAmount
+        else activeShift.cashTotal += fullAmount
+      }
+      if (activeShift && sale && sale.paymentMethod === 'credit' && retRefundAmount > 0) {
+        activeShift.totalSales += retRefundAmount
+        activeShift.creditPaidTotal += retRefundAmount
+      }
+
       if (sale && sale.paymentMethod === 'credit' && sale.customerName) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
         if (customer) {
-          customer.totalDebt = (customer.totalDebt || 0) + Number(ret.subtotal)
+          customer.totalDebt = (customer.totalDebt || 0) + Number(ret.subtotal) + Number(ret.tax || 0)
+          customer.totalPaid = Math.max(0, (customer.totalPaid || 0) + retRefundAmount)
           customer.updatedAt = new Date()
         }
       }
-      const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
-      if (activeShift) {
-        activeShift.totalSales += Number(ret.subtotal)
+      if (ret.customerName && ret.paymentMethod === 'credit' && sale && sale.paymentMethod !== 'credit') {
+        const customer = realm.objects('CreditCustomer').filtered('name == $0', ret.customerName)[0]
+        const creditAmount = Number(ret.subtotal) + Number(ret.tax || 0)
+        if (customer) {
+          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) + Number(ret.subtotal))
+          customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - creditAmount)
+          customer.updatedAt = new Date()
+        }
       }
       realm.delete(ret)
     }
@@ -176,4 +280,4 @@ function removeReturn(realm, id, session) {
   return true
 }
 
-module.exports = { listReturns, createReturn, removeReturn }
+module.exports = { listReturns, listReturnsByCustomer, createReturn, removeReturn }

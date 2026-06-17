@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/hooks'
 import { StoreProvider, useStore } from './store.jsx'
 import { ToastProvider, useToast } from './components/Toast'
 import Modal from './components/Modal'
@@ -25,7 +25,7 @@ import SettingsPage from './pages/SettingsPage'
 
 const PAGE_PERMS = {
   dashboard: ['dashboard.view'],
-  cashier: ['cashier.access', 'cashier.return'],
+  cashier: ['cashier.access'],
   treasury: ['treasury.view', 'treasury.manage', 'treasury.transfer'],
   products: ['products.view', 'products.manage'],
   inventory: ['inventory.view', 'inventory.adjust'],
@@ -70,7 +70,7 @@ function AppContent() {
 
   useEffect(() => {
     if (updateAvailable && page !== 'settings') {
-      toast(`يتوفر إصدار جديد v${updateAvailable} — افتح الإعدادات للتحميل`, 'info', 6000)
+      toast(`يتوفر إصدار جديد ${updateAvailable} — افتح الإعدادات للتحميل`, 'info', 6000)
     }
   }, [updateAvailable, page])
 
@@ -87,12 +87,14 @@ function AppContent() {
     )
   }
 
-  // Permission gate - redirect to dashboard if user lacks access to this page
+  // Permission gate - redirect to first accessible page if user lacks access
   const pagePerms = PAGE_PERMS[page]
   const userPerms = user?.permissions || []
   const hasAccess = !pagePerms || pagePerms.some(p => userPerms.includes(p))
-  const safePage = hasAccess ? page : 'dashboard'
-  const PageComponent = PAGES[safePage] || DashboardPage
+  const firstAccessible = Object.entries(PAGE_PERMS).find(([, perms]) => perms.some(p => userPerms.includes(p)))?.[0]
+  const safePage = hasAccess ? page : (firstAccessible || 'settings')
+  const PageComponent = PAGES[safePage]
+  useEffect(() => { if (safePage !== page) setPage(safePage) }, [safePage, page])
 
   return (
     <>

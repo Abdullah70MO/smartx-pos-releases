@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useMemo } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
 import { formatDate } from '../utils/date'
@@ -82,22 +82,33 @@ export default function ReportsPage() {
 
   const filteredByDate = (arr, dateField) => arr.filter(x => inRange(x[dateField] || x.createdAt))
 
-  const filteredSalesAll = filteredByDate(sales, 'createdAt')
-  const filteredExpensesAll = filteredByDate(expenses, 'date')
-  const filteredReturnsAll = filteredByDate(returns, 'createdAt')
-  const filteredWithdrawalsAll = filteredByDate(withdrawals, 'createdAt')
+  const overviewData = useMemo(() => {
+    const fsa = filteredByDate(sales, 'createdAt')
+    const fea = filteredByDate(expenses, 'date')
+    const fra = filteredByDate(returns, 'createdAt')
+    const fwa = filteredByDate(withdrawals, 'createdAt')
+    const ts = fsa.reduce((sum, s) => sum + s.total, 0)
+    const tt = fsa.reduce((sum, s) => sum + (s.tax || 0), 0)
+    const te = fea.reduce((sum, e) => sum + e.amount, 0)
+    const tr = fra.reduce((sum, r) => sum + r.subtotal, 0)
+    const tpr = purchaseReturns.filter(r => inRange(r.createdAt)).reduce((sum, r) => sum + r.subtotal, 0)
+    const tw = fwa.reduce((sum, w) => sum + Math.abs(w.amount), 0)
+    const tcogs = fsa.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+    const trc = fra.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+    return {
+      totalSales: ts, totalTax: tt, totalExpenses: te, totalReturns: tr,
+      totalPurchaseReturns: tpr, totalWithdrawals: tw,
+      totalCOGS: tcogs, totalReturnCost: trc,
+      netProfit: (ts - tt - tcogs) + (trc - tr) - te - tw,
+      filteredSalesAll: fsa, totalInvoiceCount: fsa.length
+    }
+  }, [sales, expenses, returns, withdrawals, purchaseReturns, filterDateFrom, filterDateTo])
 
-  const totalSales = filteredSalesAll.reduce((sum, s) => sum + s.total, 0)
-  const totalTax = filteredSalesAll.reduce((sum, s) => sum + (s.tax || 0), 0)
-  const totalExpenses = filteredExpensesAll.reduce((sum, e) => sum + e.amount, 0)
-  const totalReturns = filteredReturnsAll.reduce((sum, r) => sum + r.subtotal, 0)
-  const totalPurchaseReturns = purchaseReturns.filter(r => inRange(r.createdAt)).reduce((sum, r) => sum + r.subtotal, 0)
-  const totalWithdrawals = filteredWithdrawalsAll.reduce((sum, w) => sum + Math.abs(w.amount), 0)
-  const totalCOGS = filteredSalesAll.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
-  const totalReturnCost = filteredReturnsAll.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
-  const netProfit = (totalSales - totalTax - totalCOGS) + (totalReturnCost - totalReturns) - totalExpenses - totalWithdrawals
-  const totalTreasuryBalance = treasuries.reduce((sum, t) => sum + (t.balance || 0), 0)
-  const bankBalance = treasuries.filter(t => t.type === 'bank').reduce((sum, t) => sum + (t.balance || 0), 0)
+  const { totalSales, totalTax, totalExpenses, totalReturns, totalPurchaseReturns, totalWithdrawals, totalCOGS, totalReturnCost, netProfit, totalInvoiceCount } = overviewData
+
+  const totalTreasuryBalance = useMemo(() => treasuries.reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
+  const mainBalance = useMemo(() => treasuries.filter(t => t.type === 'main').reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
+  const bankBalance = useMemo(() => treasuries.filter(t => t.type === 'bank').reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
 
   const PERIODS = [
     { id: 'today', label: 'اليوم' },
@@ -108,49 +119,49 @@ export default function ReportsPage() {
     { id: 'all', label: 'الكل' }
   ]
 
-  const filteredSales = sales.filter(s => {
+  const filteredSales = useMemo(() => sales.filter(s => {
     if (searchSales.q && !String(s.invoiceNo).includes(searchSales.q) && !s.customerName?.includes(searchSales.q) && !s.cashierName?.includes(searchSales.q)) return false
     if (searchSales.dateFrom && s.createdAt && s.createdAt.slice(0, 10) < searchSales.dateFrom) return false
     if (searchSales.dateTo && s.createdAt && s.createdAt.slice(0, 10) > searchSales.dateTo) return false
     return true
-  })
+  }), [sales, searchSales])
 
-  const filteredExpenses = expenses.filter(e => {
+  const filteredExpenses = useMemo(() => expenses.filter(e => {
     const date = (e.date || e.createdAt || '')
     if (searchExpenses.q && !e.category?.includes(searchExpenses.q) && !e.note?.includes(searchExpenses.q)) return false
     if (searchExpenses.dateFrom && date && date.slice(0, 10) < searchExpenses.dateFrom) return false
     if (searchExpenses.dateTo && date && date.slice(0, 10) > searchExpenses.dateTo) return false
     return true
-  })
+  }), [expenses, searchExpenses])
 
-  const filteredReturns = returns.filter(r => {
+  const filteredReturns = useMemo(() => returns.filter(r => {
     if (searchReturns.q && !String(r.invoiceNo).includes(searchReturns.q) && !r.customerName?.includes(searchReturns.q)) return false
     if (searchReturns.dateFrom && r.createdAt && r.createdAt.slice(0, 10) < searchReturns.dateFrom) return false
     if (searchReturns.dateTo && r.createdAt && r.createdAt.slice(0, 10) > searchReturns.dateTo) return false
     return true
-  })
+  }), [returns, searchReturns])
 
-  const filteredWithdrawals = withdrawals.filter(w => {
+  const filteredWithdrawals = useMemo(() => withdrawals.filter(w => {
     if (searchWithdrawals.q && !w.personName?.includes(searchWithdrawals.q) && !w.note?.includes(searchWithdrawals.q)) return false
     if (searchWithdrawals.dateFrom && w.createdAt && w.createdAt.slice(0, 10) < searchWithdrawals.dateFrom) return false
     if (searchWithdrawals.dateTo && w.createdAt && w.createdAt.slice(0, 10) > searchWithdrawals.dateTo) return false
     return true
-  })
+  }), [withdrawals, searchWithdrawals])
 
-  const filteredCustomers = customers.filter(c =>
+  const filteredCustomers = useMemo(() => customers.filter(c =>
     !searchCustomers || c.name?.includes(searchCustomers) || c.phone?.includes(searchCustomers)
-  )
+  ), [customers, searchCustomers])
 
-  const filteredSuppliers = suppliers.filter(s =>
+  const filteredSuppliers = useMemo(() => suppliers.filter(s =>
     !searchSuppliers || s.name?.includes(searchSuppliers) || s.phone?.includes(searchSuppliers)
-  )
+  ), [suppliers, searchSuppliers])
 
-  const filteredTreasury = treasuryTxns.filter(t => {
+  const filteredTreasury = useMemo(() => treasuryTxns.filter(t => {
     if (searchTreasury.q && !(t.createdBy || '').includes(searchTreasury.q) && !(t.personName || '').includes(searchTreasury.q) && !(t.note || '').includes(searchTreasury.q)) return false
     if (searchTreasury.dateFrom && t.createdAt && t.createdAt.slice(0, 10) < searchTreasury.dateFrom) return false
     if (searchTreasury.dateTo && t.createdAt && t.createdAt.slice(0, 10) > searchTreasury.dateTo) return false
     return true
-  })
+  }), [treasuryTxns, searchTreasury])
 
   const [batchSearch, setBatchSearch] = useState('')
   const [batchData, setBatchData] = useState([])
@@ -165,6 +176,8 @@ export default function ReportsPage() {
     }
     loadBatchReport()
   }, [batchSearch])
+
+  const batchTotalValue = useMemo(() => batchData.reduce((s, p) => s + p.batches.reduce((ss, b) => ss + b.total, 0), 0), [batchData])
 
   const TABS = [
     { id: 'overview', label: 'نظرة عامة' },
@@ -202,9 +215,10 @@ export default function ReportsPage() {
         <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="#f97316" />
         <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="#8b5cf6" />
         <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? '#22c55e' : '#ef4444'} />
-        <SummaryCard label="عدد الفواتير" value={filteredSalesAll.length} color="#3b82f6" />
+        <SummaryCard label="عدد الفواتير" value={totalInvoiceCount} color="#3b82f6" />
         <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="#8b5cf6" />
-        <SummaryCard label="رصيد الخزينة" value={formatMoney(totalTreasuryBalance)} color="#06b6d4" />
+        <SummaryCard label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="#06b6d4" />
+        <SummaryCard label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="#14b8a6" />
         <SummaryCard label="رصيد البنك" value={formatMoney(bankBalance)} color="#3b82f6" />
       </div>
 
@@ -419,15 +433,10 @@ export default function ReportsPage() {
               style={{ flex: 1, minWidth: '200px' }} />
             <span style={{ fontSize: '12px', color: 'var(--text2)', alignSelf: 'center' }}>{batchData.length} منتج</span>
           </div>
-          {(() => {
-            const totalValue = batchData.reduce((s, p) => s + p.batches.reduce((ss, b) => ss + b.total, 0), 0)
-            return (
-              <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>إجمالي تكلفة المخزون (بالقيمة الحقيقية)</span>
-                <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(totalValue)}</span>
-              </div>
-            )
-          })()}
+          <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '14px', fontWeight: 'bold' }}>إجمالي تكلفة المخزون (بالقيمة الحقيقية)</span>
+            <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(batchTotalValue)}</span>
+          </div>
           {batchData.map(p => (
             <div key={p._id} style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>

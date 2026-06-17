@@ -66,6 +66,8 @@ const SaleSchema = {
     cashierName:   'string',
     customerName:  { type: 'string', default: '' },
     customerPhone: { type: 'string', default: '' },
+    previousCredit: { type: 'double', default: 0 },
+    previousDebt:   { type: 'double', default: 0 },
     note:          { type: 'string', default: '' },
     createdAt:     'date'
   }
@@ -109,6 +111,22 @@ const BusinessSettingsSchema = {
     taxRate:                 { type: 'float', default: 14 },
     printDefaultSize:        { type: 'string', default: 'receipt' },
     printColorMode:          { type: 'string', default: 'color' },
+    printDirectly:           { type: 'bool', default: false },
+    showCommercialReg:       { type: 'bool', default: true },
+    showTaxReg:              { type: 'bool', default: true },
+    showBusinessName:        { type: 'bool', default: true },
+    showLogo:                { type: 'bool', default: true },
+    showPhone:               { type: 'bool', default: true },
+    showEmail:               { type: 'bool', default: true },
+    showAddress:             { type: 'bool', default: true },
+    showReceiptFooter:       { type: 'bool', default: true },
+    showProductsTable:       { type: 'bool', default: true },
+    showTotals:              { type: 'bool', default: true },
+    showPaid:                { type: 'bool', default: true },
+    showCashier:             { type: 'bool', default: true },
+    showNotes:               { type: 'bool', default: true },
+    showClientInfo:          { type: 'bool', default: true },
+    showSupplierInfo:        { type: 'bool', default: true },
     autoBackup:              { type: 'bool', default: false },
     autoBackupInterval:      { type: 'string', default: 'weekly' },
     autoBackupLastDate:      { type: 'date', optional: true },
@@ -199,6 +217,8 @@ const ReturnSchema = {
     customerName:   { type: 'string', default: '' },
     isFullReturn:   { type: 'bool', default: false },
     paymentMethod:  { type: 'string', default: 'cash' },
+    refundAmount:   { type: 'double', default: 0 },
+    tax:            { type: 'double', default: 0 },
     createdAt:      'date'
   }
 }
@@ -215,6 +235,9 @@ const ShiftSchema = {
     startingBalance: { type: 'double', default: 0 },
     endingBalance:   { type: 'double', default: 0 },
     totalSales:      { type: 'double', default: 0 },
+    cashTotal:       { type: 'double', default: 0 },
+    cardTotal:       { type: 'double', default: 0 },
+    creditPaidTotal: { type: 'double', default: 0 },
     expensesTotal:   { type: 'double', default: 0 },
     withdrawalsTotal:{ type: 'double', default: 0 },
     invoiceCount:    { type: 'int', default: 0 },
@@ -308,6 +331,8 @@ const PurchaseReturnSchema = {
     items:        { type: 'list', objectType: 'PurchaseReturnItem' },
     subtotal:     'double',
     reason:       { type: 'string', default: '' },
+    refundAmount: { type: 'double', default: 0 },
+    paymentMethod: { type: 'string', default: 'cash' },
     createdBy:    'string',
     createdAt:    'date'
   }
@@ -327,6 +352,8 @@ const PurchaseSchema = {
     discount:      { type: 'double', default: 0 },
     netCost:       'double',
     paid:          { type: 'double', default: 0 },
+    previousCredit: { type: 'double', default: 0 },
+    previousDebt:   { type: 'double', default: 0 },
     paymentMethod: { type: 'string', default: 'credit' },
     paymentStatus: { type: 'string', default: 'credit' },
     note:          { type: 'string', default: '' },
@@ -428,10 +455,19 @@ const SCHEMAS = [
 
 // SCHEMA_VERSION changelog:
 //   1-23  Historical versions (additive changes only)
-//   24    Added Shift.expensesTotal, Shift.withdrawalsTotal, Expense.shiftId, Return.paymentMethod
+//   24    Added Shift.expensesTotal/withdrawalsTotal, Expense.shiftId, Return.paymentMethod
+//   25    Added BusinessSettings.showCommercialReg/showTaxReg, PurchaseReturn.refundAmount
+//   26    Added BusinessSettings.showBusinessName..showSupplierInfo, defaults true for show fields
+//   27    Added Shift.cashTotal/cardTotal
+//   28    CreditCustomer.totalDebt changed from (total - paid) to total (fix remaining calc)
+//   29    Added Shift.creditPaidTotal
+//   30    Added Return.tax
+//   31    Added BusinessSettings.printDirectly
+//   32    Added Sale.previousCredit
+//   33    Added Purchase.previousCredit
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 24
+const SCHEMA_VERSION = 33
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

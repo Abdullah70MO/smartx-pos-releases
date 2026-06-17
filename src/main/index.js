@@ -14,8 +14,8 @@ const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
 const { dashboardSummary } = require('./ipc/dashboard')
-const { listReturns, createReturn, removeReturn } = require('./ipc/returns')
-const { listPurchaseReturns, createPurchaseReturn, removePurchaseReturn } = require('./ipc/purchaseReturns')
+const { listReturns, listReturnsByCustomer, createReturn, removeReturn } = require('./ipc/returns')
+const { listPurchaseReturns, listPurchaseReturnsBySupplier, createPurchaseReturn } = require('./ipc/purchaseReturns')
 const { getActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
 const { logActivity, listActivity } = require('./ipc/activity')
 const { listCustomers, saveCustomer, removeCustomer } = require('./ipc/customers')
@@ -26,6 +26,7 @@ const { listTreasuries, saveTreasury, removeTreasury, addToTreasury, withdrawFro
 const { CONTACT_INFO } = require('./constants')
 
 const { addBatch } = require('./ipc/inventoryHelpers')
+const { getSalePaidAmount } = require('./ipc/getSalePaidAmount')
 
 const ALL_ADMIN_PERMISSIONS = ROLES.admin.permissions
 
@@ -82,56 +83,57 @@ function registerIpc() {
   handle('license:serverCheck', async () => serverLicenseCheck(await openRealm()))
 
   // Print
-  handle('print:a4', async ({ token, html }) => {
+  handle('print:a4', async ({ token, html, silent }) => {
     if (!html) return
     requireUser(token, 'sales.view')
     const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
     setTimeout(() => {
-      printWin.webContents.print({}, () => printWin.destroy())
+      printWin.webContents.print({ silent: !!silent }, () => printWin.destroy())
     }, 300)
   })
 
   // Products
-  handle('products:list', async ({ token, query }) => (requireUser(token, 'products.view'), listProducts(await openRealm(), query)))
+  handle('products:list', async ({ token, query }) => (requireUser(token, ['products.view', 'cashier.access']), listProducts(await openRealm(), query)))
   handle('products:save', async ({ token, product }) => {
-    const r = await openRealm(); const session = requireUser(token, 'products.manage')
+    const r = await openRealm(); const session = requireUser(token, 'products.manage', r)
     const result = saveProduct(r, product)
     try { logActivity(r, session, { action: product._id ? 'تعديل منتج' : 'إضافة منتج', details: product.name }) } catch {}
     return result
   })
   handle('products:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'products.manage')
+    const r = await openRealm(); const session = requireUser(token, 'products.manage', r)
     const result = removeProduct(r, id)
     try { logActivity(r, session, { action: 'حذف منتج', details: id }) } catch {}
     return result
   })
 
   // Sales
-  handle('sales:list', async ({ token, filter }) => (requireUser(token, 'sales.view'), listSales(await openRealm(), filter)))
+  handle('sales:list', async ({ token, filter }) => (requireUser(token, ['sales.view', 'cashier.access']), listSales(await openRealm(), filter)))
   handle('sales:create', async ({ token, sale }) => {
-    const r = await openRealm(); const session = requireUser(token, 'sales.create')
+    const r = await openRealm(); const session = requireUser(token, ['sales.create', 'cashier.access'], r)
     const result = createSale(r, session, sale)
     try { logActivity(r, session, { action: 'إضافة فاتورة', details: '#' + result.invoiceNo + ' - ' + result.total }) } catch {}
     return result
   })
   handle('sales:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'sales.delete')
+    const r = await openRealm(); const session = requireUser(token, 'sales.delete', r)
     const result = removeSale(r, id)
     try { logActivity(r, session, { action: 'حذف فاتورة', details: id }) } catch {}
     return result
   })
+  handle('sales:paidForSale', async ({ token, saleId }) => (requireUser(token, ['sales.view', 'cashier.access']), getSalePaidAmount(await openRealm(), saleId)))
 
   // Expenses
   handle('expenses:list', async ({ token }) => (requireUser(token, 'expenses.view'), listExpenses(await openRealm())))
   handle('expenses:save', async ({ token, expense }) => {
-    const r = await openRealm(); const session = requireUser(token, 'expenses.manage')
+    const r = await openRealm(); const session = requireUser(token, ['expenses.manage', 'cashier.access'], r)
     const result = saveExpense(r, session, expense)
     try { logActivity(r, session, { action: expense._id ? 'تعديل مصروف' : 'إضافة مصروف', details: String(expense.amount) }) } catch {}
     return result
   })
   handle('expenses:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'expenses.manage')
+    const r = await openRealm(); const session = requireUser(token, ['expenses.manage', 'cashier.access'], r)
     const result = removeExpense(r, id)
     try { logActivity(r, session, { action: 'حذف مصروف', details: id }) } catch {}
     return result
@@ -140,15 +142,15 @@ function registerIpc() {
   // Users
   handle('users:list', async ({ token }) => (requireUser(token, 'users.view'), listUsers(await openRealm())))
   handle('users:save', async ({ token, user }) => {
-    const r = await openRealm(); const session = requireUser(token, 'users.manage')
+    const r = await openRealm(); const session = requireUser(token, 'users.manage', r)
     const result = saveUser(r, user)
     try { logActivity(r, session, { action: user._id ? 'تعديل مستخدم' : 'إضافة مستخدم', details: user.username }) } catch {}
     return result
   })
-  handle('users:toggleActive', async ({ token, id }) => { const r = await openRealm(); requireUser(token, 'users.manage'); return toggleUserActive(r, id) })
+  handle('users:toggleActive', async ({ token, id }) => { const r = await openRealm(); requireUser(token, 'users.manage', r); return toggleUserActive(r, id) })
 
   // Settings
-  handle('settings:get', async ({ token }) => (requireUser(token, 'settings.view'), getSettings(await openRealm())))
+  handle('settings:get', async ({ token }) => (requireUser(token, ['settings.view', 'cashier.access']), getSettings(await openRealm())))
   handle('settings:save', async ({ token, settings }) => (requireUser(token, 'settings.manage'), saveSettings(await openRealm(), settings)))
 
   // Dashboard
@@ -161,15 +163,16 @@ function registerIpc() {
   handle('backup:reset', async ({ token }) => (requireUser(token, 'backup.manage'), resetDatabase()))
 
   // Returns
-  handle('returns:list', async ({ token, saleId }) => (requireUser(token, 'returns.view'), listReturns(await openRealm(), saleId)))
+  handle('returns:list', async ({ token, saleId }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturns(await openRealm(), saleId)))
+handle('returns:listByCustomer', async ({ token, customerName }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturnsByCustomer(await openRealm(), customerName)))
   handle('returns:create', async ({ token, ret }) => {
-    const r = await openRealm(); const session = requireUser(token, 'returns.create')
+    const r = await openRealm(); const session = requireUser(token, ['returns.create', 'cashier.access'], r)
     const result = createReturn(r, session, ret)
     try { logActivity(r, session, { action: 'إرجاع منتجات', details: '#' + result.invoiceNo }) } catch {}
     return result
   })
   handle('returns:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'returns.create')
+    const r = await openRealm(); const session = requireUser(token, ['returns.create', 'cashier.access'], r)
     removeReturn(r, id, session)
     try { logActivity(r, session, { action: 'حذف مرتجع', details: id }) } catch {}
     return true
@@ -177,57 +180,39 @@ function registerIpc() {
 
   // Purchase Returns
   handle('purchaseReturns:list', async ({ token }) => (requireUser(token, 'returns.view'), listPurchaseReturns(await openRealm())))
+handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (requireUser(token, 'returns.view'), listPurchaseReturnsBySupplier(await openRealm(), supplierName)))
   handle('purchaseReturns:create', async ({ token, ret }) => {
-    const r = await openRealm(); const session = requireUser(token, 'returns.create')
+    const r = await openRealm(); const session = requireUser(token, 'returns.create', r)
     const result = createPurchaseReturn(r, session, ret)
     try { logActivity(r, session, { action: 'مرتجع مشتريات', details: '#' + result.invoiceNo + ' - ' + result.supplierName }) } catch {}
     return result
   })
-  handle('purchaseReturns:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'returns.create')
-    removePurchaseReturn(r, id)
-    try { logActivity(r, session, { action: 'حذف مرتجع مشتريات', details: id }) } catch {}
-    return true
-  })
 
   // Shifts
-  handle('shifts:getActive', async ({ token }) => { const session = requireUser(token, 'shifts.view'); return getActiveShift(await openRealm(), session.userId) })
-  handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token, 'shifts.manage'), startingBalance))
-  handle('shifts:end', async ({ token, endingBalance }) => {
-    const r = await openRealm(); const session = requireUser(token, 'shifts.manage')
-    const result = endShift(r, session, endingBalance)
-    const shiftStart = new Date(result.startedAt)
-    const shiftEnd = new Date(result.endedAt)
-    const shiftExpenses = r.objects('Expense').filtered('date >= $0 AND date <= $1', shiftStart, shiftEnd)
-    const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0)
-    const diff = result.endingBalance - result.startingBalance - result.totalSales + totalExpenses + result.withdrawalsTotal
-    if (diff < 0) {
-      saveExpense(r, session, { amount: Math.abs(diff), category: 'عجز وردية', note: 'عجز - ' + result.cashierName, date: new Date() })
-    } else if (diff > 0) {
-      const mainTreasury = r.objects('Treasury').filtered('type == "main"')[0]
-      if (mainTreasury) {
-        addToTreasury(r, { treasuryId: mainTreasury._id, amount: diff, note: 'زيادة - ' + result.cashierName, paymentMethod: 'cash', personName: result.cashierName, refType: 'shift', refId: result._id }, session)
-      }
-    }
+  handle('shifts:getActive', async ({ token }) => { const session = requireUser(token, ['shifts.view', 'cashier.access']); return getActiveShift(await openRealm(), session.userId) })
+  handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token, ['shifts.manage', 'cashier.access']), startingBalance))
+  handle('shifts:end', async ({ token, endingCashBalance, endingCardBalance }) => {
+    const r = await openRealm(); const session = requireUser(token, ['shifts.manage', 'cashier.access'], r)
+    const result = endShift(r, session, endingCashBalance, endingCardBalance)
     return result
   })
-  handle('shifts:list', async ({ token }) => (requireUser(token, 'shifts.view'), listShifts(await openRealm())))
-  handle('shifts:sales', async ({ token }) => { const session = requireUser(token, 'shifts.view'); return getShiftSales(await openRealm(), session.userId) })
+  handle('shifts:list', async ({ token }) => (requireUser(token, ['shifts.view', 'cashier.access']), listShifts(await openRealm())))
+  handle('shifts:sales', async ({ token }) => { const session = requireUser(token, ['shifts.view', 'cashier.access']); return getShiftSales(await openRealm(), session.userId) })
 
   // Activity
   handle('activity:list', async ({ token }) => (requireUser(token, 'activity.view'), listActivity(await openRealm())))
   handle('activity:log', async ({ token, action, details }) => { const session = requireUser(token, 'activity.view'); logActivity(await openRealm(), session, { action, details }) })
 
   // Customers
-  handle('customers:list', async ({ token }) => (requireUser(token, 'customers.view'), listCustomers(await openRealm())))
+  handle('customers:list', async ({ token }) => (requireUser(token, ['customers.view', 'cashier.access']), listCustomers(await openRealm())))
   handle('customers:save', async ({ token, customer }) => {
-    const r = await openRealm(); const session = requireUser(token, 'customers.manage')
+    const r = await openRealm(); const session = requireUser(token, 'customers.manage', r)
     const result = saveCustomer(r, customer)
     try { logActivity(r, session, { action: customer._id ? 'تعديل عميل' : 'إضافة عميل', details: customer.name }) } catch {}
     return result
   })
   handle('customers:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'customers.manage')
+    const r = await openRealm(); const session = requireUser(token, 'customers.manage', r)
     const result = removeCustomer(r, id)
     try { logActivity(r, session, { action: 'حذف عميل', details: id }) } catch {}
     return result
@@ -236,13 +221,13 @@ function registerIpc() {
   // Suppliers
   handle('suppliers:list', async ({ token }) => (requireUser(token, 'suppliers.view'), listSuppliers(await openRealm())))
   handle('suppliers:save', async ({ token, supplier }) => {
-    const r = await openRealm(); const session = requireUser(token, 'suppliers.manage')
+    const r = await openRealm(); const session = requireUser(token, 'suppliers.manage', r)
     const result = saveSupplier(r, supplier)
     try { logActivity(r, session, { action: supplier._id ? 'تعديل مورد' : 'إضافة مورد', details: supplier.name }) } catch {}
     return result
   })
   handle('suppliers:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'suppliers.manage')
+    const r = await openRealm(); const session = requireUser(token, 'suppliers.manage', r)
     const result = removeSupplier(r, id)
     try { logActivity(r, session, { action: 'حذف مورد', details: id }) } catch {}
     return result
@@ -251,7 +236,7 @@ function registerIpc() {
   // Supplier Payments
   handle('supplierPayments:list', async ({ token, supplierId }) => (requireUser(token, 'suppliers.payments'), listSupplierPayments(await openRealm(), supplierId)))
   handle('supplierPayments:create', async ({ token, payment }) => {
-    const r = await openRealm(); const session = requireUser(token, 'suppliers.payments')
+    const r = await openRealm(); const session = requireUser(token, 'suppliers.payments', r)
     const result = createSupplierPayment(r, session, payment)
     try { logActivity(r, session, { action: 'دفعة مورد', details: payment.supplierName + ' - ' + payment.amount }) } catch {}
     return result
@@ -261,7 +246,7 @@ function registerIpc() {
   // Customer Payments
   handle('customerPayments:list', async ({ token, customerId }) => (requireUser(token, 'customers.payments'), listCustomerPayments(await openRealm(), customerId)))
   handle('customerPayments:create', async ({ token, payment }) => {
-    const r = await openRealm(); const session = requireUser(token, 'customers.payments')
+    const r = await openRealm(); const session = requireUser(token, 'customers.payments', r)
     const result = createCustomerPayment(r, session, payment)
     try { logActivity(r, session, { action: 'دفعة عميل', details: payment.customerName + ' - ' + payment.amount }) } catch {}
     return result
@@ -271,19 +256,19 @@ function registerIpc() {
   // Purchases
   handle('purchases:list', async ({ token }) => (requireUser(token, 'purchases.view'), listPurchases(await openRealm())))
   handle('purchases:create', async ({ token, purchase }) => {
-    const r = await openRealm(); const session = requireUser(token, 'purchases.create')
+    const r = await openRealm(); const session = requireUser(token, 'purchases.create', r)
     const result = createPurchase(r, session, purchase)
     try { logActivity(r, session, { action: 'فاتورة شراء', details: '#' + result.invoiceNo }) } catch {}
     return result
   })
   handle('purchases:save', async ({ token, purchase }) => {
-    const r = await openRealm(); const session = requireUser(token, 'purchases.create')
+    const r = await openRealm(); const session = requireUser(token, 'purchases.create', r)
     const result = savePurchase(r, session, purchase)
     try { logActivity(r, session, { action: 'تحديث فاتورة شراء', details: '#' + result.invoiceNo }) } catch {}
     return result
   })
   handle('purchases:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'purchases.delete')
+    const r = await openRealm(); const session = requireUser(token, 'purchases.delete', r)
     const result = removePurchase(r, id)
     try { logActivity(r, session, { action: 'حذف فاتورة شراء', details: id }) } catch {}
     return result
@@ -301,31 +286,31 @@ function registerIpc() {
   // Treasury
   handle('treasury:list', async ({ token }) => (requireUser(token, 'treasury.view'), listTreasuries(await openRealm())))
   handle('treasury:save', async ({ token, treasury }) => {
-    const r = await openRealm(); const session = requireUser(token, 'treasury.manage')
+    const r = await openRealm(); const session = requireUser(token, 'treasury.manage', r)
     const result = saveTreasury(r, treasury, session)
     try { logActivity(r, session, { action: 'إضافة خزينة', details: treasury.name }) } catch {}
     return result
   })
   handle('treasury:remove', async ({ token, id }) => {
-    const r = await openRealm(); const session = requireUser(token, 'treasury.manage')
+    const r = await openRealm(); const session = requireUser(token, 'treasury.manage', r)
     const result = removeTreasury(r, id)
     try { logActivity(r, session, { action: 'حذف خزينة', details: id }) } catch {}
     return result
   })
   handle('treasury:add', async ({ token, data }) => {
-    const r = await openRealm(); const session = requireUser(token, 'treasury.manage')
+    const r = await openRealm(); const session = requireUser(token, 'treasury.manage', r)
     const result = addToTreasury(r, data, session)
     try { logActivity(r, session, { action: 'إضافة أموال للخزينة', details: data.amount + ' - ' + (data.personName || '') }) } catch {}
     return result
   })
   handle('treasury:withdraw', async ({ token, data }) => {
-    const r = await openRealm(); const session = requireUser(token, 'treasury.manage')
+    const r = await openRealm(); const session = requireUser(token, 'treasury.manage', r)
     const result = withdrawFromTreasury(r, data, session)
     try { logActivity(r, session, { action: data.category ? 'سحب تشغيلي' : 'سحب شخصي', details: data.amount + ' - ' + data.personName }) } catch {}
     return result
   })
   handle('treasury:transfer', async ({ token, data }) => {
-    const r = await openRealm(); const session = requireUser(token, 'treasury.transfer')
+    const r = await openRealm(); const session = requireUser(token, 'treasury.transfer', r)
     const result = transferBetweenTreasuries(r, data, session)
     try { logActivity(r, session, { action: 'تحويل خزينة', details: data.amount }) } catch {}
     return result

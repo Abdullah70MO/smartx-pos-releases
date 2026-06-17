@@ -16,9 +16,10 @@ export default function StatementA4({ type, party, transactions, settings }) {
         {settings?.logoDataUrl && <img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '60px', marginBottom: '6px' }} />}
         <div style={{ fontWeight: 'bold', fontSize: '20px' }}>{settings?.businessName || 'SMART X'}</div>
         {settings?.phone && <div style={{ fontSize: '11px' }}>هاتف: {settings.phone}</div>}
+        {settings?.email && <div style={{ fontSize: '11px' }}>بريد: {settings.email}</div>}
         {settings?.address && <div style={{ fontSize: '11px' }}>العنوان: {settings.address}</div>}
-        {settings?.commercialRegistration && <div style={{ fontSize: '11px' }}>سجل تجاري: {settings.commercialRegistration}</div>}
-        {settings?.taxNumber && <div style={{ fontSize: '11px' }}>رقم ضريبي: {settings.taxNumber}</div>}
+        {settings?.showCommercialReg && settings?.commercialRegistration && <div style={{ fontSize: '11px' }}>سجل تجاري: {settings.commercialRegistration}</div>}
+        {settings?.showTaxReg && settings?.taxNumber && <div style={{ fontSize: '11px' }}>رقم ضريبي: {settings.taxNumber}</div>}
       </div>
 
       <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '12px' }}>{title}</div>
@@ -39,19 +40,20 @@ export default function StatementA4({ type, party, transactions, settings }) {
         <div style={{ marginBottom: '12px', fontSize: '11px' }}>
           إجمالي المشتريات: <strong>{formatMoney(party?.totalDebt || 0)}</strong>
           {' | '}المدفوع: <strong>{formatMoney(party?.totalPaid || 0)}</strong>
-          {' | '}المتبقي: <strong style={{ color: balance > 0 ? '#d00' : '#080' }}>{formatMoney(balance)}</strong>
+          {' | '}<strong style={{ color: balance > 0 ? '#d00' : balance < 0 ? '#080' : '#000' }}>{balance > 0 ? `رصيد مستحق من العميل: ${formatMoney(balance)}` : balance < 0 ? `دين مستحق للعميل: ${formatMoney(Math.abs(balance))}` : `المتبقي: ${formatMoney(balance)}`}</strong>
         </div>
       )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '11px' }}>
         <thead>
           <tr style={{ borderBottom: '2px solid #000' }}>
-            <th style={{ padding: '6px 4px', textAlign: 'center', width: '30px' }}>#</th>
-            <th style={{ padding: '6px 4px', textAlign: 'center', width: '70px' }}>التاريخ</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '28px' }}>#</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '65px' }}>التاريخ</th>
             <th style={{ padding: '6px 4px', textAlign: 'right' }}>البيان</th>
-            <th style={{ padding: '6px 4px', textAlign: 'center', width: '60px' }}>فاتورة</th>
-            <th style={{ padding: '6px 4px', textAlign: 'center', width: '70px' }}>المبلغ</th>
-            <th style={{ padding: '6px 4px', textAlign: 'center', width: '70px' }}>الرصيد</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '45px' }}>نوع الدفع</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '55px' }}>فاتورة</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '65px' }}>المبلغ</th>
+            <th style={{ padding: '6px 4px', textAlign: 'center', width: '65px' }}>الرصيد</th>
           </tr>
         </thead>
         <tbody>
@@ -60,6 +62,7 @@ export default function StatementA4({ type, party, transactions, settings }) {
               <td style={{ padding: '4px', textAlign: 'center' }}>{i + 1}</td>
               <td style={{ padding: '4px', textAlign: 'center', fontSize: '10px' }}>{formatDate(t.date)}</td>
               <td style={{ padding: '4px', textAlign: 'right' }}>{t.desc}</td>
+              <td style={{ padding: '4px', textAlign: 'center', fontSize: '10px' }}>{t.paymentMethod === 'credit' ? 'آجل' : t.paymentMethod === 'card' ? 'بطاقة' : t.paymentMethod ? 'نقداً' : '-'}</td>
               <td style={{ padding: '4px', textAlign: 'center' }}>{t.invoiceNo || '-'}</td>
               <td style={{ padding: '4px', textAlign: 'center', color: t.amount > 0 ? '#d00' : '#080' }}>
                 {formatMoney(Math.abs(t.amount))}
@@ -71,14 +74,14 @@ export default function StatementA4({ type, party, transactions, settings }) {
           ))}
           {transactions.length === 0 && (
             <tr>
-              <td colSpan="6" style={{ padding: '16px', textAlign: 'center', color: '#999' }}>لا توجد عمليات</td>
+              <td colSpan="7" style={{ padding: '16px', textAlign: 'center', color: '#999' }}>لا توجد عمليات</td>
             </tr>
           )}
         </tbody>
       </table>
 
       <div style={{ textAlign: 'center', fontSize: '11px', marginTop: '8px' }}>
-        الرصيد الحالي: <strong style={{ color: balance > 0 ? '#d00' : '#080' }}>{formatMoney(balance)}</strong>
+        {balance > 0 ? (isCustomer ? 'رصيد مستحق من العميل' : 'دين مستحق للمورد') : balance < 0 ? (isCustomer ? 'دين مستحق للعميل' : 'رصيد مستحق من المورد') : 'الرصيد الحالي'}: <strong style={{ color: balance > 0 ? '#d00' : '#080' }}>{formatMoney(Math.abs(balance))}</strong>
       </div>
 
       {settings?.receiptFooter && (

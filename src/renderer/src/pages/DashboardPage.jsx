@@ -2,15 +2,11 @@ import { useState, useEffect } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
 import { formatMoney } from '../utils/money'
+import { formatDateTime } from '../utils/date'
 
 export default function DashboardPage() {
   const { goToReports, setPage } = useStore()
   const [summary, setSummary] = useState(null)
-
-  useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     load()

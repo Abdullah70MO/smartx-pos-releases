@@ -4,7 +4,7 @@ import { useConfirm } from './ConfirmModal'
 
 const PAGES = [
   { id: 'dashboard', label: 'لوحة التحكم', icon: '📊', perms: ['dashboard.view'] },
-  { id: 'cashier',   label: 'الكاشير',     icon: '🛒', perms: ['cashier.access', 'cashier.return'] },
+  { id: 'cashier',   label: 'الكاشير',     icon: '🛒', perms: ['cashier.access'] },
   { id: 'treasury',  label: 'الخزينة',     icon: '🏦', perms: ['treasury.view', 'treasury.manage', 'treasury.transfer'] },
   { id: 'expenses',  label: 'المصروفات',   icon: '💸', perms: ['expenses.view', 'expenses.manage'] },
   { id: 'products',  label: 'المنتجات',    icon: '📦', perms: ['products.view', 'products.manage'] },

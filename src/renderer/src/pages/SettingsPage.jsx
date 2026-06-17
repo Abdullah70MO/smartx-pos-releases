@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks'
+import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -55,6 +55,21 @@ export default function SettingsPage() {
           address: s.address || '',
           commercialRegistration: s.commercialRegistration || '',
           taxNumber: s.taxNumber || '',
+          showCommercialReg: s.showCommercialReg !== false,
+          showTaxReg: s.showTaxReg !== false,
+          showBusinessName: s.showBusinessName !== false,
+          showLogo: s.showLogo !== false,
+          showPhone: s.showPhone !== false,
+          showEmail: s.showEmail !== false,
+          showAddress: s.showAddress !== false,
+          showReceiptFooter: s.showReceiptFooter !== false,
+          showProductsTable: s.showProductsTable !== false,
+          showTotals: s.showTotals !== false,
+          showPaid: s.showPaid !== false,
+          showCashier: s.showCashier !== false,
+          showNotes: s.showNotes !== false,
+          showClientInfo: s.showClientInfo !== false,
+          showSupplierInfo: s.showSupplierInfo !== false,
           currency: s.currency || 'EGP',
           taxEnabled: s.taxEnabled !== false,
           theme: s.theme || 'dark',
@@ -67,6 +82,7 @@ export default function SettingsPage() {
           taxRate: s.taxRate != null ? s.taxRate : 14,
           printDefaultSize: s.printDefaultSize || 'receipt',
           printColorMode: s.printColorMode || 'color',
+          printDirectly: s.printDirectly === true,
           autoBackup: s.autoBackup || false,
           autoBackupInterval: s.autoBackupInterval || 'weekly',
           autoBackupPath: s.autoBackupPath || ''
@@ -250,6 +266,7 @@ export default function SettingsPage() {
       localStorage.setItem('currency', nextForm.currency)
       localStorage.setItem('calendarType', nextForm.calendarType)
       localStorage.setItem('timeFormat', nextForm.timeFormat)
+      localStorage.setItem('printDirectly', nextForm.printDirectly ? 'true' : 'false')
       const updated = await updateSettings(nextForm)
       const normalized = updated || nextForm
       setInitialForm(normalized)
@@ -273,9 +290,11 @@ export default function SettingsPage() {
     <div style={{ padding: '24px', overflow: 'auto', height: '100%', background: 'var(--bg)' }}>
       <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '24px', color: 'var(--text)' }}>الإعدادات</h1>
 
-      <div className="settings-layout" style={{ display: 'grid', gap: '20px', maxWidth: '1120px' }}>
+      <form onSubmit={handleSave}>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
         <Section title="بيانات المتجر">
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>شعار المتجر</label>
@@ -335,29 +354,24 @@ export default function SettingsPage() {
               <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العنوان</label>
               <input value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} style={{ width: '100%' }} readOnly={!canManage} />
             </div>
-            {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
-              حفظ بيانات المتجر
-            </button>}
-          </form>
+          </div>
         </Section>
 
-
-
         <Section title="التهيئة">
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مظهر التطبيق</label>
                 <select value={form.theme} onChange={e => setForm(f => ({ ...f, theme: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
-                  <option value="dark">الوضع الداكن (Dark Mode)</option>
-                  <option value="light">الوضع الفاتح (Light Mode)</option>
+                  <option value="dark">داكن</option>
+                  <option value="light">فاتح</option>
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نوع التقويم</label>
                 <select value={form.calendarType} onChange={e => setForm(f => ({ ...f, calendarType: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
-                  <option value="gregorian">ميلادي (Gregorian)</option>
-                  <option value="hijri">هجري (Hijri)</option>
+                  <option value="gregorian">ميلادي</option>
+                  <option value="hijri">هجري</option>
                 </select>
               </div>
               <div>
@@ -378,15 +392,11 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
-
-            {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
-              حفظ التهيئة
-            </button>}
-          </form>
+          </div>
         </Section>
 
         <Section title="الطباعة">
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="checkbox" id="taxEnabled" checked={form.taxEnabled} onChange={e => setForm(f => ({ ...f, taxEnabled: e.target.checked }))} disabled={!canManage} />
@@ -419,30 +429,96 @@ export default function SettingsPage() {
               <input type="checkbox" id="printAfter" checked={form.printAfterPayment} onChange={e => setForm(f => ({ ...f, printAfterPayment: e.target.checked }))} disabled={!canManage} />
               <label htmlFor="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input type="checkbox" id="printDirectly" checked={form.printDirectly} onChange={e => setForm(f => ({ ...f, printDirectly: e.target.checked }))} disabled={!canManage} />
+              <label htmlFor="printDirectly" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة مباشرة بدون نافذة اختيار الطابعة</label>
+            </div>
             <div>
               <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نص تذييل الفاتورة</label>
               <textarea value={form.receiptFooter} onInput={e => setForm(f => ({ ...f, receiptFooter: e.target.value }))} rows="2" readOnly={!canManage}
                 style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--outline)', borderRadius: '8px', padding: '10px', resize: 'vertical' }} />
             </div>
-            {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', marginTop: '6px', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
-              حفظ إعدادات الطباعة
-            </button>}
-          </form>
+          </div>
+        </Section>
+          </div>
+
+        <Section title="الفاتورة">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '10px' }}>بيانات المتجر</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showBusinessName} onChange={e => setForm(f => ({ ...f, showBusinessName: e.target.checked }))} /> اسم المتجر
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showLogo} onChange={e => setForm(f => ({ ...f, showLogo: e.target.checked }))} /> الشعار
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showPhone} onChange={e => setForm(f => ({ ...f, showPhone: e.target.checked }))} /> الهاتف
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showEmail} onChange={e => setForm(f => ({ ...f, showEmail: e.target.checked }))} /> الإيميل
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showAddress} onChange={e => setForm(f => ({ ...f, showAddress: e.target.checked }))} /> العنوان
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showCommercialReg} onChange={e => setForm(f => ({ ...f, showCommercialReg: e.target.checked }))} /> السجل التجاري
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showTaxReg} onChange={e => setForm(f => ({ ...f, showTaxReg: e.target.checked }))} /> الرقم الضريبي
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showReceiptFooter} onChange={e => setForm(f => ({ ...f, showReceiptFooter: e.target.checked }))} /> التذييل
+                </label>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '10px' }}>محتوى الفاتورة</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showProductsTable} onChange={e => setForm(f => ({ ...f, showProductsTable: e.target.checked }))} /> جدول المنتجات
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showTotals} onChange={e => setForm(f => ({ ...f, showTotals: e.target.checked }))} /> الإجماليات
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showPaid} onChange={e => setForm(f => ({ ...f, showPaid: e.target.checked }))} /> المدفوع
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showCashier} onChange={e => setForm(f => ({ ...f, showCashier: e.target.checked }))} /> الكاشير
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showNotes} onChange={e => setForm(f => ({ ...f, showNotes: e.target.checked }))} /> الملاحظات
+                </label>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '10px' }}>بيانات العميل والمورد</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showClientInfo} onChange={e => setForm(f => ({ ...f, showClientInfo: e.target.checked }))} /> بيانات العميل
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.showSupplierInfo} onChange={e => setForm(f => ({ ...f, showSupplierInfo: e.target.checked }))} /> بيانات المورد
+                </label>
+              </div>
+            </div>
+          </div>
         </Section>
 
-        {/* Backup */}
-        {canManage && <Section title="البيانات والتحديثات">
+        {canManage && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <Section title="البيانات">
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={handleBackupExport} style={{ flex: 1, background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>تصدير نسخة احتياطية</button>
-            <button onClick={handleBackupRestore} style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>استعادة نسخة احتياطية</button>
+            <button type="button" onClick={handleBackupExport} style={{ flex: 1, background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>تصدير نسخة احتياطية</button>
+            <button type="button" onClick={handleBackupRestore} style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>استعادة نسخة احتياطية</button>
           </div>
-          <button onClick={handleBackupReset} style={{ marginTop: '12px', width: '100%', background: 'var(--danger)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>
+          <button type="button" onClick={handleBackupReset} style={{ marginTop: '12px', width: '100%', background: 'var(--danger)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>
             إعادة تعيين البيانات
           </button>
-          
           <div style={{ borderTop: '1px solid var(--bg3)', margin: '16px 0 12px' }}></div>
           <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)' }}>النسخ الاحتياطي التلقائي</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--outline)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--outline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <input type="checkbox" id="autoBackup" checked={form.autoBackup} onChange={e => { setForm(f => ({ ...f, autoBackup: e.target.checked })); markSettingsDirty(true) }} />
               <label htmlFor="autoBackup" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer', fontWeight: '600' }}>تفعيل النسخ الاحتياطي التلقائي</label>
@@ -452,48 +528,39 @@ export default function SettingsPage() {
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مدة التكرار</label>
                   <select value={form.autoBackupInterval} onChange={e => { setForm(f => ({ ...f, autoBackupInterval: e.target.value })); markSettingsDirty(true) }} style={{ width: '100%' }}>
-                    <option value="daily">يومياً</option>
-                    <option value="weekly">أسبوعياً</option>
-                    <option value="monthly">شهرياً</option>
+                    <option value="daily">يومياً</option><option value="weekly">أسبوعياً</option><option value="monthly">شهرياً</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مكان حفظ النسخ الاحتياطي التلقائي</label>
+                  <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مكان الحفظ</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input type="text" readOnly placeholder="الافتراضي: Documents/SMART X Backups" value={form.autoBackupPath || ''} style={{ flex: 1, fontSize: '12px', background: 'var(--bg2)', color: 'var(--text2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--outline)' }} />
+                    <input type="text" readOnly placeholder="Documents/SMART X Backups" value={form.autoBackupPath || ''} style={{ flex: 1, fontSize: '12px', background: 'var(--bg2)', color: 'var(--text2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--outline)' }} />
                     <button type="button" onClick={handleSelectBackupFolder} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                      اختيار مجلد
+                      اختيار
                     </button>
                   </div>
                 </div>
               </div>
             )}
             {settingsDirty && (
-              <button onClick={saveSettingsNow} style={{ marginTop: '8px', background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                حفظ إعدادات النسخ الاحتياطي
+              <button type="button" onClick={saveSettingsNow} style={{ marginTop: '8px', background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                حفظ
               </button>
             )}
           </div>
-
-          <div style={{ borderTop: '1px solid var(--bg3)', margin: '16px 0 12px' }}></div>
-          <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>تحديث التطبيق</span>
-            <span style={{ fontSize: '12px', color: 'var(--text2)', fontWeight: '400' }}>{appVersion ? `الإصدار: v${appVersion}` : ''}</span>
+        </Section>
+        <Section title="التحديثات">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text)' }}>تحديث التطبيق</span>
+            <span style={{ fontSize: '12px', color: 'var(--text2)' }}>{appVersion || ''}</span>
           </div>
-          <button onClick={handleCheckUpdates} disabled={checkingUpdate} style={{ width: '100%', background: 'var(--bg3)', color: 'var(--text)', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>
+          <button type="button" onClick={handleCheckUpdates} disabled={checkingUpdate} style={{ width: '100%', background: 'var(--bg3)', color: 'var(--text)', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '500' }}>
             {checkingUpdate ? 'جاري التحقق...' : 'التحقق من وجود تحديثات'}
           </button>
-          {updateStatus?.type === 'progress' && (
-            <div style={{ marginTop: '8px', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text2)' }}>جاري التحميل... {Math.round(updateStatus.percent)}%</div>
-              <div style={{ width: '100%', height: '6px', background: 'var(--bg3)', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round(updateStatus.percent)}%`, height: '100%', background: 'var(--accent)', borderRadius: '3px' }}></div>
-              </div>
-            </div>
-          )}
-        </Section>}
+        </Section>
+        </div>}
 
-        {/* Contact info */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Section title="الترخيص">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ background: 'var(--bg)', borderRadius: '10px', padding: '14px', border: '1px solid var(--outline)' }}>
@@ -509,54 +576,35 @@ export default function SettingsPage() {
               {licenseStatus?.activated && (
                 <>
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>المفتاح: </span>
-                    {licenseStatus.activatedKey}
+                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>المفتاح: </span>{licenseStatus.activatedKey}
                   </div>
-                  {licenseStatus.activatedAt && (
-                    <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: '600', color: 'var(--text)' }}>تاريخ التفعيل: </span>
-                      {formatDate(licenseStatus.activatedAt)}
-                    </div>
-                  )}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
                     <span style={{ fontWeight: '600', color: 'var(--text)' }}>النوع: </span>
-                    {licenseStatus.licenseType === 'lifetime' ? 'مدى الحياة' :
-                     licenseStatus.licenseType === 'year' ? 'سنوي' :
-                     licenseStatus.licenseType === 'half_year' ? 'نصف سنوي' :
-                     licenseStatus.licenseType === 'quarter' ? 'ربع سنوي' :
-                     licenseStatus.licenseType === 'month' ? 'شهري' : licenseStatus.licenseType}
+                    {licenseStatus.licenseType === 'lifetime' ? 'مدى الحياة' : licenseStatus.licenseType === 'year' ? 'سنوي' :
+                     licenseStatus.licenseType === 'half_year' ? 'نصف سنوي' : licenseStatus.licenseType === 'quarter' ? 'ربع سنوي' : 'شهري'}
                   </div>
                   {licenseStatus.expiresAt && (
                     <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: '600', color: 'var(--text)' }}>تاريخ الانتهاء: </span>
-                      {formatDate(licenseStatus.expiresAt)}
+                      <span style={{ fontWeight: '600', color: 'var(--text)' }}>تاريخ الانتهاء: </span>{formatDate(licenseStatus.expiresAt)}
                     </div>
                   )}
                   {licenseStatus.remainingText && (
                     <div style={{ fontSize: '12px', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', fontWeight: '600',
                       background: licenseStatus.remainingDays !== null && licenseStatus.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
                       color: licenseStatus.remainingDays !== null && licenseStatus.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)'
-                    }}>
-                      {licenseStatus.remainingText}
-                    </div>
+                    }}>{licenseStatus.remainingText}</div>
                   )}
                 </>
               )}
-              {!licenseStatus?.activated && licenseStatus?.trialUsed && (
-                <div style={{ fontSize: '12px', color: 'var(--text2)' }}>
-                  <span style={{ fontWeight: '600', color: 'var(--text)' }}>باقي: </span>
-                  {licenseStatus.remainingText || 'انتهت'}
-                </div>
-              )}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={handleRefreshLicense} disabled={refreshingLicense} style={{
+              <button type="button" onClick={handleRefreshLicense} disabled={refreshingLicense} style={{
                 flex: 1, background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'
               }}>
-                {refreshingLicense ? 'جاري...' : 'تحديث حالة الترخيص'}
+                {refreshingLicense ? 'جاري...' : 'تحديث'}
               </button>
               {!licenseStatus?.activated && (
-                <button onClick={() => setShowLicenseModal(true)} style={{
+                <button type="button" onClick={() => setShowLicenseModal(true)} style={{
                   flex: 1, background: 'var(--bg3)', color: 'var(--text)', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'
                 }}>
                   تفعيل
@@ -566,21 +614,15 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        <ActivateLicenseModal
-          open={showLicenseModal}
-          onClose={() => setShowLicenseModal(false)}
-          onActivated={() => { handleRefreshLicense(); refreshLicense() }}
-        />
-
         <Section title="الدعم الفني">
           {contact.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {contact.filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', padding: '10px 14px', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--outline)' }}>
+              {contact.filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', padding: '10px 14px', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--outline)' }}>
                   <span style={{ color: 'var(--text2)', minWidth: '80px' }}>{item.label}:</span>
                   <span style={{ color: 'var(--text)', fontWeight: '500' }}>{item.value}</span>
                   {item.link && (
-                    <button onClick={() => window.open(item.link, '_blank')} style={{ marginRight: 'auto', background: 'var(--bg3)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
+                    <button type="button" onClick={() => window.open(item.link, '_blank')} style={{ marginRight: 'auto', background: 'var(--bg3)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
                       فتح الرابط
                     </button>
                   )}
@@ -591,7 +633,19 @@ export default function SettingsPage() {
             <div style={{ color: 'var(--text2)', fontSize: '13px' }}>بيانات التواصل غير متوفرة حالياً</div>
           )}
         </Section>
-      </div>
+        </div>
+
+        <ActivateLicenseModal
+          open={showLicenseModal}
+          onClose={() => setShowLicenseModal(false)}
+          onActivated={() => { handleRefreshLicense(); refreshLicense() }}
+        />
+
+        {canManage && <button type="submit" style={{ width: '100%', background: 'var(--accent)', color: '#fff', padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: '700', boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)' }}>
+          حفظ الإعدادات
+        </button>}
+          </div>
+      </form>
       {/* Update modals */}
       <Modal open={!!updateModal} onClose={() => { if (updateModal?.type !== 'downloading') setUpdateModal(null) }} title="تحديث التطبيق" width="420px">
         {updateModal?.type === 'available' && (

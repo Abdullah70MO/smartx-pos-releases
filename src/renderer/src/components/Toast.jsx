@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'preact/hooks'
+import { useState, useCallback, useContext } from 'preact/hooks'
 import { createContext } from 'preact'
 
 const ToastCtx = createContext(null)

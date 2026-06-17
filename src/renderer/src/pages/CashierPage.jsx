@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks'
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
 import Modal from '../components/Modal'
@@ -22,7 +22,7 @@ export default function CashierPage() {
   const [customers, setCustomers] = useState([])
   const [activeShift, setActiveShift] = useState(undefined)
   const [shiftLoaded, setShiftLoaded] = useState(false)
-  const [shiftSales, setShiftSales] = useState({ sales: [], total: 0, count: 0 })
+  const [shiftSales, setShiftSales] = useState({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0 })
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState([])
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -32,17 +32,21 @@ export default function CashierPage() {
   const [discountType, setDiscountType] = useState('amount')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerCredit, setCustomerCredit] = useState(0)
+  const [customerDebt, setCustomerDebt] = useState(0)
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [priceMode, setPriceMode] = useState('retail')
   const [showCustomerList, setShowCustomerList] = useState(false)
+  const [customerListIndex, setCustomerListIndex] = useState(-1)
   const [showStartShift, setShowStartShift] = useState(false)
 const [showEndShift, setShowEndShift] = useState(false)
 const [showEndConfirm, setShowEndConfirm] = useState(false)
 const [startBalance, setStartBalance] = useState('')
 const [taxEnabled, setTaxEnabled] = useState(true)
 const [taxRate, setTaxRate] = useState(14)
-  const [endBalance, setEndBalance] = useState('')
+  const [endCashBalance, setEndCashBalance] = useState('')
+  const [endCardBalance, setEndCardBalance] = useState('')
   const [errorModal, setErrorModal] = useState({ show: false, message: '' })
   const [receipt, setReceipt] = useState(null)
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -56,11 +60,21 @@ const [taxRate, setTaxRate] = useState(14)
   const [returnItems, setReturnItems] = useState([])
   const [returnReason, setReturnReason] = useState('')
   const [returnPaymentMethod, setReturnPaymentMethod] = useState('cash')
+  const [returnRefundCash, setReturnRefundCash] = useState(false)
+  const [customerPaidForSale, setCustomerPaidForSale] = useState(0)
   const searchRef = useRef(null)
   const customerRef = useRef(null)
   const barcodeBuffer = useRef('')
   const barcodeTimer = useRef(null)
   const addToCartRef = useRef(null)
+  const reloadTimer = useRef(null)
+
+  function debouncedReload() {
+    clearTimeout(reloadTimer.current)
+    reloadTimer.current = setTimeout(() => {
+      loadProducts(); loadCustomers(); loadShiftData()
+    }, 300)
+  }
 
   useEffect(() => {
     loadProducts(); loadCustomers(); loadShiftData(); loadSettings(); searchRef.current?.focus()
@@ -129,7 +143,7 @@ const [taxRate, setTaxRate] = useState(14)
       const sales = await api.getShiftSales(token)
       setShiftSales(sales)
     } else {
-      setShiftSales({ sales: [], total: 0, count: 0 })
+      setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0 })
     }
   }
 
@@ -150,17 +164,17 @@ const [taxRate, setTaxRate] = useState(14)
   }
 
   async function handleEndShift() {
-    if (endBalance === '' || endBalance === undefined) { toast('الرجاء إدخال رصيد النهاية', 'error'); return }
     setShowEndConfirm(true)
   }
 
   async function confirmEndShift() {
     setShowEndConfirm(false)
     const token = localStorage.getItem('token')
-    const bal = Number(endBalance) || 0
-    await api.endShift(token, bal)
+    const cashBal = Number(endCashBalance) || 0
+    const cardBal = Number(endCardBalance) || 0
+    await api.endShift(token, cashBal, cardBal)
     toast('تم إنهاء الوردية', 'success')
-    setShowEndShift(false); setEndBalance('')
+    setShowEndShift(false); setEndCashBalance(''); setEndCardBalance('')
     setActiveShift(null)
     setShiftSales({ sales: [], total: 0, count: 0 })
     setStartBalance(''); setShowStartShift(true)
@@ -184,6 +198,10 @@ const [taxRate, setTaxRate] = useState(14)
     const unitPrice = getProductPrice(product)
     setCart(prev => {
       const existing = prev.find(item => item.productId === product._id)
+      if (existing && existing.quantity + 1 > product.stock) {
+        toast(`المخزون غير كافٍ للمنتج "${product.name}" (المتاح: ${product.stock})`, 'error')
+        return prev
+      }
       return existing
         ? prev.map(item => item.productId === product._id ? { ...item, quantity: item.quantity + 1, unitPrice } : item)
         : [{ productId: product._id, name: product.name, quantity: 1, unitPrice, cost: product.cost }, ...prev]
@@ -192,13 +210,16 @@ const [taxRate, setTaxRate] = useState(14)
     searchRef.current?.focus()
   }
 
-  useEffect(() => { addToCartRef.current = addToCart }, [])
+  useEffect(() => { addToCartRef.current = addToCart }, [addToCart])
 
   function updateCartItem(id, qty) {
-    setCart(c => {
-      if (qty <= 0) return c.filter(item => item.productId !== id)
-      return c.map(item => item.productId === id ? { ...item, quantity: qty } : item)
-    })
+    if (qty <= 0) { setCart(c => c.filter(item => item.productId !== id)); return }
+    const product = products.find(p => p._id === id)
+    if (product && qty > product.stock) {
+      toast(`المخزون غير كافٍ للمنتج "${product.name}" (المتاح: ${product.stock})`, 'error')
+      return
+    }
+    setCart(c => c.map(item => item.productId === id ? { ...item, quantity: qty } : item))
   }
 
   useEffect(() => {
@@ -213,23 +234,25 @@ const [taxRate, setTaxRate] = useState(14)
   }, [cart, discount, discountType, paymentMethod, taxEnabled, taxRate])
 
   function handleCustomerInput(v) {
-    setCustomerName(v)
+    setCustomerName(v); setCustomerCredit(0); setCustomerDebt(0)
+    setCustomerListIndex(-1)
     if (v.length === 0) { setShowCustomerList(false); setCustomerPhone(''); return }
-    const matches = customers.filter(c => c.name.includes(v))
-    setShowCustomerList(matches.length > 0 && matches.length <= 20)
-    const exact = customers.find(c => c.name === v)
-    if (exact) {
-      setCustomerPhone(exact.phone || '')
-    }
+    const matches = customers.filter(c => c.name.includes(v) || c.phone?.includes(v))
+    setShowCustomerList(matches.length > 0)
   }
 
   function selectCustomer(c) {
     setCustomerName(c.name)
     setCustomerPhone(c.phone || '')
     setShowCustomerList(false)
-    const remaining = (c.totalDebt || 0) - (c.totalPaid || 0)
-    if (remaining > 0) {
-      toast(`مديونية سابقة: ${(c.totalDebt || 0).toFixed(2)} | المتبقي: ${remaining.toFixed(2)}`, 'info')
+    const credit = Math.max(0, (c.totalPaid || 0) - (c.totalDebt || 0))
+    setCustomerCredit(credit)
+    const debt = Math.max(0, (c.totalDebt || 0) - (c.totalPaid || 0))
+    setCustomerDebt(debt)
+    if (debt > 0) {
+      toast(`رصيد مستحق من العميل: ${debt.toFixed(2)}`, 'info')
+    } else if (credit > 0) {
+      toast(`دين مستحق للعميل: ${credit.toFixed(2)}`, 'info')
     }
   }
 
@@ -244,7 +267,15 @@ const [taxRate, setTaxRate] = useState(14)
   async function handleCheckout() {
     if (cart.length === 0) { toast('السلة فارغة', 'error'); return }
     if (!activeShift) { setErrorModal({ show: true, message: 'يجب بدء الوردية قبل البيع' }); return }
-    if (paymentMethod === 'cash' && Number(paid) < total) { setErrorModal({ show: true, message: 'المبلغ المدفوع أقل من الإجمالي' }); return }
+    if (paymentMethod !== 'credit') {
+      const requiredPaid = Math.max(0, total - customerCredit)
+      if (Number(paid) < requiredPaid) {
+        const msg = customerCredit > 0
+          ? `المبلغ المدفوع أقل من الإجمالي بعد خصم الرصيد السابق (الإجمالي: ${total.toFixed(2)} - دين مستحق للعميل: ${customerCredit.toFixed(2)} = ${requiredPaid.toFixed(2)})`
+          : 'المبلغ المدفوع أقل من الإجمالي'
+        setErrorModal({ show: true, message: msg }); return
+      }
+    }
     if (paymentMethod === 'credit' && (!customerName.trim() || !customerPhone.trim())) { setErrorModal({ show: true, message: 'يرجى تسجيل اسم العميل ورقم الهاتف للفاتورة الآجلة' }); return }
 
     for (const item of cart) {
@@ -268,15 +299,16 @@ const [taxRate, setTaxRate] = useState(14)
         })),
         subtotal, discount: discAmount, tax, total,
         paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total),
-        customerName, customerPhone, note
+        customerName, customerPhone, note,
+        previousCredit: paymentMethod !== 'credit' ? customerCredit : 0
       })
       if (settings?.printAfterPayment) {
-        setReceipt({ ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total), customerName, customerPhone, settings })
+        setReceipt({ ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total), customerName, customerPhone, note, previousCredit: paymentMethod !== 'credit' ? customerCredit : 0, previousDebt: result.previousDebt || 0, settings, customers, cashierName: user?.name })
       } else {
         toast(`تمت الفاتورة #${result.invoiceNo}`, 'success')
         setCart([]); setPaid(''); setCreditPaid(''); setDiscount(''); setNote('')
-        setCustomerName(''); setCustomerPhone('')
-        loadProducts(); loadCustomers(); loadShiftData()
+        setCustomerName(''); setCustomerPhone(''); setCustomerCredit(0); setCustomerDebt(0)
+        debouncedReload()
       }
     } catch (err) { toast(err.message, 'error') }
     setLoading(false)
@@ -285,7 +317,7 @@ const [taxRate, setTaxRate] = useState(14)
   async function loadReturnSales(search) {
     if (!search || search.length < 1) { setReturnSales([]); return }
     const token = localStorage.getItem('token')
-    const data = await api.listSales(token, { paidOnly: true })
+    const data = await api.listSales(token)
     setReturnSales(data.filter(s =>
       String(s.invoiceNo).includes(search) ||
       s.customerName?.includes(search) ||
@@ -295,7 +327,13 @@ const [taxRate, setTaxRate] = useState(14)
 
   async function openReturn(sale) {
     setSelectedReturnSale(sale)
+    setReturnRefundCash(false)
     const token = localStorage.getItem('token')
+    let paid = 0
+    if (sale.paymentMethod === 'credit') {
+      try { paid = await api.getSalePaidAmount(token, sale._id) } catch {}
+    }
+    setCustomerPaidForSale(paid)
     const saleReturns = await api.listReturns(token, sale._id)
     const returnedQtyMap = new Map()
     saleReturns.forEach(r => {
@@ -309,15 +347,21 @@ const [taxRate, setTaxRate] = useState(14)
       return { ...item, returnQty: 0, originalQty: item.quantity, remainingQty: Math.max(0, remaining) }
     }))
     setReturnReason('')
-    setReturnPaymentMethod(sale.paymentMethod || 'cash')
+    setReturnPaymentMethod(sale.paymentMethod === 'credit' ? 'credit' : 'cash')
   }
 
   async function handleReturnConfirm() {
     const items = returnItems.filter(i => i.returnQty > 0)
-    if (items.length === 0) { toast('اختر عنصر واحد على الأقل للإرجاع', 'error'); return }
+    if (items.length === 0) { toast('الرجاء تحديد كميات للإرجاع', 'error'); return }
+    if (!returnReason.trim()) { toast('الرجاء إدخال سبب الإرجاع', 'error'); return }
+    const subtotal = items.reduce((sum, i) => sum + (i.unitPrice * i.returnQty), 0)
+    const expectedRefund = returnPaymentMethod === 'customer_balance' ? 0 : (selectedReturnSale && selectedReturnSale.paymentMethod === 'credit' ? Math.min(subtotal, selectedReturnSale.paid || 0) : subtotal)
+    const shiftAvailable = activeShift ? (activeShift.startingBalance || 0) + (activeShift.totalSales || 0) - (activeShift.expensesTotal || 0) - (activeShift.withdrawalsTotal || 0) : 0
+    if (returnPaymentMethod === 'cash' && activeShift && shiftAvailable < expectedRefund) { toast('رصيد الوردية غير كافٍ', 'error'); return }
+    if (returnPaymentMethod === 'card' && activeShift && shiftAvailable < expectedRefund) { toast('رصيد الوردية غير كافٍ', 'error'); return }
+    if (!activeShift && (returnPaymentMethod === 'cash' || returnPaymentMethod === 'card')) { toast('لا توجد وردية نشطة، سيتم الخصم من الخزينة مباشرة', 'info') }
 
     const isFull = items.every(i => i.returnQty >= i.quantity)
-    const subtotal = items.reduce((sum, i) => sum + (i.unitPrice * i.returnQty), 0)
     const token = localStorage.getItem('token')
     try {
       await api.createReturn(token, {
@@ -330,13 +374,14 @@ const [taxRate, setTaxRate] = useState(14)
         subtotal, reason: returnReason,
         customerName: selectedReturnSale.customerName,
         isFullReturn: isFull,
-        paymentMethod: returnPaymentMethod
+        paymentMethod: returnPaymentMethod === 'customer_balance' ? 'credit' : returnPaymentMethod,
+        cashRefund: returnPaymentMethod !== 'customer_balance'
       })
       toast('تم إرجاع المنتجات', 'success')
       setShowReturnModal(false)
       setSelectedReturnSale(null)
       setReturnItems([])
-      loadProducts()
+      loadProducts(); loadShiftData()
     } catch (err) { toast(err.message, 'error') }
   }
 
@@ -360,8 +405,9 @@ const [taxRate, setTaxRate] = useState(14)
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filteredCustomers = customerName.length > 0
-    ? customers.filter(c => c.name.includes(customerName))
+  const filterValue = customerName || customerPhone
+  const filteredCustomers = filterValue.length > 0
+    ? customers.filter(c => c.name.includes(filterValue) || c.phone?.includes(filterValue))
     : []
 
   return (
@@ -409,14 +455,14 @@ const [taxRate, setTaxRate] = useState(14)
                 مصروف
               </button>
             )}
-            {!activeShift ? (
+            {user?.permissions?.includes('cashier.access') && !activeShift ? (
               <button onClick={() => setShowStartShift(true)}
                 style={{ background: 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                 بداية وردية جديدة
               </button>
-            ) : (
+            ) : user?.permissions?.includes('cashier.access') && (
               <>
-                <button onClick={() => { setEndBalance(''); setShowEndShift(true) }}
+                <button onClick={() => { setEndCashBalance(''); setEndCardBalance(''); setShowEndShift(true) }}
                   style={{ background: 'var(--danger)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                   إنهاء الوردية
                 </button>
@@ -461,7 +507,7 @@ const [taxRate, setTaxRate] = useState(14)
               border: '1px solid var(--bg3)', transition: '0.15s', opacity: p.stock <= 0 ? 0.5 : 1, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer'
             }}>
               {p.image ? <img src={p.image} alt="" style={{ width:'48px',height:'48px',borderRadius:'8px',objectFit:'cover',marginBottom:'4px' }} /> : null}
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{p.name}</div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px', color: 'var(--text)' }}>{p.name}</div>
               <div style={{ color: 'var(--accent)', fontSize: '15px' }}>{formatMoney(getProductPrice(p))}</div>
               <div style={{ fontSize: '11px', color: p.stock <= 0 ? 'var(--danger)' : (p.stock <= p.reorderPoint ? 'var(--danger)' : 'var(--text2)') }}>
                 {p.stock <= 0 ? 'نفد من المخزون' : `المخزون: ${p.stock} ${p.unit}`}
@@ -478,7 +524,7 @@ const [taxRate, setTaxRate] = useState(14)
           {cart.map(item => (
             <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '8px', marginBottom: '4px' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px' }}>{item.name}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text)' }}>{item.name}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatMoney(item.unitPrice)} × {item.quantity}</div>
               </div>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -513,18 +559,28 @@ const [taxRate, setTaxRate] = useState(14)
             </div>
           </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px', color: 'var(--text2)' }}>
-            <span>الضريبة</span><span>{formatMoney(tax)}</span>
+            <span style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setTaxEnabled(!taxEnabled)} title="اضغط لتفعيل/إلغاء الضريبة">
+              {taxEnabled ? 'الضريبة' : 'الضريبة (ملغية)'}
+            </span><span>{formatMoney(tax)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
             <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(total)}</span>
           </div>
 
-          <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); if (e.target.value === 'cash') setPaid(total) }}
-            style={{ width: '100%', marginBottom: '8px' }}>
-            <option value="cash">نقداً</option>
-            <option value="card">بطاقة</option>
-            <option value="credit">آجل</option>
-          </select>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+            {['cash','card','credit'].map(m => (
+              <button key={m} type="button" onClick={() => { setPaymentMethod(m); if (m === 'cash') setPaid(total) }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: paymentMethod === m
+                    ? (m === 'cash' ? 'var(--success)' : m === 'card' ? '#3b82f6' : 'var(--warning)')
+                    : 'var(--bg3)',
+                  color: paymentMethod === m ? '#fff' : 'var(--text)'
+                }}>
+                {m === 'cash' ? 'نقداً' : m === 'card' ? 'بطاقة' : 'آجل'}
+              </button>
+            ))}
+          </div>
 
           {paymentMethod === 'cash' && (
             <div>
@@ -546,42 +602,98 @@ const [taxRate, setTaxRate] = useState(14)
                 style={{ width: '100%', marginBottom: '4px' }} />
               {creditRemaining > 0 && (
                 <div style={{ textAlign: 'left', fontSize: '14px', color: '#f97316', marginBottom: '8px' }}>
-                  المتبقي على العميل: {formatMoney(creditRemaining)}
+                  رصيد مستحق من العميل: {formatMoney(creditRemaining)}
                 </div>
               )}
             </div>
           )}
 
           <div style={{ position: 'relative' }}>
-            <input placeholder="اسم العميل" value={customerName}
-              onInput={e => handleCustomerInput(e.target.value)}
-              onFocus={() => { if (customerName.length > 0) setShowCustomerList(true) }}
-              onBlur={() => setTimeout(() => setShowCustomerList(false), 200)}
-              ref={customerRef}
-              style={{ width: '100%', marginBottom: '8px' }} />
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input placeholder="اسم العميل" value={customerName}
+                onInput={e => handleCustomerInput(e.target.value)}
+                onFocus={() => { if (customerName.length > 0) setShowCustomerList(true) }}
+                onBlur={() => setTimeout(() => setShowCustomerList(false), 200)}
+                onKeyDown={e => {
+                  const list = filteredCustomers.slice(0, 10)
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    setCustomerListIndex(i => Math.min(i + 1, list.length - 1))
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    setCustomerListIndex(i => Math.max(i - 1, -1))
+                  } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    const idx = customerListIndex >= 0 ? customerListIndex : 0
+                    if (list[idx]) {
+                      e.preventDefault()
+                      selectCustomer(list[idx])
+                    }
+                  }}}
+                ref={customerRef}
+                style={{ flex: 1, marginBottom: '8px' }} />
+              <input placeholder="رقم العميل" value={customerPhone}
+                  onInput={e => {
+                    const v = e.target.value
+                    setCustomerPhone(v); setCustomerCredit(0); setCustomerDebt(0)
+                    setCustomerListIndex(-1)
+                    if (v.length === 0) { setShowCustomerList(false); return }
+                    const matches = customers.filter(c => c.name.includes(v) || c.phone?.includes(v))
+                    setShowCustomerList(matches.length > 0)
+                  }}
+                  onFocus={() => { if (customerPhone.length > 0) setShowCustomerList(true) }}
+                  onKeyDown={e => {
+                    const list = filteredCustomers.slice(0, 10)
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setCustomerListIndex(i => Math.min(i + 1, list.length - 1))
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setCustomerListIndex(i => Math.max(i - 1, -1))
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
+                      const idx = customerListIndex >= 0 ? customerListIndex : 0
+                      if (list[idx]) {
+                        e.preventDefault()
+                        selectCustomer(list[idx])
+                      }
+                    }}}
+                style={{ flex: 1, marginBottom: '8px' }} />
+            </div>
             {showCustomerList && filteredCustomers.length > 0 && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
                 background: 'var(--bg)', border: '1px solid var(--bg3)', borderRadius: '8px',
                 maxHeight: '160px', overflow: 'auto'
               }}>
-                {filteredCustomers.slice(0, 10).map(c => (
+                {filteredCustomers.slice(0, 10).map((c, i) => (
                   <button key={c._id} type="button" onClick={() => selectCustomer(c)}
                     style={{
                       display: 'block', width: '100%', textAlign: 'right', padding: '8px 12px',
-                      background: 'transparent', color: 'var(--text)', fontSize: '13px', borderBottom: '1px solid var(--bg2)'
+                      background: i === customerListIndex ? 'var(--bg2)' : 'transparent',
+                      color: 'var(--text)', fontSize: '13px', borderBottom: '1px solid var(--bg2)'
                     }}>
-                    <div style={{ fontSize: '13px' }}>{c.name} {c.phone ? `(${c.phone})` : ''}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text)' }}>{c.name} {c.phone ? `(${c.phone})` : ''}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text2)' }}>
-                      مديونية: {c.totalDebt?.toFixed(2)} | متبقي: <span style={{ color: ((c.totalDebt||0)-(c.totalPaid||0)) > 0 ? 'var(--danger)' : 'var(--success)' }}>{((c.totalDebt||0)-(c.totalPaid||0)).toFixed(2)}</span>
+                      {(c.totalDebt||0)-(c.totalPaid||0) > 0
+                        ? <span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل: {((c.totalDebt||0)-(c.totalPaid||0)).toFixed(2)}</span>
+                        : (c.totalPaid||0)-(c.totalDebt||0) > 0
+                        ? <span style={{ color: 'var(--success)' }}>دين مستحق للعميل: {((c.totalPaid||0)-(c.totalDebt||0)).toFixed(2)}</span>
+                        : <span>لا يوجد دين</span>}
                     </div>
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <input placeholder="رقم العميل" value={customerPhone} onInput={e => setCustomerPhone(e.target.value)}
-            style={{ width: '100%', marginBottom: '8px' }} />
+          {customerDebt > 0 && (
+            <div style={{ fontSize: '11px', color: 'var(--danger)', marginBottom: '8px', fontWeight: 'bold' }}>
+              رصيد مستحق من العميل: {customerDebt.toFixed(2)}
+            </div>
+          )}
+          {customerCredit > 0 && (
+            <div style={{ fontSize: '11px', color: 'var(--success)', marginBottom: '8px', fontWeight: 'bold' }}>
+              دين مستحق للعميل: {customerCredit.toFixed(2)} - سيتم خصمه تلقائياً
+            </div>
+          )}
           <input placeholder="ملاحظة" value={note} onInput={e => setNote(e.target.value)}
             style={{ width: '100%', marginBottom: '12px' }} />
 
@@ -613,22 +725,47 @@ const [taxRate, setTaxRate] = useState(14)
               <span style={{ color: 'var(--text2)' }}>مبيعات الوردية</span><span style={{ color: 'var(--success)', fontWeight: 'bold' }}>{shiftSales.total?.toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>كاش</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.cashTotal?.toFixed(2)}</span>
+            </div>
+            {shiftSales.creditTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مدفوع آجل</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.creditTotal?.toFixed(2)}</span>
+            </div>}
+            {shiftSales.cardTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>بطاقة</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.cardTotal?.toFixed(2)}</span>
+            </div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
               <span style={{ color: 'var(--text2)' }}>عدد الفواتير</span><span>{shiftSales.count}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span style={{ color: 'var(--text2)' }}>رصيد البداية</span><span>{activeShift?.startingBalance?.toFixed(2)}</span>
             </div>
           </div>
-           <input type="text" inputMode="numeric" placeholder="رصيد النهاية" value={endBalance}
-            onInput={e => setEndBalance(e.target.value)}
-            style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />
-          {endBalance !== '' && endBalance !== undefined && (() => {
-            const expected = (activeShift?.startingBalance || 0) + (activeShift?.totalSales || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
-            const diff = Number(endBalance) - expected
-            if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
-            if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
-            return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
-          })()}
+          <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>رصيد الكاش في الدرج</div>
+            <input type="text" inputMode="numeric" placeholder="أدخل رصيد الكاش الفعلي" value={endCashBalance}
+              onInput={e => setEndCashBalance(e.target.value)}
+              style={{ width: '100%', background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }} />
+            {endCashBalance !== '' && endCashBalance !== undefined && (() => {
+              const expected = (activeShift?.startingBalance || 0) + (shiftSales.cashTotal || 0) + (shiftSales.creditTotal || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
+              const diff = Number(endCashBalance) - expected
+              if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز كاش: {Math.abs(diff).toFixed(2)}</div>
+              if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة كاش: {diff.toFixed(2)}</div>
+              return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>الكاش مطابق</div>
+            })()}
+          </div>
+          {shiftSales.cardTotal > 0 && <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>رصيد البطاقة</div>
+            <input type="text" inputMode="numeric" placeholder="أدخل إجمالي البطاقة" value={endCardBalance}
+              onInput={e => setEndCardBalance(e.target.value)}
+              style={{ width: '100%', background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }} />
+            {endCardBalance !== '' && endCardBalance !== undefined && (() => {
+              const expected = shiftSales.cardTotal || 0
+              const diff = Number(endCardBalance) - expected
+              if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز بطاقة: {Math.abs(diff).toFixed(2)}</div>
+              if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة بطاقة: {diff.toFixed(2)}</div>
+              return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>البطاقة مطابقة</div>
+            })()}
+          </div>}
           <button onClick={handleEndShift} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
             تأكيد الإنهاء
           </button>
@@ -662,13 +799,20 @@ const [taxRate, setTaxRate] = useState(14)
         </div>
       </Modal>
 
-      <Modal open={!!receipt} onClose={() => { setReceipt(null); setCart([]); setPaid(''); setCreditPaid(''); setDiscount(''); setNote(''); setCustomerName(''); setCustomerPhone(''); loadProducts(); loadCustomers(); loadShiftData() }} title="فاتورة" width="350px">
+      <Modal open={!!receipt} onClose={() => { setReceipt(null); setCart([]); setPaid(''); setCreditPaid(''); setDiscount(''); setNote(''); setCustomerName(''); setCustomerPhone(''); debouncedReload() }} title="فاتورة" width="350px">
         {receipt && (
           <div style={{ fontSize: '12px', textAlign: 'center' }} id="receipt-content">
-            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '2px' }}>{receipt.settings?.businessName || 'SMART X'}</div>
-            {receipt.settings?.phone && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>هاتف: {receipt.settings.phone}</div>}
-            {receipt.settings?.address && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.address}</div>}
+            {receipt.settings?.showBusinessName !== false && <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '2px' }}>{receipt.settings?.businessName || 'SMART X'}</div>}
+            {receipt.settings?.showLogo !== false && receipt.settings?.logoDataUrl && <div style={{ marginBottom: '4px' }}><img src={receipt.settings.logoDataUrl} alt="logo" style={{ maxHeight: '50px' }} /></div>}
+            {receipt.settings?.showPhone !== false && receipt.settings?.phone && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>هاتف: {receipt.settings.phone}</div>}
+            {receipt.settings?.showEmail !== false && receipt.settings?.email && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>بريد: {receipt.settings.email}</div>}
+            {receipt.settings?.showAddress !== false && receipt.settings?.address && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.address}</div>}
+            {receipt.settings?.showCommercialReg && receipt.settings?.commercialRegistration && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>سجل تجاري: {receipt.settings.commercialRegistration}</div>}
+            {receipt.settings?.showTaxReg && receipt.settings?.taxNumber && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>رقم ضريبي: {receipt.settings.taxNumber}</div>}
             <div style={{ color: 'var(--text2)', margin: '6px 0 10px' }}>فاتورة #{receipt.invoiceNo}</div>
+            {receipt.paymentMethod && <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>نوع الدفع: {receipt.paymentMethod === 'credit' ? 'آجل' : receipt.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</div>}
+            {receipt.paymentMethod === 'credit' && receipt.customerName && <div style={{ color: 'var(--danger)', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>رصيد مستحق من العميل: {formatMoney(receipt.total - (receipt.paid || 0))}</div>}
+            {receipt.settings?.showProductsTable !== false && (<>
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
             {receipt.items?.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
@@ -677,16 +821,44 @@ const [taxRate, setTaxRate] = useState(14)
               </div>
             ))}
             <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
+            </>)}
+            {receipt.settings?.showTotals !== false && (<>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المجموع</span><span>{formatMoney(receipt.subtotal)}</span></div>
             {receipt.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(receipt.discount)}</span></div>}
             {receipt.tax > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الضريبة</span><span>{formatMoney(receipt.tax)}</span></div>}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}><span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(receipt.total)}</span></div>
-            {receipt.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المدفوع</span><span>{formatMoney(receipt.paid)}</span></div>}
-            {receipt.customerName && <div style={{ marginTop: '8px', color: 'var(--text2)' }}>العميل: {receipt.customerName}{receipt.customerPhone ? ` - ${receipt.customerPhone}` : ''}</div>}
-            {receipt.settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.receiptFooter}</div>}
+            </>)}
+            {receipt.previousDebt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل</span><span style={{ color: 'var(--danger)' }}>{formatMoney(receipt.previousDebt)}</span></div>}
+            {receipt.previousCredit > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--success)' }}>دين مستحق للعميل</span><span style={{ color: 'var(--success)' }}>-{formatMoney(receipt.previousCredit)}</span></div>}
+            {receipt.settings?.showPaid !== false && receipt.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المدفوع</span><span>{formatMoney(receipt.paid)}</span></div>}
+            {(() => {
+              const rem = Math.max(0, (receipt.total || 0) - (receipt.paid || 0))
+              const totalRem = rem + (receipt.previousDebt || 0) - (receipt.previousCredit || 0)
+              if (totalRem <= 0) return null
+              return <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px dashed var(--bg3)', paddingTop: '4px', marginTop: '2px' }}>
+                <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
+              </div>
+            })()}
+            {receipt.settings?.showClientInfo !== false && receipt.customerName && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--text)' }}>{receipt.customerName}</div>
+              {receipt.customerPhone && <div>الهاتف: {receipt.customerPhone}</div>}
+              {(() => {
+                if (!customers || !receipt.customerName) return null
+                const c = customers.find(x => x.name === receipt.customerName)
+                if (!c) return null
+                return <>
+                  {c.commercialReg && <div>سجل تجاري: {c.commercialReg}</div>}
+                  {c.taxReg && <div>سجل ضريبي: {c.taxReg}</div>}
+                  {c.address && <div>العنوان: {c.address}</div>}
+                </>
+              })()}
+            </div>}
+            {receipt.settings?.showNotes !== false && receipt.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{receipt.note}</div>}
+            {receipt.settings?.showCashier !== false && receipt.cashierName && <div style={{ marginTop: '6px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {receipt.cashierName}</div>}
+            {receipt.settings?.showReceiptFooter !== false && receipt.settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.receiptFooter}</div>}
             <button onClick={() => {
               if (receipt.settings?.printDefaultSize === 'a4') {
-                printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} />)
+                printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />)
               } else {
                 window.print()
               }
@@ -698,7 +870,7 @@ const [taxRate, setTaxRate] = useState(14)
         )}
       </Modal>
 
-      <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setSelectedReturnSale(null); setReturnItems([]); setReturnSearch(''); setReturnSales([]); setReturnPaymentMethod('cash') }} title="المرتجع" width="450px">
+      <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setSelectedReturnSale(null); setReturnItems([]); setReturnSearch(''); setReturnSales([]); setReturnPaymentMethod('cash'); setReturnRefundCash(false); setCustomerPaidForSale(0) }} title="المرتجع" width="450px">
         {!selectedReturnSale ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <input placeholder="ابحث برقم الفاتورة أو اسم العميل أو رقم الهاتف..." value={returnSearch}
@@ -728,7 +900,7 @@ const [taxRate, setTaxRate] = useState(14)
             {returnItems.map((item, i) => (
               <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '8px' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px' }}>{item.name}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text)' }}>{item.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text2)' }}>
                     {item.remainingQty > 0 ? `المتبقي للإرجاع: ${item.remainingQty} | السعر: ${formatMoney(item.unitPrice)}` : `تم إرجاع الكمية كاملة`}
                   </div>
@@ -743,6 +915,11 @@ const [taxRate, setTaxRate] = useState(14)
                   style={{ width: '60px', textAlign: 'center', fontSize: '12px' }} />
               </div>
             ))}
+            {selectedReturnSale?.paymentMethod === 'credit' && (
+              <div style={{ fontSize: '12px', color: 'var(--text2)', padding: '4px 0' }}>
+                المبلغ المدفوع من العميل: <strong style={{ color: 'var(--text)' }}>{formatMoney(customerPaidForSale)}</strong>
+              </div>
+            )}
             <input placeholder="سبب الإرجاع (اختياري)" value={returnReason}
               onInput={e => setReturnReason(e.target.value)}
               style={{ width: '100%' }} />
@@ -750,6 +927,7 @@ const [taxRate, setTaxRate] = useState(14)
               style={{ width: '100%' }}>
               <option value="cash">نقداً</option>
               <option value="card">بطاقة</option>
+              <option value="customer_balance">تضاف إلى رصيد العميل</option>
             </select>
             <button onClick={handleReturnConfirm}
               style={{ width: '100%', padding: '10px', background: 'var(--warning)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>

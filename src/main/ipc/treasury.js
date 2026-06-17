@@ -17,6 +17,10 @@ function saveTreasury(realm, data, session) {
   let t
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('Treasury', data._id) : null
+    if (!existing && (data.type === 'main' || data.type === 'bank')) {
+      const dup = realm.objects('Treasury').filtered('type == $0', data.type)[0]
+      if (dup) throw new Error(`يوجد بالفعل خزينة من نوع "${data.type === 'main' ? 'الرئيسية' : 'البنك'}"`)
+    }
     t = realm.create('Treasury', {
       _id: data._id || crypto.randomUUID(),
       name: data.name,

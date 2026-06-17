@@ -22,6 +22,51 @@ async function openRealm() {
           if (oldVersion < 24) {
             // v24: Added Shift.expensesTotal/withdrawalsTotal, Expense.shiftId, Return.paymentMethod
           }
+          if (oldVersion < 25) {
+            // v25: Added BusinessSettings.showCommercialReg/showTaxReg, PurchaseReturn.refundAmount
+          }
+          if (oldVersion < 26) {
+            // v26: Invoice show/hide fields, defaults changed to true
+            const oldSettings = oldRealm.objectForPrimaryKey('BusinessSettings', 'business')
+            const newSettings = newRealm.objectForPrimaryKey('BusinessSettings', 'business')
+            if (oldSettings && newSettings) {
+              newSettings.showCommercialReg = true
+              newSettings.showTaxReg = true
+            }
+          }
+          if (oldVersion < 27) {
+            // v27: Added Shift.cashTotal/cardTotal
+          }
+          if (oldVersion < 28) {
+            // v28: CreditCustomer.totalDebt = old totalDebt + sum(paid from sales)
+            const customers = oldRealm.objects('CreditCustomer')
+            customers.forEach(c => {
+              const sales = oldRealm.objects('Sale').filtered('customerName == $0 AND paymentMethod == "credit"', c.name)
+              let totalPaidFromSales = 0
+              for (const s of sales) {
+                totalPaidFromSales += (s.paid || 0)
+              }
+              const newC = newRealm.objectForPrimaryKey('CreditCustomer', c._id)
+              if (newC) {
+                newC.totalDebt = (c.totalDebt || 0) + totalPaidFromSales
+              }
+            })
+          }
+          if (oldVersion < 29) {
+            // v29: Added Shift.creditPaidTotal
+          }
+          if (oldVersion < 30) {
+            // v30: Added Return.tax
+          }
+          if (oldVersion < 31) {
+            // v31: Added BusinessSettings.printDirectly
+          }
+          if (oldVersion < 32) {
+            // v32: Added Sale.previousCredit
+          }
+          if (oldVersion < 33) {
+            // v33: Added Purchase.previousCredit
+          }
         }
     })
   } catch (e) {

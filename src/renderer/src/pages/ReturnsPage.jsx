@@ -20,6 +20,7 @@ export default function ReturnsPage() {
   const [selectedSale, setSelectedSale] = useState(null)
   const [returnItems, setReturnItems] = useState([])
   const [reason, setReason] = useState('')
+  const [returnPaymentMethod, setReturnPaymentMethod] = useState('cash')
   const [saleSearch, setSaleSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [retSearch, setRetSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
 
@@ -29,6 +30,7 @@ export default function ReturnsPage() {
   const [selectedPurchase, setSelectedPurchase] = useState(null)
   const [pReturnItems, setPReturnItems] = useState([])
   const [pReturnReason, setPReturnReason] = useState('')
+  const [pReturnPaymentMethod, setPReturnPaymentMethod] = useState('cash')
   const [pSearch, setPSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [pRetSearch, setPRetSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
 
@@ -60,6 +62,7 @@ export default function ReturnsPage() {
     setSelectedSale(sale)
     setReturnItems(sale.items.map(item => ({ ...item, returnQty: 0 })))
     setReason('')
+    setReturnPaymentMethod('cash')
     setShowModal(true)
   }
 
@@ -73,22 +76,19 @@ export default function ReturnsPage() {
       await api.createReturn(token, {
         saleId: selectedSale._id, invoiceNo: selectedSale.invoiceNo,
         items: items.map(i => ({ productId: i.productId, name: i.name, quantity: i.returnQty, unitPrice: i.unitPrice, cost: i.cost })),
-        subtotal, reason, customerName: selectedSale.customerName, isFullReturn: isFull
+        subtotal, reason, customerName: selectedSale.customerName, isFullReturn: isFull,
+        paymentMethod: returnPaymentMethod === 'customer_balance' ? 'credit' : returnPaymentMethod,
+        cashRefund: returnPaymentMethod !== 'customer_balance'
       })
       toast('تم إرجاع المنتجات', 'success'); setShowModal(false); loadReturns()
     } catch (err) { toast(err.message, 'error') }
-  }
-
-  async function handleRemovePurchaseReturn(id) {
-    if (!await confirm('حذف مرتجع المشتريات؟')) return
-    const token = localStorage.getItem('token')
-    try { await api.removePurchaseReturn(token, id); toast('تم الحذف', 'success'); loadPurchaseReturns() } catch (err) { toast(err.message, 'error') }
   }
 
   function openPReturn(p) {
     setSelectedPurchase(p)
     setPReturnItems(p.items.map(i => ({ productId: i.productId, name: i.name, quantity: 0, unitPrice: i.cost })))
     setPReturnReason('')
+    setPReturnPaymentMethod('cash')
     setShowPReturnModal(true)
   }
 
@@ -98,7 +98,10 @@ export default function ReturnsPage() {
     const subtotal = validItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0)
     const token = localStorage.getItem('token')
     try {
-      await api.createPurchaseReturn(token, { purchaseId: selectedPurchase._id, items: validItems, subtotal, reason: pReturnReason })
+      await api.createPurchaseReturn(token, {
+        purchaseId: selectedPurchase._id, items: validItems, subtotal, reason: pReturnReason,
+        paymentMethod: pReturnPaymentMethod === 'supplier_balance' ? 'credit' : pReturnPaymentMethod
+      })
       toast('تم تسجيل مرتجع المشتريات', 'success')
       setShowPReturnModal(false); setSelectedPurchase(null); loadPurchaseReturns(); loadPurchases()
     } catch (err) { toast(err.message, 'error') }
@@ -224,7 +227,12 @@ export default function ReturnsPage() {
               </div>
             ))}
           </div>
-          <input placeholder="سبب الإرجاع (اختياري)" value={reason} onInput={e => setReason(e.target.value)} style={{ width: '100%', marginBottom: '12px' }} />
+          <input placeholder="سبب الإرجاع (اختياري)" value={reason} onInput={e => setReason(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+          <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)} style={{ width: '100%', marginBottom: '8px' }}>
+            <option value="cash">نقداً</option>
+            <option value="card">بطاقة</option>
+            <option value="customer_balance">تضاف إلى رصيد العميل</option>
+          </select>
           {canCreate && <button onClick={handleReturn} style={{ width: '100%', padding: '10px', background: 'var(--warning)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تأكيد الإرجاع</button>}
         </Modal>
       </>}
@@ -263,7 +271,7 @@ export default function ReturnsPage() {
           <div style={{ overflow: 'auto' }}>
             <table>
               <thead>
-                <tr><th>المرتجع</th><th>فاتورة الشراء</th><th>التاريخ</th><th>المورد</th><th>المبلغ</th><th>السبب</th><th></th></tr>
+                <tr><th>المرتجع</th><th>فاتورة الشراء</th><th>التاريخ</th><th>المورد</th><th>المبلغ</th><th>السبب</th></tr>
               </thead>
               <tbody>
                 {filteredPReturns.map(r => (
@@ -274,10 +282,9 @@ export default function ReturnsPage() {
                     <td>{r.supplierName || '-'}</td>
                     <td style={{ fontWeight: 'bold' }}>{formatMoney(r.subtotal)}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{r.reason || '-'}</td>
-                    <td><button onClick={() => handleRemovePurchaseReturn(r._id)} style={{ color: 'var(--danger)', background: 'var(--bg3)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>حذف</button></td>
                   </tr>
                 ))}
-                {filteredPReturns.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مرتجعات شراء</td></tr>}
+                {filteredPReturns.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مرتجعات شراء</td></tr>}
               </tbody>
             </table>
           </div>
@@ -309,6 +316,11 @@ export default function ReturnsPage() {
               </div>
               <textarea placeholder="سبب الإرجاع (اختياري)" value={pReturnReason} onInput={e => setPReturnReason(e.target.value)} rows="2"
                 style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
+              <select value={pReturnPaymentMethod} onChange={e => setPReturnPaymentMethod(e.target.value)} style={{ width: '100%' }}>
+                <option value="cash">نقداً</option>
+                <option value="card">بطاقة</option>
+                <option value="supplier_balance">دين مستحق للمورد</option>
+              </select>
               <button onClick={handleCreatePReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
                 تسجيل مرتجع
               </button>
