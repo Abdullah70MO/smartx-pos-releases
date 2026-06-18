@@ -31,11 +31,11 @@
 }
 
 [data-theme="light"] {
-  --bg: #f8fafc;
-  --bg2: #ffffff; /* Surface Container */
-  --bg3: #f1f5f9; /* Surface Container High */
+  --bg: #f1f5f9;
+  --bg2: #ffffff;
+  --bg3: #e2e8f0;
   --text: #0f172a;
-  --text2: #64748b;
+  --text2: #475569;
   --accent: #2563eb;
   --accent-rgb: 37, 99, 235;
   --accent-container: #dbeafe;
@@ -43,12 +43,12 @@
   --success: #059669;
   --danger: #dc2626;
   --warning: #d97706;
-  --outline: #cbd5e1; /* أغمق للتباين */
-  --outline-strong: #94a3b8; /* للحدود المهمة */
-  --surface-container: #f1f5f9; /* للـ zebra stripe */
-  --elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --elevation-2: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
-  --elevation-3: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --outline: #94a3b8;
+  --outline-strong: #64748b;
+  --surface-container: #f1f5f9;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08);
+  --elevation-3: 0 10px 15px rgba(0,0,0,0.15), 0 4px 6px rgba(0,0,0,0.1);
 }
 
 body {

@@ -80,6 +80,7 @@ export function StoreProvider({ children }) {
       if (settings?.currency) localStorage.setItem('currency', settings.currency)
       if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
+      if (settings?.theme) localStorage.setItem('theme', settings.theme)
       localStorage.setItem('printDirectly', settings?.printDirectly ? 'true' : 'false')
     } catch (e) {}
     const license = await api.serverCheckLicense()
@@ -107,10 +108,11 @@ export function StoreProvider({ children }) {
   async function updateSettings(newSettings) {
     const token = localStorage.getItem('token')
     const updated = await api.saveSettings(token, newSettings)
-    if (updated?.currency) localStorage.setItem('currency', updated.currency)
-    if (updated?.calendarType) localStorage.setItem('calendarType', updated.calendarType)
-    if (updated?.timeFormat) localStorage.setItem('timeFormat', updated.timeFormat)
-    localStorage.setItem('printDirectly', updated?.printDirectly ? 'true' : 'false')
+      if (updated?.currency) localStorage.setItem('currency', updated.currency)
+      if (updated?.calendarType) localStorage.setItem('calendarType', updated.calendarType)
+      if (updated?.timeFormat) localStorage.setItem('timeFormat', updated.timeFormat)
+      if (updated?.theme) localStorage.setItem('theme', updated.theme)
+      localStorage.setItem('printDirectly', updated?.printDirectly ? 'true' : 'false')
     setState(s => ({ ...s, settings: updated }))
     return updated
   }
@@ -144,6 +146,7 @@ export function StoreProvider({ children }) {
                 if (settings?.currency) localStorage.setItem('currency', settings.currency)
                 if (settings?.calendarType) localStorage.setItem('calendarType', settings.calendarType)
                 if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
+                if (settings?.theme) localStorage.setItem('theme', settings.theme)
                 localStorage.setItem('printDirectly', settings?.printDirectly ? 'true' : 'false')
               } catch (e) {}
               setState(s => ({ ...s, token: savedToken, user: session, settings, license, page: 'dashboard' }))
@@ -199,7 +202,7 @@ export function StoreProvider({ children }) {
 
   // Sync theme attribute with state.settings.theme
   useEffect(() => {
-    const theme = state.settings?.theme || 'dark'
+    const theme = state.settings?.theme || localStorage.getItem('theme') || 'dark'
     document.documentElement.setAttribute('data-theme', theme)
   }, [state.settings?.theme])
 
