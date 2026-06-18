@@ -101,9 +101,9 @@ export default function ProductsPage() {
     const token = localStorage.getItem('token')
     const data = await api.listProducts(token)
     setProducts(data)
-    const cats = [...new Set(data.map(p => p.category).filter(Boolean))]
-    const uns = [...new Set(data.map(p => p.unit).filter(Boolean))]
-    setCategories(cats); setUnits(uns)
+    api.listProductMeta(token).then(meta => {
+      if (meta) { setCategories(meta.categories); setUnits(meta.units) }
+    }).catch(() => {})
   }
 
   function resetForm() {
@@ -313,8 +313,42 @@ export default function ProductsPage() {
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الوحدة</label>
-              <input list="unit-list" value={form.unit} onInput={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%' }} />
-              <datalist id="unit-list">{units.map(u => <option key={u} value={u} />)}</datalist>
+              <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
+                <option value="">-- اختر الوحدة --</option>
+                <option value="قطعة">قطعة</option>
+                <option value="حبة">حبة</option>
+                <option value="دسته">دسته</option>
+                <option value="دزينة">دزينة</option>
+                <option value="درزن">درزن</option>
+                <option value="زوج">زوج</option>
+                <option value="كيلو">كيلو</option>
+                <option value="كجم">كجم</option>
+                <option value="جرام">جرام</option>
+                <option value="جم">جم</option>
+                <option value="طن">طن</option>
+                <option value="لتر">لتر</option>
+                <option value="مل">مل</option>
+                <option value="جالون">جالون</option>
+                <option value="متر">متر</option>
+                <option value="سم">سم</option>
+                <option value="قدم">قدم</option>
+                <option value="ياردة">ياردة</option>
+                <option value="علبة">علبة</option>
+                <option value="زجاجة">زجاجة</option>
+                <option value="قارورة">قارورة</option>
+                <option value="عبوة">عبوة</option>
+                <option value="صفيحة">صفيحة</option>
+                <option value="كرتونة">كرتونة</option>
+                <option value="صندوق">صندوق</option>
+                <option value="كيس">كيس</option>
+                <option value="شريط">شريط</option>
+                <option value="لفة">لفة</option>
+                <option value="رزمة">رزمة</option>
+                <option value="حزمة">حزمة</option>
+                <option value="بالة">بالة</option>
+                <option value="طبق">طبق</option>
+                <option value="برميل">برميل</option>
+              </select>
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التكلفة {form.stock > 0 && <span style={{ color: 'var(--warning)', fontSize: '10px' }}>(محسوبة من المشتريات)</span>}</label>

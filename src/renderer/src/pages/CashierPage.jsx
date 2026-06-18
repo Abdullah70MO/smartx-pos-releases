@@ -14,6 +14,9 @@ const PRICE_MODES = [
   { id: 'wholesale', label: 'جملة', field: 'priceWholesale' }
 ]
 
+const FRACTIONAL_UNITS = ['كيلو', 'كجم', 'جرام', 'جم', 'طن', 'لتر', 'مل', 'جالون', 'متر', 'سم', 'قدم', 'ياردة']
+const FRACTION_STEP = 0.5
+
 export default function CashierPage() {
   const toast = useToast()
   const { user } = useStore()
@@ -22,7 +25,7 @@ export default function CashierPage() {
   const [customers, setCustomers] = useState([])
   const [activeShift, setActiveShift] = useState(undefined)
   const [shiftLoaded, setShiftLoaded] = useState(false)
-  const [shiftSales, setShiftSales] = useState({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0 })
+  const [shiftSales, setShiftSales] = useState({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, cardWithdrawalsTotal: 0, returnsTotal: 0 })
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState([])
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -33,6 +36,7 @@ export default function CashierPage() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerCredit, setCustomerCredit] = useState(0)
+  const [editingQty, setEditingQty] = useState({})
   const [customerDebt, setCustomerDebt] = useState(0)
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
@@ -53,6 +57,11 @@ const [taxRate, setTaxRate] = useState(14)
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseNote, setExpenseNote] = useState('')
   const [expensePaymentMethod, setExpensePaymentMethod] = useState('cash')
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawNote, setWithdrawNote] = useState('')
+  const [withdrawCategory, setWithdrawCategory] = useState('operational')
+  const [withdrawPaymentMethod, setWithdrawPaymentMethod] = useState('cash')
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [returnSearch, setReturnSearch] = useState('')
   const [returnSales, setReturnSales] = useState([])
@@ -68,16 +77,27 @@ const [taxRate, setTaxRate] = useState(14)
   const barcodeTimer = useRef(null)
   const addToCartRef = useRef(null)
   const reloadTimer = useRef(null)
+  const productMapRef = useRef({ byId: {}, byBarcode: {} })
+
+  useEffect(() => {
+    const byId = {}
+    const byBarcode = {}
+    for (const p of products) {
+      byId[p._id] = p
+      if (p.barcode) byBarcode[p.barcode] = p
+    }
+    productMapRef.current = { byId, byBarcode }
+  }, [products])
 
   function debouncedReload() {
     clearTimeout(reloadTimer.current)
     reloadTimer.current = setTimeout(() => {
-      loadProducts(); loadCustomers(); loadShiftData()
+      loadProducts('', 200); loadCustomers(); loadShiftData()
     }, 300)
   }
 
   useEffect(() => {
-    loadProducts(); loadCustomers(); loadShiftData(); loadSettings(); searchRef.current?.focus()
+    loadProducts('', 200); loadCustomers(); loadShiftData(); loadSettings(); searchRef.current?.focus()
   }, [])
   async function loadSettings() {
     try {
@@ -107,8 +127,8 @@ const [taxRate, setTaxRate] = useState(14)
       if (e.key === 'Enter' && barcodeBuffer.current.length >= 5) {
         const code = barcodeBuffer.current
         barcodeBuffer.current = ''
-        const product = products.find(p => p.barcode === code)
-        if (product) { addToCartRef.current?.(product); e.preventDefault(); return }
+        const product = productMapRef.current.byBarcode[code]
+        if (product) { addToCartRef.current?.(product, true); e.preventDefault(); return }
       }
       if (e.key.length === 1 && /^\d$/.test(e.key)) {
         barcodeBuffer.current += e.key
@@ -122,9 +142,9 @@ const [taxRate, setTaxRate] = useState(14)
     return () => window.removeEventListener('keydown', handler)
   }, [products])
 
-  async function loadProducts(q) {
+  async function loadProducts(q, limit) {
     const token = localStorage.getItem('token')
-    const data = await api.listProducts(token, q)
+    const data = await api.listProducts(token, q, limit)
     setProducts(data)
   }
 
@@ -143,7 +163,7 @@ const [taxRate, setTaxRate] = useState(14)
       const sales = await api.getShiftSales(token)
       setShiftSales(sales)
     } else {
-      setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0 })
+      setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, cardWithdrawalsTotal: 0, returnsTotal: 0 })
     }
   }
 
@@ -170,21 +190,21 @@ const [taxRate, setTaxRate] = useState(14)
   async function confirmEndShift() {
     setShowEndConfirm(false)
     const token = localStorage.getItem('token')
-    const cashBal = Number(endCashBalance) || 0
-    const cardBal = Number(endCardBalance) || 0
+    const cashBal = Number(endCashBalance)
+    const cardBal = Number(endCardBalance)
+    if (isNaN(cashBal) || isNaN(cardBal)) { toast('الرجاء إدخال أرقام صحيحة', 'error'); return }
     await api.endShift(token, cashBal, cardBal)
     toast('تم إنهاء الوردية', 'success')
     setShowEndShift(false); setEndCashBalance(''); setEndCardBalance('')
     setActiveShift(null)
-    setShiftSales({ sales: [], total: 0, count: 0 })
+    setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, returnsTotal: 0 })
     setStartBalance(''); setShowStartShift(true)
   }
 
   function handleSearch(v) {
     setSearch(v)
-    if (/^\d+$/.test(v)) return
-    if (v.length > 1) loadProducts(v)
-    else if (v.length === 0) loadProducts()
+    if (v.length > 0 && v.length < 2) { setProducts([]); return }
+    loadProducts(v, 100)
   }
 
   function getProductPrice(p) {
@@ -193,28 +213,31 @@ const [taxRate, setTaxRate] = useState(14)
     return price > 0 ? price : p.priceRetail
   }
 
-  function addToCart(product) {
+  function addToCart(product, keepSearch) {
     if (product.stock <= 0) { toast('المنتج نفد من المخزون', 'error'); return }
     const unitPrice = getProductPrice(product)
     setCart(prev => {
       const existing = prev.find(item => item.productId === product._id)
-      if (existing && existing.quantity + 1 > product.stock) {
+      const step = FRACTIONAL_UNITS.includes(product.unit) ? FRACTION_STEP : 1
+      if (existing && existing.quantity + step > product.stock) {
         toast(`المخزون غير كافٍ للمنتج "${product.name}" (المتاح: ${product.stock})`, 'error')
         return prev
       }
       return existing
-        ? prev.map(item => item.productId === product._id ? { ...item, quantity: item.quantity + 1, unitPrice } : item)
+        ? prev.map(item => item.productId === product._id ? { ...item, quantity: item.quantity + step, unitPrice } : item)
         : [{ productId: product._id, name: product.name, quantity: 1, unitPrice, cost: product.cost }, ...prev]
     })
-    setSearch('')
-    searchRef.current?.focus()
+    if (!keepSearch) {
+      setSearch('')
+      searchRef.current?.focus()
+    }
   }
 
   useEffect(() => { addToCartRef.current = addToCart }, [addToCart])
 
   function updateCartItem(id, qty) {
-    if (qty <= 0) { setCart(c => c.filter(item => item.productId !== id)); return }
-    const product = products.find(p => p._id === id)
+    if (qty < 0) { setCart(c => c.filter(item => item.productId !== id)); return }
+    const product = productMapRef.current.byId[id]
     if (product && qty > product.stock) {
       toast(`المخزون غير كافٍ للمنتج "${product.name}" (المتاح: ${product.stock})`, 'error')
       return
@@ -223,12 +246,12 @@ const [taxRate, setTaxRate] = useState(14)
   }
 
   useEffect(() => {
-    if (paymentMethod === 'cash' && cart.length > 0) {
+    if ((paymentMethod === 'cash' || paymentMethod === 'card') && cart.length > 0) {
       const st = cart.reduce((s, item) => s + (item.unitPrice * item.quantity), 0)
       const d = discountType === 'percent' ? (st * (Number(discount) || 0) / 100) : (Number(discount) || 0)
       const t = taxEnabled ? ((st - d) * taxRate / 100) : 0
       setPaid(st - d + t)
-    } else if (paymentMethod === 'cash' && cart.length === 0) {
+    } else if ((paymentMethod === 'cash' || paymentMethod === 'card') && cart.length === 0) {
       setPaid('')
     }
   }, [cart, discount, discountType, paymentMethod, taxEnabled, taxRate])
@@ -279,7 +302,7 @@ const [taxRate, setTaxRate] = useState(14)
     if (paymentMethod === 'credit' && (!customerName.trim() || !customerPhone.trim())) { setErrorModal({ show: true, message: 'يرجى تسجيل اسم العميل ورقم الهاتف للفاتورة الآجلة' }); return }
 
     for (const item of cart) {
-      const product = products.find(p => p._id === item.productId)
+      const product = productMapRef.current.byId[item.productId]
       if (!product || product.stock < item.quantity) {
         const name = item.name
         const available = product ? product.stock : 0
@@ -347,7 +370,7 @@ const [taxRate, setTaxRate] = useState(14)
       return { ...item, returnQty: 0, originalQty: item.quantity, remainingQty: Math.max(0, remaining) }
     }))
     setReturnReason('')
-    setReturnPaymentMethod(sale.paymentMethod === 'credit' ? 'credit' : 'cash')
+    setReturnPaymentMethod(sale.paymentMethod === 'credit' ? 'customer_balance' : sale.paymentMethod)
   }
 
   async function handleReturnConfirm() {
@@ -402,6 +425,33 @@ const [taxRate, setTaxRate] = useState(14)
       setExpenseAmount('')
       setExpenseNote('')
       setExpensePaymentMethod('cash')
+      loadShiftData()
+    } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function handleWithdraw() {
+    if (!withdrawAmount || Number(withdrawAmount) <= 0) { toast('الرجاء إدخال مبلغ السحب', 'error'); return }
+    const token = localStorage.getItem('token')
+    try {
+      const treasuries = await api.listTreasuries(token)
+      const treasuryType = withdrawPaymentMethod === 'card' ? 'bank' : 'main'
+      const treasury = treasuries.find(t => t.type === treasuryType)
+      if (!treasury) { toast('لا توجد خزينة ' + (treasuryType === 'bank' ? 'بنك' : 'رئيسية'), 'error'); return }
+      await api.withdrawFromTreasury(token, {
+        treasuryId: treasury._id,
+        amount: Number(withdrawAmount),
+        note: withdrawNote.trim(),
+        isPersonal: withdrawCategory === 'personal',
+        withdrawCategory: withdrawCategory === 'personal' ? '' : 'سحب تشغيلي',
+        paymentMethod: withdrawPaymentMethod
+      })
+      toast('تم السحب', 'success')
+      setShowWithdrawModal(false)
+      setWithdrawAmount('')
+      setWithdrawNote('')
+      setWithdrawCategory('operational')
+      setWithdrawPaymentMethod('cash')
+      loadShiftData()
     } catch (err) { toast(err.message, 'error') }
   }
 
@@ -455,6 +505,12 @@ const [taxRate, setTaxRate] = useState(14)
                 مصروف
               </button>
             )}
+            {user?.permissions?.includes('cashier.access') && (
+              <button onClick={() => setShowWithdrawModal(true)}
+                style={{ background: '#ef4444', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                سحب
+              </button>
+            )}
             {user?.permissions?.includes('cashier.access') && !activeShift ? (
               <button onClick={() => setShowStartShift(true)}
                 style={{ background: 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
@@ -497,11 +553,11 @@ const [taxRate, setTaxRate] = useState(14)
         <div style={{ flex: 1, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px', alignContent: 'start' }}>
           {products.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text2)', fontSize: '14px' }}>
-              لا توجد منتجات<br />
-              <span style={{ fontSize: '12px' }}>أضف منتجات من صفحة المنتجات أولاً</span>
+              {search ? 'لا توجد منتجات مطابقة' : 'لا توجد منتجات<br />'}
+              <span style={{ fontSize: '12px' }}>{search ? 'جرب بحث آخر' : 'أضف منتجات من صفحة المنتجات أولاً'}</span>
             </div>
           )}
-          {products.filter(p => !search || /^\d+$/.test(search) || p.name.includes(search) || p.barcode?.includes(search)).map(p => (
+          {products.map(p => (
             <button key={p._id} onClick={() => addToCart(p)} disabled={p.stock <= 0} style={{
               background: p.stock <= 0 ? 'var(--bg)' : 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
               border: '1px solid var(--bg3)', transition: '0.15s', opacity: p.stock <= 0 ? 0.5 : 1, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer'
@@ -518,7 +574,13 @@ const [taxRate, setTaxRate] = useState(14)
       </div>
 
       <div style={{ width: '400px', background: 'var(--bg2)', padding: '16px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--bg3)' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px' }}>فاتورة البيع</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '14px' }}>فاتورة البيع</h2>
+          {cart.length > 0 && <button onClick={() => setCart([])} style={{
+            background: 'transparent', color: 'var(--text2)', border: '1px solid var(--bg3)',
+            borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer'
+          }}>تفريغ</button>}
+        </div>
 
         <div style={{ flex: 1, overflow: 'auto', marginBottom: '12px' }}>
           {cart.map(item => (
@@ -528,11 +590,15 @@ const [taxRate, setTaxRate] = useState(14)
                 <div style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatMoney(item.unitPrice)} × {item.quantity}</div>
               </div>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <button onClick={() => updateCartItem(item.productId, item.quantity - 1)}
+                <button onClick={() => { const p = productMapRef.current.byId[item.productId]; const step = p && FRACTIONAL_UNITS.includes(p.unit) ? FRACTION_STEP : 1; const n = item.quantity - step; if (n <= 0) { setCart(c => c.filter(i => i.productId !== item.productId)) } else { updateCartItem(item.productId, n) } }}
                   style={{ background: 'var(--bg3)', color: 'var(--text)', width: '24px', height: '24px', borderRadius: '4px', fontSize: '12px' }}>-</button>
-                <input type="number" value={item.quantity} onInput={e => updateCartItem(item.productId, Number(e.target.value))}
-                  style={{ width: '50px', textAlign: 'center', fontSize: '12px' }} min="0" />
-                <button onClick={() => updateCartItem(item.productId, item.quantity + 1)}
+                <input type="text" inputMode="decimal"
+                  value={editingQty[item.productId] !== undefined ? editingQty[item.productId] : item.quantity}
+                  onInput={e => setEditingQty(d => ({ ...d, [item.productId]: e.target.value }))}
+                  onBlur={e => { const v = e.target.value; setEditingQty(d => { const n = { ...d }; delete n[item.productId]; return n }); if (v.trim() === '' || Number(v) <= 0) { setCart(c => c.filter(i => i.productId !== item.productId)) } else { updateCartItem(item.productId, Number(v)) } }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                  style={{ width: '70px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '4px', padding: '4px' }} />
+                <button onClick={() => { const p = productMapRef.current.byId[item.productId]; const step = p && FRACTIONAL_UNITS.includes(p.unit) ? FRACTION_STEP : 1; updateCartItem(item.productId, item.quantity + step) }}
                   style={{ background: 'var(--bg3)', color: 'var(--text)', width: '24px', height: '24px', borderRadius: '4px', fontSize: '12px' }}>+</button>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 'bold', width: '70px', textAlign: 'left' }}>
@@ -709,7 +775,7 @@ const [taxRate, setTaxRate] = useState(14)
       <Modal open={showStartShift} onClose={() => setShowStartShift(false)} title={activeShift ? 'بدء وردية جديدة' : 'بداية وردية جديدة'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {activeShift && <div style={{ color: '#f97316', fontSize: '13px' }}>سيتم إنهاء الوردية الحالية أولاً</div>}
-          <input type="text" inputMode="numeric" placeholder="رصيد بداية الوردية" value={startBalance}
+          <input type="number" placeholder="رصيد بداية الوردية" value={startBalance}
             onInput={e => setStartBalance(e.target.value)}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />
           <button onClick={handleStartShift} style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
@@ -721,49 +787,75 @@ const [taxRate, setTaxRate] = useState(14)
       <Modal open={showEndShift} onClose={() => setShowEndShift(false)} title="إنهاء الوردية">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>ملخص الوردية</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مبيعات الوردية</span><span style={{ color: 'var(--success)', fontWeight: 'bold' }}>{shiftSales.total?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>رصيد البداية</span><span style={{ fontWeight: 'bold' }}>{activeShift?.startingBalance?.toFixed(2)}</span>
             </div>
+            <div style={{ height: '1px', background: 'var(--bg3)', margin: '6px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>كاش</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.cashTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مبيعات نقداً</span><span style={{ color: 'var(--success)', fontWeight: 'bold' }}>+{shiftSales.cashTotal?.toFixed(2)}</span>
             </div>
-            {shiftSales.creditTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مدفوع آجل</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.creditTotal?.toFixed(2)}</span>
-            </div>}
             {shiftSales.cardTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>بطاقة</span><span style={{ color: 'var(--text)', fontWeight: 'bold' }}>{shiftSales.cardTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مبيعات بطاقة</span><span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>+{shiftSales.cardTotal?.toFixed(2)}</span>
             </div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+            {shiftSales.creditTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مدفوعات آجلة</span><span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>+{shiftSales.creditTotal?.toFixed(2)}</span>
+            </div>}
+            {shiftSales.expensesTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مصروفات</span><span style={{ color: '#f97316', fontWeight: 'bold' }}>-{shiftSales.expensesTotal?.toFixed(2)}</span>
+            </div>}
+            {shiftSales.withdrawalsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مسحوبات نقداً</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.withdrawalsTotal?.toFixed(2)}</span>
+            </div>}
+            {shiftSales.cardWithdrawalsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مسحوبات بطاقة</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.cardWithdrawalsTotal?.toFixed(2)}</span>
+            </div>}
+            {shiftSales.returnsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--text2)' }}>مرتجعات</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.returnsTotal?.toFixed(2)}</span>
+            </div>}
+            <div style={{ height: '1px', background: 'var(--bg3)', margin: '6px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span style={{ color: 'var(--text2)' }}>عدد الفواتير</span><span>{shiftSales.count}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-              <span style={{ color: 'var(--text2)' }}>رصيد البداية</span><span>{activeShift?.startingBalance?.toFixed(2)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold' }}>
+              <span>الكاش المتوقع بالدرج</span><span style={{ color: 'var(--accent)' }}>
+                {((activeShift?.startingBalance || 0) + (shiftSales.cashTotal || 0) + (shiftSales.creditTotal || 0) - (shiftSales.expensesTotal || 0) - (shiftSales.withdrawalsTotal || 0)).toFixed(2)}
+              </span>
             </div>
+            {(shiftSales.cardTotal > 0 || shiftSales.cardWithdrawalsTotal > 0) && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', marginTop: '4px' }}>
+              <span>البطاقة المتوقعة</span><span style={{ color: 'var(--accent)' }}>
+                {((shiftSales.cardTotal || 0) - (shiftSales.cardWithdrawalsTotal || 0)).toFixed(2)}
+              </span>
+            </div>}
           </div>
           <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>رصيد الكاش في الدرج</div>
-            <input type="text" inputMode="numeric" placeholder="أدخل رصيد الكاش الفعلي" value={endCashBalance}
+            <input type="number" placeholder="أدخل رصيد الكاش الفعلي" value={endCashBalance}
               onInput={e => setEndCashBalance(e.target.value)}
               style={{ width: '100%', background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }} />
             {endCashBalance !== '' && endCashBalance !== undefined && (() => {
-              const expected = (activeShift?.startingBalance || 0) + (shiftSales.cashTotal || 0) + (shiftSales.creditTotal || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
-              const diff = Number(endCashBalance) - expected
+              const num = Number(endCashBalance)
+              if (isNaN(num)) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>الرجاء إدخال رقم صحيح</div>
+              const expected = (activeShift?.startingBalance || 0) + (shiftSales.cashTotal || 0) + (shiftSales.creditTotal || 0) - (shiftSales.expensesTotal || 0) - (shiftSales.withdrawalsTotal || 0)
+              const diff = num - expected
+              if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>الكاش مطابق</div>
               if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز كاش: {Math.abs(diff).toFixed(2)}</div>
-              if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة كاش: {diff.toFixed(2)}</div>
-              return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>الكاش مطابق</div>
+              return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة كاش: {diff.toFixed(2)}</div>
             })()}
           </div>
-          {shiftSales.cardTotal > 0 && <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
+          {(shiftSales.cardTotal > 0 || shiftSales.cardWithdrawalsTotal > 0) && <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>رصيد البطاقة</div>
-            <input type="text" inputMode="numeric" placeholder="أدخل إجمالي البطاقة" value={endCardBalance}
+            <input type="number" placeholder="أدخل إجمالي البطاقة" value={endCardBalance}
               onInput={e => setEndCardBalance(e.target.value)}
               style={{ width: '100%', background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }} />
             {endCardBalance !== '' && endCardBalance !== undefined && (() => {
-              const expected = shiftSales.cardTotal || 0
-              const diff = Number(endCardBalance) - expected
+              const num = Number(endCardBalance)
+              if (isNaN(num)) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>الرجاء إدخال رقم صحيح</div>
+              const expected = (shiftSales.cardTotal || 0) - (shiftSales.cardWithdrawalsTotal || 0)
+              const diff = num - expected
+              if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>البطاقة مطابقة</div>
               if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز بطاقة: {Math.abs(diff).toFixed(2)}</div>
-              if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة بطاقة: {diff.toFixed(2)}</div>
-              return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>البطاقة مطابقة</div>
+              return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة بطاقة: {diff.toFixed(2)}</div>
             })()}
           </div>}
           <button onClick={handleEndShift} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
@@ -925,9 +1017,14 @@ const [taxRate, setTaxRate] = useState(14)
               style={{ width: '100%' }} />
             <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)}
               style={{ width: '100%' }}>
-              <option value="cash">نقداً</option>
-              <option value="card">بطاقة</option>
-              <option value="customer_balance">تضاف إلى رصيد العميل</option>
+              {(() => {
+                const opts = ['cash', 'card', 'customer_balance']
+                const first = selectedReturnSale?.paymentMethod === 'credit' ? 'customer_balance' : (selectedReturnSale?.paymentMethod || 'cash')
+                opts.sort((a, b) => a === first ? -1 : b === first ? 1 : 0)
+                return opts.map(v => (
+                  <option key={v} value={v}>{v === 'cash' ? 'نقداً' : v === 'card' ? 'بطاقة' : 'تضاف إلى رصيد العميل'}</option>
+                ))
+              })()}
             </select>
             <button onClick={handleReturnConfirm}
               style={{ width: '100%', padding: '10px', background: 'var(--warning)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
@@ -953,6 +1050,30 @@ const [taxRate, setTaxRate] = useState(14)
           <button onClick={handleAddExpense}
             style={{ width: '100%', padding: '10px', background: '#f59e0b', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
             تسجيل
+          </button>
+        </div>
+      </Modal>
+      <Modal open={showWithdrawModal} onClose={() => { setShowWithdrawModal(false); setWithdrawAmount(''); setWithdrawNote(''); setWithdrawCategory('operational') }} title="سحب من الخزينة" width="380px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input type="number" placeholder="المبلغ" value={withdrawAmount}
+            onInput={e => setWithdrawAmount(e.target.value)}
+            style={{ width: '100%' }} autoFocus />
+          <input placeholder="السبب" value={withdrawNote}
+            onInput={e => setWithdrawNote(e.target.value)}
+            style={{ width: '100%' }} />
+          <select value={withdrawCategory} onChange={e => setWithdrawCategory(e.target.value)}
+            style={{ width: '100%' }}>
+            <option value="operational">سحب تشغيلي</option>
+            <option value="personal">سحب شخصي</option>
+          </select>
+          <select value={withdrawPaymentMethod} onChange={e => setWithdrawPaymentMethod(e.target.value)}
+            style={{ width: '100%' }}>
+            <option value="cash">نقداً</option>
+            <option value="card">بطاقة</option>
+          </select>
+          <button onClick={handleWithdraw}
+            style={{ width: '100%', padding: '10px', background: '#ef4444', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+            تأكيد السحب
           </button>
         </div>
       </Modal>

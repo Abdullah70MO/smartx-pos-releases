@@ -7,8 +7,6 @@ function dashboardSummary(realm) {
   const monthSales = realm.objects('Sale').filtered('createdAt >= $0', startOfMonth)
   const todayExpenses = realm.objects('Expense').filtered('date >= $0', startOfDay)
   const monthExpenses = realm.objects('Expense').filtered('date >= $0', startOfMonth)
-  const allProducts = realm.objects('Product')
-
   const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0)
   const todayProfit = todaySales.reduce((sum, s) => {
     const cost = s.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
@@ -30,7 +28,8 @@ function dashboardSummary(realm) {
     .slice(0, 5)
     .map(([id, data]) => ({ productId: id, ...data }))
 
-  const lowStock = Array.from(allProducts).filter(p => p.active && (p.stock <= p.reorderPoint || p.stock === 0))
+  const lowStockProducts = realm.objects('Product').filtered('active == true AND (stock <= reorderPoint OR stock == 0)')
+  const lowStock = Array.from(lowStockProducts)
 
   const recentSales = realm.objects('Sale').sorted('createdAt', true).slice(0, 6)
 
@@ -42,7 +41,7 @@ function dashboardSummary(realm) {
     lowStock: lowStock.length,
     lowStockProducts: lowStock.map(p => ({ _id: p._id, name: p.name, stock: p.stock, reorderPoint: p.reorderPoint })),
     grossProfit: todayProfit,
-    totalProducts: allProducts.length,
+    totalProducts: realm.objects('Product').filtered('active == true').length,
     totalInventoryValue,
     expensesMonth: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
     expensesToday: todayExpenses.reduce((sum, e) => sum + e.amount, 0),

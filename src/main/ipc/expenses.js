@@ -43,6 +43,11 @@ function updateShiftExpenses(realm, shiftId, amount) {
   if (shift) shift.expensesTotal += amount
 }
 
+function checkShiftBalance(shift, amount) {
+  const available = shift.startingBalance + shift.totalSales - shift.expensesTotal - shift.withdrawalsTotal
+  if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
+}
+
 function saveExpense(realm, session, data) {
   let expense
   const pm = data.paymentMethod || 'cash'
@@ -53,10 +58,28 @@ function saveExpense(realm, session, data) {
       const old = realm.objectForPrimaryKey('Expense', data._id)
       const diff = newAmount - old.amount
       if (diff !== 0) {
-        updateTreasury(realm, -diff, 'تعديل مصروف - ' + (data.category || data.note || ''), session, data._id, pm)
-        if (old.shiftId) updateShiftExpenses(realm, old.shiftId, diff)
+        if (!old.shiftId) updateTreasury(realm, -diff, 'تعديل مصروف - ' + (data.category || data.note || ''), session, data._id, pm)
+        if (old.shiftId) {
+          if (diff > 0) {
+            const shift = realm.objectForPrimaryKey('Shift', old.shiftId)
+            if (data.paymentMethod === 'card') {
+              const cardAvailable = (shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)
+              if (cardAvailable < diff) throw new Error('الرصيد غير كافٍ في بطاقة الوردية')
+            } else {
+              checkShiftBalance(shift, diff)
+            }
+          }
+          updateShiftExpenses(realm, old.shiftId, diff)
+        }
       }
     } else if (data.shiftId) {
+      const shift = realm.objectForPrimaryKey('Shift', data.shiftId)
+      if (data.paymentMethod === 'card') {
+        const cardAvailable = (shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)
+        if (cardAvailable < newAmount) throw new Error('الرصيد غير كافٍ في بطاقة الوردية')
+      } else {
+        checkShiftBalance(shift, newAmount)
+      }
       updateShiftExpenses(realm, data.shiftId, newAmount)
     }
     expense = realm.create('Expense', {
@@ -70,7 +93,7 @@ function saveExpense(realm, session, data) {
       createdAt: isNew ? new Date() : realm.objectForPrimaryKey('Expense', data._id).createdAt
     }, Realm.UpdateMode.Modified)
     if (isNew) {
-      updateTreasury(realm, -newAmount, 'مصروف - ' + (data.category || data.note || ''), session, expense._id, pm)
+      if (!data.shiftId) updateTreasury(realm, -newAmount, 'مصروف - ' + (data.category || data.note || ''), session, expense._id, pm)
     }
   })
   return { _id: expense._id, amount: expense.amount, category: expense.category, note: expense.note, date: expense.date?.toISOString(), createdAt: expense.createdAt?.toISOString(), paymentMethod: expense.paymentMethod, shiftId: expense.shiftId }
@@ -81,7 +104,7 @@ function removeExpense(realm, id) {
     const expense = realm.objectForPrimaryKey('Expense', id)
     if (expense) {
       if (expense.shiftId) updateShiftExpenses(realm, expense.shiftId, -expense.amount)
-      updateTreasury(realm, expense.amount, 'إلغاء مصروف - ' + (expense.category || expense.note || ''), { userId: 'system' }, expense._id, expense.paymentMethod || 'cash')
+      if (!expense.shiftId) updateTreasury(realm, expense.amount, 'إلغاء مصروف - ' + (expense.category || expense.note || ''), { userId: 'system' }, expense._id, expense.paymentMethod || 'cash')
       realm.delete(expense)
     }
   })

@@ -57,7 +57,7 @@ export default function ShiftsPage() {
   async function handleEnd() {
     const token = localStorage.getItem('token')
     try {
-      const ended = await api.endShift(token, Number(endingBalance) || 0)
+      const ended = await api.endShift(token, Number(endingBalance) || 0, 0)
       toast(`تم إنهاء الوردية - المبيعات: ${ended.totalSales?.toFixed(2)}`, 'success')
       setShowEndModal(false); load()
     } catch (err) { toast(err.message, 'error') }
@@ -159,11 +159,11 @@ export default function ShiftsPage() {
           </div>
           <input type="number" placeholder="رصيد النهاية" value={endingBalance} onInput={e => setEndingBalance(e.target.value)} />
           {endingBalance !== '' && endingBalance !== undefined && (() => {
-            const expected = (activeShift?.startingBalance || 0) + (activeShift?.totalSales || 0)
+            const expected = (activeShift?.startingBalance || 0) + (activeShift?.totalSales || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
             const diff = Number(endingBalance) - expected
+            if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
             if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
-            if (diff > 0) return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
-            return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
+            return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
           })()}
           <button onClick={handleEnd} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>إنهاء الوردية</button>
         </div>

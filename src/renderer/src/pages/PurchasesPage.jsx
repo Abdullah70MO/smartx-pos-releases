@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -96,6 +96,7 @@ export default function PurchasesPage() {
   const [items, setItems] = useState([{ productId: '', name: '', quantity: '', cost: '' }])
   const [productSearch, setProductSearch] = useState([''])
   const [showProductDropdown, setShowProductDropdown] = useState([false])
+  const [productSearchResults, setProductSearchResults] = useState([])
   const [supplierName, setSupplierName] = useState('')
   const [supplierId, setSupplierId] = useState('')
   const [supplierSearch, setSupplierSearch] = useState('')
@@ -115,16 +116,17 @@ export default function PurchasesPage() {
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
   const [settings, setSettings] = useState(null)
-  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products])
-  const units = useMemo(() => [...new Set(products.map(p => p.unit).filter(Boolean))], [products])
+  const [categories, setCategories] = useState([])
+  const [units, setUnits] = useState([])
   const categoryRef = useRef(null)
+  const productSearchTimer = useRef(null)
 
-  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns() }, [])
+  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns(); loadProductMeta() }, [])
   useEffect(() => {
     let timer
     const handler = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadPurchaseReturns() }, 300)
+      timer = setTimeout(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadPurchaseReturns(); loadProductMeta() }, 300)
     }
     window.addEventListener('dataChanged', handler)
     return () => { window.removeEventListener('dataChanged', handler); clearTimeout(timer) }
@@ -138,8 +140,16 @@ export default function PurchasesPage() {
 
   async function loadProducts() {
     const token = localStorage.getItem('token')
-    const data = await api.listProducts(token)
+    const data = await api.listProducts(token, '', 300)
     setProducts(data)
+  }
+
+  async function loadProductMeta() {
+    const token = localStorage.getItem('token')
+    try {
+      const meta = await api.listProductMeta(token)
+      if (meta) { setCategories(meta.categories); setUnits(meta.units) }
+    } catch {}
   }
 
   async function loadSuppliers() {
@@ -172,6 +182,13 @@ export default function PurchasesPage() {
       }
       return next
     })
+    clearTimeout(productSearchTimer.current)
+    if (value.length < 2) { setProductSearchResults([]); return }
+    productSearchTimer.current = setTimeout(async () => {
+      const token = localStorage.getItem('token')
+      const data = await api.listProducts(token, value, 30)
+      setProductSearchResults(data || [])
+    }, 250)
   }
 
   function selectProductFromSearch(idx, p) {
@@ -182,10 +199,12 @@ export default function PurchasesPage() {
     })
     setProductSearch(arr => { const n = [...arr]; n[idx] = p.name; return n })
     setShowProductDropdown(arr => { const n = [...arr]; n[idx] = false; return n })
+    setProductSearchResults([])
   }
 
   function filteredProducts(search) {
     if (!search) return []
+    if (productSearchResults.length > 0) return productSearchResults
     return products.filter(p => p.name.includes(search) || p.barcode?.includes(search))
   }
 
@@ -299,6 +318,7 @@ export default function PurchasesPage() {
       quantity: 0, unitPrice: i.cost
     })))
     setReturnReason('')
+    setReturnPaymentMethod(p.paymentMethod === 'credit' ? 'supplier_balance' : p.paymentMethod)
     setShowReturnModal(true)
   }
 
@@ -460,7 +480,10 @@ export default function PurchasesPage() {
                       const val = productSearch[idx]
                       if (/^\d{5,}$/.test(val)) {
                         const match = products.find(p => p.barcode === val)
-                        if (match) { selectProductFromSearch(idx, match); e.preventDefault() }
+                        if (match) { selectProductFromSearch(idx, match); e.preventDefault(); return }
+                        api.listProducts(localStorage.getItem('token'), val, 1).then(data => {
+                          if (data && data.length > 0) selectProductFromSearch(idx, data[0])
+                        })
                       }
                     }
                   }}
@@ -674,9 +697,14 @@ export default function PurchasesPage() {
               style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
             <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)}
               style={{ width: '100%' }}>
-              <option value="cash">نقداً</option>
-              <option value="card">بطاقة</option>
-              <option value="supplier_balance">دين مستحق للمورد</option>
+              {(() => {
+                const opts = ['cash', 'card', 'supplier_balance']
+                const first = returnPurchase?.paymentMethod === 'credit' ? 'supplier_balance' : (returnPurchase?.paymentMethod || 'cash')
+                opts.sort((a, b) => a === first ? -1 : b === first ? 1 : 0)
+                return opts.map(v => (
+                  <option key={v} value={v}>{v === 'cash' ? 'نقداً' : v === 'card' ? 'بطاقة' : 'رصيد مستحق للمورد'}</option>
+                ))
+              })()}
             </select>
             <button onClick={handleCreateReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
               تسجيل مرتجع
@@ -730,10 +758,47 @@ export default function PurchasesPage() {
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الوحدة</label>
-              <input list="p-unit-list" value={productForm.unit} onInput={e => setProductForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%' }} />
-              <datalist id="p-unit-list">{units.map(u => <option key={u} value={u} />)}</datalist>
+              <select value={productForm.unit} onChange={e => setProductForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
+                <option value="">-- اختر الوحدة --</option>
+                <option value="قطعة">قطعة</option>
+                <option value="حبة">حبة</option>
+                <option value="دسته">دسته</option>
+                <option value="دزينة">دزينة</option>
+                <option value="درزن">درزن</option>
+                <option value="زوج">زوج</option>
+                <option value="كيلو">كيلو</option>
+                <option value="كجم">كجم</option>
+                <option value="جرام">جرام</option>
+                <option value="جم">جم</option>
+                <option value="طن">طن</option>
+                <option value="لتر">لتر</option>
+                <option value="مل">مل</option>
+                <option value="جالون">جالون</option>
+                <option value="متر">متر</option>
+                <option value="سم">سم</option>
+                <option value="قدم">قدم</option>
+                <option value="ياردة">ياردة</option>
+                <option value="علبة">علبة</option>
+                <option value="زجاجة">زجاجة</option>
+                <option value="قارورة">قارورة</option>
+                <option value="عبوة">عبوة</option>
+                <option value="صفيحة">صفيحة</option>
+                <option value="كرتونة">كرتونة</option>
+                <option value="صندوق">صندوق</option>
+                <option value="كيس">كيس</option>
+                <option value="شريط">شريط</option>
+                <option value="لفة">لفة</option>
+                <option value="رزمة">رزمة</option>
+                <option value="حزمة">حزمة</option>
+                <option value="بالة">بالة</option>
+                <option value="طبق">طبق</option>
+                <option value="برميل">برميل</option>
+              </select>
             </div>
-            <Input label="التكلفة" type="number" value={productForm.cost || ''} onInput={v => setProductForm(f => ({ ...f, cost: Number(v) }))} placeholder="التكلفة" />
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التكلفة {productForm.stock > 0 && <span style={{ color: 'var(--warning)', fontSize: '10px' }}>(محسوبة من المشتريات)</span>}</label>
+              <input type="number" value={productForm.cost || ''} onInput={e => setProductForm(f => ({ ...f, cost: Number(e.target.value) }))} placeholder="التكلفة" disabled={productForm.stock > 0} style={{ width: '100%', opacity: productForm.stock > 0 ? 0.6 : 1 }} />
+            </div>
             <Input label="سعر التجزئة" type="number" value={productForm.priceRetail || ''} onInput={v => setProductForm(f => ({ ...f, priceRetail: Number(v) }))} placeholder="سعر التجزئة" />
             <Input label="سعر نصف الجملة" type="number" value={productForm.priceHalfWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceHalfWholesale: Number(v) }))} placeholder="سعر نصف الجملة" />
             <Input label="سعر الجملة" type="number" value={productForm.priceWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceWholesale: Number(v) }))} placeholder="سعر الجملة" />

@@ -31,7 +31,7 @@ export default function InventoryPage() {
     const token = localStorage.getItem('token')
     setAdjustments(await api.listAdjustments(token))
     setLowStock(await api.getLowStockProducts(token))
-    setProducts(await api.listProducts(token))
+    setProducts(await api.listProducts(token, '', 1000))
   }
 
   useEffect(() => {

@@ -240,6 +240,7 @@ const ShiftSchema = {
     creditPaidTotal: { type: 'double', default: 0 },
     expensesTotal:   { type: 'double', default: 0 },
     withdrawalsTotal:{ type: 'double', default: 0 },
+    cardWithdrawalsTotal: { type: 'double', default: 0 },
     invoiceCount:    { type: 'int', default: 0 },
     isActive:        { type: 'bool', default: true }
   }
@@ -465,9 +466,10 @@ const SCHEMAS = [
 //   31    Added BusinessSettings.printDirectly
 //   32    Added Sale.previousCredit
 //   33    Added Purchase.previousCredit
+//   34    Added Shift.cardWithdrawalsTotal
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 33
+const SCHEMA_VERSION = 34
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

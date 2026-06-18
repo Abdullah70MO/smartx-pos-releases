@@ -79,14 +79,19 @@ function withdrawFromTreasury(realm, data, session) {
     const t = realm.objectForPrimaryKey('Treasury', data.treasuryId)
     if (!t) throw new Error('الخزينة غير موجودة')
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
-    if (activeShift) {
+    if (activeShift && data.paymentMethod === 'card') {
+      const cardAvailable = (activeShift.cardTotal || 0) - (activeShift.cardWithdrawalsTotal || 0)
+      if (cardAvailable < amount) throw new Error('الرصيد غير كافٍ في بطاقة الوردية')
+    } else if (activeShift) {
       const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
     } else if (t.balance < amount) {
       throw new Error('الرصيد غير كافٍ في الخزينة')
     }
-    t.balance -= amount
-    t.updatedAt = new Date()
+    if (!activeShift) {
+      t.balance -= amount
+      t.updatedAt = new Date()
+    }
     const type = data.isPersonal ? 'personal_withdraw' : 'withdraw'
     realm.create('TreasuryTransaction', {
       _id: crypto.randomUUID(),
@@ -105,7 +110,11 @@ function withdrawFromTreasury(realm, data, session) {
       createdAt: new Date()
     })
     if (activeShift) {
-      activeShift.withdrawalsTotal += amount
+      if (data.paymentMethod === 'card') {
+        activeShift.cardWithdrawalsTotal += amount
+      } else {
+        activeShift.withdrawalsTotal += amount
+      }
     }
     if (!data.isPersonal) {
       realm.create('Expense', {

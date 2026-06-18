@@ -311,3 +311,13 @@ header, .toolbar, .top-bar {
     display: none !important;
   }
 }
+
+/* Hide number input spinners across the app */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

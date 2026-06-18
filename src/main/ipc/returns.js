@@ -135,32 +135,26 @@ function createReturn(realm, session, data) {
     if (refundAmount > 0) {
       if (activeShift && !isCreditReturn) {
         const fullAmount = refundAmount + (sale.tax > 0 ? returnTaxAmount : 0)
+        updateTreasury(realm, -fullAmount, 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
         activeShift.totalSales -= fullAmount
         if (data.paymentMethod === 'card') activeShift.cardTotal -= refundAmount
         else activeShift.cashTotal -= refundAmount
-      } else {
+        if (sale.tax > 0) {
+          if (data.paymentMethod === 'card') activeShift.cardTotal -= returnTaxAmount
+          else activeShift.cashTotal -= returnTaxAmount
+        }
+      } else if (data.paymentMethod !== 'credit') {
         updateTreasury(realm, -refundAmount, 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
       }
       if (activeShift && sale.paymentMethod === 'credit') {
         activeShift.totalSales -= refundAmount
         activeShift.creditPaidTotal -= refundAmount
       }
-      if (activeShift && isCreditReturn && sale.paymentMethod !== 'credit') {
-        const fullAmount = refundAmount + (sale.tax > 0 ? returnTaxAmount : 0)
-        activeShift.totalSales -= fullAmount
-        if (sale.paymentMethod === 'card') activeShift.cardTotal -= fullAmount
-        else activeShift.cashTotal -= fullAmount
-      }
-    }
-
-    if (sale.tax > 0 && saleTaxRate > 0) {
+    } else if (sale.tax > 0 && saleTaxRate > 0 && activeShift && !isCreditReturn) {
       const taxReturn = returnTaxAmount
-      if (activeShift && !isCreditReturn) {
-        if (data.paymentMethod === 'card') activeShift.cardTotal -= taxReturn
-        else activeShift.cashTotal -= taxReturn
-      } else if (!isCreditReturn) {
-        updateTreasury(realm, -taxReturn, 'ضريبة مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod === 'card' ? 'card' : 'cash')
-      }
+      updateTreasury(realm, -taxReturn, 'ضريبة مرتجع فاتورة #' + data.invoiceNo, session, 'cash')
+      activeShift.totalSales -= taxReturn
+      activeShift.cashTotal -= taxReturn
     }
 
     if (data.customerName) {
@@ -225,11 +219,26 @@ function removeReturn(realm, id, session) {
       const isCreditReturn = ret.paymentMethod === 'credit' || (sale && sale.paymentMethod === 'credit')
 
       if (activeShift && !isCreditReturn) {
+        const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
         const fullAmount = retRefundAmount + retTax
+        const treasuryType = pm === 'card' ? 'bank' : 'main'
+        const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
+        if (treasury) {
+          treasury.balance += fullAmount
+          treasury.updatedAt = new Date()
+          realm.create('TreasuryTransaction', {
+            _id: crypto.randomUUID(),
+            treasuryId: treasury._id, treasuryName: treasury.name,
+            type: 'deposit', amount: fullAmount,
+            note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
+            paymentMethod: pm,
+            createdBy: 'system', createdAt: new Date()
+          })
+        }
         activeShift.totalSales += fullAmount
         if (ret.paymentMethod === 'card') activeShift.cardTotal += fullAmount
         else activeShift.cashTotal += fullAmount
-      } else if (retRefundAmount > 0) {
+      } else if (ret.paymentMethod !== 'credit' && retRefundAmount > 0) {
         const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
         const treasuryType = pm === 'card' ? 'bank' : 'main'
         const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
@@ -245,12 +254,6 @@ function removeReturn(realm, id, session) {
             createdBy: 'system', createdAt: new Date()
           })
         }
-      }
-      if (activeShift && isCreditReturn && sale && sale.paymentMethod !== 'credit' && retRefundAmount > 0) {
-        const fullAmount = retRefundAmount + retTax
-        activeShift.totalSales += fullAmount
-        if (sale.paymentMethod === 'card') activeShift.cardTotal += fullAmount
-        else activeShift.cashTotal += fullAmount
       }
       if (activeShift && sale && sale.paymentMethod === 'credit' && retRefundAmount > 0) {
         activeShift.totalSales += retRefundAmount

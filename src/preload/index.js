@@ -14,7 +14,8 @@ const api = {
   serverCheckLicense: () => ipcRenderer.invoke('license:serverCheck'),
 
   // Products
-  listProducts: (token, query) => ipcRenderer.invoke('products:list', { token, query }),
+  listProducts: (token, query, limit) => ipcRenderer.invoke('products:list', { token, query, limit }),
+  listProductMeta: (token) => ipcRenderer.invoke('products:meta', { token }),
   saveProduct: (token, product) => ipcRenderer.invoke('products:save', { token, product }),
   removeProduct: (token, id) => ipcRenderer.invoke('products:remove', { token, id }),
 

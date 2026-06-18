@@ -67,6 +67,9 @@ async function openRealm() {
           if (oldVersion < 33) {
             // v33: Added Purchase.previousCredit
           }
+          if (oldVersion < 34) {
+            // v34: Added Shift.cardWithdrawalsTotal
+          }
         }
     })
   } catch (e) {

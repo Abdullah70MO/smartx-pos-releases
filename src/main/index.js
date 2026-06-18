@@ -4,7 +4,7 @@ const path = require('path')
 const { openRealm, closeRealm } = require('./database')
 const { login, getSession, logout, requireUser } = require('./ipc/auth')
 const bcrypt = require('bcryptjs')
-const { listProducts, saveProduct, removeProduct } = require('./ipc/products')
+const { listProducts, listProductMeta, saveProduct, removeProduct } = require('./ipc/products')
 const { listPurchases, createPurchase, savePurchase, removePurchase } = require('./ipc/purchases')
 const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches } = require('./ipc/inventory')
 const { listSales, createSale, removeSale } = require('./ipc/sales')
@@ -94,7 +94,8 @@ function registerIpc() {
   })
 
   // Products
-  handle('products:list', async ({ token, query }) => (requireUser(token, ['products.view', 'cashier.access']), listProducts(await openRealm(), query)))
+  handle('products:list', async ({ token, query, limit }) => (requireUser(token, ['products.view', 'cashier.access']), listProducts(await openRealm(), query, limit)))
+  handle('products:meta', async ({ token }) => (requireUser(token, 'products.view'), listProductMeta(await openRealm())))
   handle('products:save', async ({ token, product }) => {
     const r = await openRealm(); const session = requireUser(token, 'products.manage', r)
     const result = saveProduct(r, product)

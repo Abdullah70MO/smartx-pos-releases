@@ -25,7 +25,8 @@ export default function LoginPage() {
     try {
       await login(username, password)
     } catch (err) {
-      setError(err.message)
+      const msg = (err && err.message) || String(err || '')
+      setError(msg.replace(/^(Error|Unhandled Error):\s*/i, ''))
     } finally {
       setLoading(false)
     }
