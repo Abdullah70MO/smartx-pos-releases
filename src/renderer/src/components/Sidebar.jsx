@@ -16,6 +16,8 @@ const PAGES = [
   { id: 'inventory', label: 'المخزون',     icon: '📋', perms: ['inventory.view', 'inventory.adjust'] },
   { id: 'returns',   label: 'المرتجع',     icon: '↩️', perms: ['returns.view', 'returns.create'] },
   { id: 'shifts',    label: 'الورديات',    icon: '🔄', perms: ['shifts.view'] },
+  { id: 'employees', label: 'الموظفين',    icon: '👤', perms: ['employees.view', 'employees.manage', 'employees.salaries'] },
+  { id: 'employeeReports', label: 'تقارير الموظفين', icon: '📊', perms: ['employees.view'] },
   { id: 'activity',  label: 'سجل النشاط',  icon: '📋', perms: ['activity.view'] },
   { id: 'users',     label: 'المستخدمين',  icon: '🔐', perms: ['users.view', 'users.manage'] },
   { id: 'settings',  label: 'الإعدادات',   icon: '⚙️', perms: ['settings.view', 'settings.manage'] }

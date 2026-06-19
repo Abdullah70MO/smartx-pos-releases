@@ -11,6 +11,7 @@ const UserSchema = {
     role:          { type: 'string', default: 'cashier' },
     permissions:   'string[]',
     active:        { type: 'bool', default: true },
+    employeeId:    { type: 'string', optional: true },
     createdAt:     'date'
   }
 }
@@ -68,6 +69,7 @@ const SaleSchema = {
     customerPhone: { type: 'string', default: '' },
     previousCredit: { type: 'double', default: 0 },
     previousDebt:   { type: 'double', default: 0 },
+    employeeId:    { type: 'string', default: '' },
     note:          { type: 'string', default: '' },
     createdAt:     'date'
   }
@@ -141,10 +143,10 @@ const SupplierPaymentSchema = {
   properties: {
     _id:         'string',
     supplierId:  'string',
-    supplierName: 'string',
+    supplierName:'string',
     amount:      'double',
-    note:        { type: 'string', default: '' },
     paymentMethod: { type: 'string', default: 'cash' },
+    note:        { type: 'string', default: '' },
     createdBy:   'string',
     createdAt:   'date'
   }
@@ -427,6 +429,86 @@ const TreasuryTransactionSchema = {
   }
 }
 
+const EmployeeSchema = {
+  name: 'Employee',
+  primaryKey: '_id',
+  properties: {
+    _id:              'string',
+    name:             'string',
+    phone:            { type: 'string', default: '' },
+    email:            { type: 'string', default: '' },
+    address:          { type: 'string', default: '' },
+    photo:            { type: 'string', default: '' },
+    idPhoto:          { type: 'string', default: '' },
+    idNumber:         { type: 'string', default: '' },
+    idExpiryDate:     { type: 'date', optional: true },
+    jobTitle:         { type: 'string', default: '' },
+    department:       { type: 'string', default: '' },
+    salary:           { type: 'double', default: 0 },
+    salaryPeriod:     { type: 'string', default: 'شهري' },
+    hireDate:         { type: 'date', optional: true },
+    emergencyContact: { type: 'string', default: '' },
+    emergencyPhone:   { type: 'string', default: '' },
+    notes:            { type: 'string', default: '' },
+    workHours:        { type: 'int', default: 12 },
+    active:           { type: 'bool', default: true },
+    createdAt:        'date',
+    updatedAt:        'date'
+  }
+}
+
+const AdvanceSchema = {
+  name: 'Advance',
+  primaryKey: '_id',
+  properties: {
+    _id:         'string',
+    employeeId:  'string',
+    employeeName: 'string',
+    amount:      'double',
+    type:        { type: 'string', default: 'advance' },
+    date:        'date',
+    note:        { type: 'string', default: '' },
+    deducted:    { type: 'bool', default: false },
+    createdBy:   'string',
+    createdAt:   'date'
+  }
+}
+
+const AttendanceLogSchema = {
+  name: 'AttendanceLog',
+  primaryKey: '_id',
+  properties: {
+    _id:        'string',
+    employeeId: 'string',
+    date:       'date',
+    status:     { type: 'string', default: 'absent' },
+    loginTime:  { type: 'date', optional: true },
+    source:     { type: 'string', default: 'auto' },
+    note:       { type: 'string', default: '' }
+  }
+}
+
+const SalaryPaymentSchema = {
+  name: 'SalaryPayment',
+  primaryKey: '_id',
+  properties: {
+    _id:            'string',
+    employeeId:     'string',
+    employeeName:   'string',
+    baseSalary:     'double',
+    totalDeductions: 'double',
+    totalAdditions: 'double',
+    netAmount:      'double',
+    month:          'int',
+    year:           'int',
+    paymentDate:    'date',
+    paymentMethod:  { type: 'string', default: 'cash' },
+    note:           { type: 'string', default: '' },
+    createdBy:      'string',
+    createdAt:      'date'
+  }
+}
+
 const SCHEMAS = [
   UserSchema,
   ProductSchema,
@@ -451,7 +533,11 @@ const SCHEMAS = [
   TreasurySchema,
   TreasuryTransactionSchema,
   PurchaseReturnItemSchema,
-  PurchaseReturnSchema
+  PurchaseReturnSchema,
+  EmployeeSchema,
+  AdvanceSchema,
+  AttendanceLogSchema,
+  SalaryPaymentSchema
 ]
 
 // SCHEMA_VERSION changelog:
@@ -467,9 +553,14 @@ const SCHEMAS = [
 //   32    Added Sale.previousCredit
 //   33    Added Purchase.previousCredit
 //   34    Added Shift.cardWithdrawalsTotal
+//   35    Added Employee, Advance, AttendanceLog, SalaryPayment schemas
+//         Added User.employeeId (optional)
+//   36    Added Advance.type ('advance' | 'deduction')
+//   37    Added Employee.workHours (default 12)
+//   38    Added Employee.autoAttendance (default true)
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 34
+const SCHEMA_VERSION = 38
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

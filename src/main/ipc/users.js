@@ -37,7 +37,10 @@ const ALL_PERMISSIONS = [
   'backup.manage',
   'treasury.view',
   'treasury.manage',
-  'treasury.transfer'
+  'treasury.transfer',
+  'employees.view',
+  'employees.manage',
+  'employees.salaries'
 ]
 
 const ROLES = {
@@ -59,7 +62,8 @@ const ROLES = {
       'inventory.view', 'inventory.adjust',
       'shifts.view', 'shifts.manage', 'activity.view',
       'settings.view', 'reports.view',
-      'treasury.view', 'treasury.manage', 'treasury.transfer'
+      'treasury.view', 'treasury.manage', 'treasury.transfer',
+      'employees.view', 'employees.manage', 'employees.salaries'
     ]
   },
   supervisor: {
@@ -73,7 +77,8 @@ const ROLES = {
       'customers.view', 'suppliers.view',
       'inventory.view', 'shifts.view', 'shifts.manage',
       'activity.view', 'reports.view',
-      'treasury.view'
+      'treasury.view',
+      'employees.view'
     ]
   },
   cashier: {
@@ -102,11 +107,16 @@ function listUsers(realm) {
   return Array.from(users).map(u => ({
     _id: u._id, name: u.name, username: u.username,
     role: u.role, permissions: [...u.permissions],
-    active: u.active, createdAt: u.createdAt?.toISOString()
+    active: u.active, employeeId: u.employeeId || '',
+    createdAt: u.createdAt?.toISOString()
   }))
 }
 
 function saveUser(realm, data) {
+  if (data.employeeId) {
+    const existingOwner = realm.objects('User').filtered('employeeId == $0 AND _id != $1', data.employeeId, data._id || '')[0]
+    if (existingOwner) throw new Error('هذا الموظف مرتبط بالفعل بحساب مستخدم آخر (' + existingOwner.name + ')')
+  }
   let user
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('User', data._id) : null
@@ -129,10 +139,11 @@ function saveUser(realm, data) {
       role,
       permissions,
       active: data.active !== false,
+      employeeId: data.employeeId || null,
       createdAt: existing ? existing.createdAt : new Date()
     }, Realm.UpdateMode.Modified)
   })
-  return { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], active: user.active, createdAt: user.createdAt?.toISOString() }
+  return { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], active: user.active, employeeId: user.employeeId || '', createdAt: user.createdAt?.toISOString() }
 }
 
 function toggleUserActive(realm, id) {

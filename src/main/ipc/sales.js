@@ -47,6 +47,7 @@ function listSales(realm, filter) {
     cashierId: s.cashierId, cashierName: s.cashierName,
     customerName: s.customerName, customerPhone: s.customerPhone,
     previousCredit: s.previousCredit, previousDebt: s.previousDebt,
+    employeeId: s.employeeId,
     note: s.note, createdAt: s.createdAt?.toISOString()
   }))
 }
@@ -104,6 +105,7 @@ function createSale(realm, session, data) {
       customerPhone: data.customerPhone || '',
       previousCredit: Number(data.previousCredit || 0),
       previousDebt,
+      employeeId: session.employeeId || '',
       note: data.note || '',
       createdAt: new Date()
     })

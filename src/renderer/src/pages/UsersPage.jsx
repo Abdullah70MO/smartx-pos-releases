@@ -19,6 +19,8 @@ const SECTIONS = [
   { id: 'suppliers', label: 'الموردين' },
   { id: 'reports', label: 'التقارير' },
   { id: 'shifts', label: 'الورديات' },
+  { id: 'employees', label: 'الموظفين' },
+  { id: 'employeeReports', label: 'تقارير الموظفين' },
   { id: 'activity', label: 'سجل النشاط' },
   { id: 'users', label: 'المستخدمين' },
   { id: 'settings', label: 'الإعدادات' }
@@ -46,6 +48,8 @@ function getManagePerms(sectionId) {
     users: ['users.view', 'users.manage'],
     shifts: ['shifts.view', 'shifts.manage'],
     activity: ['activity.view'],
+    employees: ['employees.view', 'employees.manage', 'employees.salaries'],
+    employeeReports: ['employees.view'],
     settings: ['settings.view', 'settings.manage']
   }
   return map[sectionId] || [sectionId + '.view']
@@ -105,13 +109,17 @@ export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
-  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'cashier', levels: [] })
+  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'cashier', levels: [], employeeId: '' })
+  const [employees, setEmployees] = useState([])
 
   useEffect(() => { load() }, [])
 
   async function load() {
     const token = localStorage.getItem('token')
-    try { setUsers(await api.listUsers(token)) } catch {}
+    try {
+      setUsers(await api.listUsers(token))
+      setEmployees(await api.listEmployees(token))
+    } catch {}
   }
 
   async function handleToggleActive(u) {
@@ -124,7 +132,7 @@ export default function UsersPage() {
   function openEdit(u) {
     const levels = getRolePerms(u.role).map(l => ({ ...l }))
     setEdit(u)
-    setForm({ name: u.name, username: u.username, password: '', role: u.role, levels })
+    setForm({ name: u.name, username: u.username, password: '', role: u.role, levels, employeeId: u.employeeId || '' })
     setShowModal(true)
   }
 
@@ -145,7 +153,7 @@ export default function UsersPage() {
     const token = localStorage.getItem('token')
     try {
       const permissions = form.role === 'admin' ? ALL_PERM_IDS : permsFromLevels(form.levels)
-      await api.saveUser(token, { _id: edit?._id, name: form.name, username: form.username, password: form.password, role: form.role, permissions })
+      await api.saveUser(token, { _id: edit?._id, name: form.name, username: form.username, password: form.password, role: form.role, permissions, employeeId: form.employeeId })
       toast(edit ? 'تم تحديث المستخدم' : 'تمت إضافة المستخدم', 'success')
       setShowModal(false); load()
     } catch (err) { toast(err.message, 'error') }
@@ -160,7 +168,7 @@ export default function UsersPage() {
         {canManage && <button onClick={() => {
           const levels = getRolePerms('cashier')
           setEdit(null)
-          setForm({ name: '', username: '', password: '', role: 'cashier', levels })
+          setForm({ name: '', username: '', password: '', role: 'cashier', levels, employeeId: '' })
           setShowModal(true)
         }} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة مستخدم</button>}
       </div>
@@ -199,6 +207,12 @@ export default function UsersPage() {
             <input placeholder="اسم المستخدم" value={form.username} onInput={e => setForm(f => ({ ...f, username: e.target.value }))} required style={{ width: '100%' }} />
           </div>
           <input type="password" placeholder={edit ? 'اتركه فارغاً إذا لم ترد التغيير' : 'كلمة المرور'} value={form.password} onInput={e => setForm(f => ({ ...f, password: e.target.value }))} required={!edit} style={{ width: '100%' }} />
+
+          <div style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: '600', marginTop: '4px' }}>ربط الموظف (اختياري):</div>
+          <select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', fontSize: '13px' }}>
+            <option value="">-- اختر موظفاً --</option>
+            {employees.map(emp => <option key={emp._id} value={emp._id}>{emp.name} {emp.jobTitle ? `(${emp.jobTitle})` : ''}</option>)}
+          </select>
 
           <div style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: '600', marginTop: '4px' }}>الدور:</div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>

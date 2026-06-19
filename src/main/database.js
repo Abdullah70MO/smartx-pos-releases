@@ -70,6 +70,16 @@ async function openRealm() {
           if (oldVersion < 34) {
             // v34: Added Shift.cardWithdrawalsTotal
           }
+          if (oldVersion < 35) {
+            // v35: Added Employee, Advance, AttendanceLog, SalaryPayment schemas
+            //      Added User.employeeId (optional)
+          }
+          if (oldVersion < 36) {
+            // v36: Added Advance.type
+          }
+          if (oldVersion < 37) {
+            // v37: Added Employee.workHours
+          }
         }
     })
   } catch (e) {

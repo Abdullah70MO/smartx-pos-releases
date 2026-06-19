@@ -23,6 +23,7 @@ const { listSuppliers, saveSupplier, removeSupplier } = require('./ipc/suppliers
 const { listSupplierPayments, createSupplierPayment, removeSupplierPayment } = require('./ipc/supplierPayments')
 const { listCustomerPayments, createCustomerPayment, removeCustomerPayment } = require('./ipc/customerPayments')
 const { listTreasuries, saveTreasury, removeTreasury, addToTreasury, withdrawFromTreasury, transferBetweenTreasuries, listTransactions } = require('./ipc/treasury')
+const { listEmployees, getEmployee, saveEmployee, removeEmployee, listAdvances, saveAdvance, listAttendance, saveAttendance, removeAttendance, paySalary, listSalaryPayments } = require('./ipc/employees')
 const { CONTACT_INFO } = require('./constants')
 
 const { addBatch } = require('./ipc/inventoryHelpers')
@@ -253,6 +254,35 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
     return result
   })
   handle('customerPayments:remove', async ({ token, id }) => (requireUser(token, 'customers.payments'), removeCustomerPayment(await openRealm(), id)))
+
+  // Employees
+  handle('employees:list', async ({ token }) => (requireUser(token, 'employees.view'), listEmployees(await openRealm())))
+  handle('employees:get', async ({ token, id }) => (requireUser(token, 'employees.view'), getEmployee(await openRealm(), id)))
+  handle('employees:save', async ({ token, employee }) => {
+    const r = await openRealm(); const session = requireUser(token, 'employees.manage', r)
+    const result = saveEmployee(r, employee)
+    try { logActivity(r, session, { action: employee._id ? 'تعديل موظف' : 'إضافة موظف', details: employee.name }) } catch {}
+    return result
+  })
+  handle('employees:remove', async ({ token, id }) => {
+    const r = await openRealm(); const session = requireUser(token, 'employees.manage', r)
+    const result = removeEmployee(r, id)
+    try { logActivity(r, session, { action: 'حذف موظف', details: id }) } catch {}
+    return result
+  })
+  handle('employees:advances', async ({ token, employeeId }) => (requireUser(token, 'employees.view'), listAdvances(await openRealm(), employeeId)))
+  handle('employees:saveAdvance', async ({ token, advance }) => {
+    const r = await openRealm(); const session = requireUser(token, 'employees.manage', r)
+    return saveAdvance(r, advance, session)
+  })
+  handle('employees:attendance', async ({ token, employeeId, month, year }) => (requireUser(token, 'employees.view'), listAttendance(await openRealm(), employeeId, month, year)))
+  handle('employees:saveAttendance', async ({ token, data }) => (requireUser(token, 'employees.manage'), saveAttendance(await openRealm(), data)))
+  handle('employees:removeAttendance', async ({ token, data }) => (requireUser(token, 'employees.manage'), removeAttendance(await openRealm(), data)))
+  handle('employees:paySalary', async ({ token, data }) => {
+    const r = await openRealm(); const session = requireUser(token, 'employees.salaries', r)
+    return paySalary(r, data, session)
+  })
+  handle('employees:salaryPayments', async ({ token, employeeId }) => (requireUser(token, 'employees.view'), listSalaryPayments(await openRealm(), employeeId)))
 
   // Purchases
   handle('purchases:list', async ({ token }) => (requireUser(token, 'purchases.view'), listPurchases(await openRealm())))

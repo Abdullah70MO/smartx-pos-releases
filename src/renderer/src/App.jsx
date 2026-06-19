@@ -22,6 +22,8 @@ import ShiftsPage from './pages/ShiftsPage'
 import ActivityLogPage from './pages/ActivityLogPage'
 import UsersPage from './pages/UsersPage'
 import SettingsPage from './pages/SettingsPage'
+import EmployeesPage from './pages/EmployeesPage'
+import EmployeeReportsPage from './pages/EmployeeReportsPage'
 
 const PAGE_PERMS = {
   dashboard: ['dashboard.view'],
@@ -39,6 +41,8 @@ const PAGE_PERMS = {
   shifts: ['shifts.view'],
   activity: ['activity.view'],
   users: ['users.view', 'users.manage'],
+  employees: ['employees.view'],
+  employeeReports: ['employees.view'],
   settings: ['settings.view', 'settings.manage']
 }
 
@@ -58,6 +62,8 @@ const PAGES = {
   shifts: ShiftsPage,
   activity: ActivityLogPage,
   users: UsersPage,
+  employees: EmployeesPage,
+  employeeReports: EmployeeReportsPage,
   settings: SettingsPage
 }
 

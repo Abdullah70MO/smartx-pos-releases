@@ -9,15 +9,34 @@ function login(realm, { username, password }) {
   if (!user.active) throw new Error('هذا الحساب غير نشط')
   if (!bcrypt.compareSync(password, user.passwordHash)) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
 
+  if (user.employeeId) {
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    const existing = realm.objects('AttendanceLog').filtered('employeeId == $0 AND date == $1', user.employeeId, today)[0]
+    if (!existing) {
+      realm.write(() => {
+        realm.create('AttendanceLog', {
+          _id: crypto.randomUUID(),
+          employeeId: user.employeeId,
+          date: today,
+          status: 'present',
+          loginTime: new Date(),
+          source: 'auto',
+          note: ''
+        })
+      })
+    }
+  }
   const token = crypto.randomUUID()
   sessions.set(token, {
     userId: user._id,
     name: user.name,
     username: user.username,
     role: user.role,
-    permissions: [...user.permissions]
+    permissions: [...user.permissions],
+    employeeId: user.employeeId || null
   })
-  return { token, user: { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions] } }
+  return { token, user: { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], employeeId: user.employeeId || null } }
 }
 
 function getSession(token) {

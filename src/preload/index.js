@@ -90,6 +90,19 @@ listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purc
   createCustomerPayment: (token, payment) => ipcRenderer.invoke('customerPayments:create', { token, payment }),
   removeCustomerPayment: (token, id) => ipcRenderer.invoke('customerPayments:remove', { token, id }),
 
+  // Employees
+  listEmployees: (token) => ipcRenderer.invoke('employees:list', { token }),
+  getEmployee: (token, id) => ipcRenderer.invoke('employees:get', { token, id }),
+  saveEmployee: (token, employee) => ipcRenderer.invoke('employees:save', { token, employee }),
+  removeEmployee: (token, id) => ipcRenderer.invoke('employees:remove', { token, id }),
+  listEmployeeAdvances: (token, employeeId) => ipcRenderer.invoke('employees:advances', { token, employeeId }),
+  saveEmployeeAdvance: (token, advance) => ipcRenderer.invoke('employees:saveAdvance', { token, advance }),
+  listEmployeeAttendance: (token, employeeId, month, year) => ipcRenderer.invoke('employees:attendance', { token, employeeId, month, year }),
+  saveEmployeeAttendance: (token, data) => ipcRenderer.invoke('employees:saveAttendance', { token, data }),
+  removeEmployeeAttendance: (token, data) => ipcRenderer.invoke('employees:removeAttendance', { token, data }),
+  payEmployeeSalary: (token, data) => ipcRenderer.invoke('employees:paySalary', { token, data }),
+  listEmployeeSalaryPayments: (token, employeeId) => ipcRenderer.invoke('employees:salaryPayments', { token, employeeId }),
+
   // Purchases
   listPurchases: (token) => ipcRenderer.invoke('purchases:list', { token }),
   createPurchase: (token, purchase) => ipcRenderer.invoke('purchases:create', { token, purchase }),
