@@ -1,7 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { deductFromFifo, addBatch } = require('./inventoryHelpers')
-const { checkAndCreateLowStockNotifications } = require('./notifications')
+const { checkAndCreateLowStockNotifications, createNotification } = require('./notifications')
 
 function updateTreasury(realm, amount, note, session, refId, refType, paymentMethod) {
   if (amount === 0) return
