@@ -1,4 +1,5 @@
 const crypto = require('node:crypto')
+const { createNotification } = require('./notifications')
 
 function getActiveShift(realm, cashierId) {
   const shift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', cashierId)[0]
@@ -28,33 +29,16 @@ function startShift(realm, session, startingBalance) {
       endingBalance: Number(startingBalance) || 0,
       totalSales: 0,
       invoiceCount: 0,
+      cashTotal: 0,
+      cardTotal: 0,
+      creditPaidTotal: 0,
+      expensesTotal: 0,
+      withdrawalsTotal: 0,
+      cardWithdrawalsTotal: 0,
       isActive: true
     })
   })
-  return {
-    _id: shift._id, cashierId: shift.cashierId, cashierName: shift.cashierName,
-    startingBalance: shift.startingBalance, totalSales: shift.totalSales,
-    expensesTotal: shift.expensesTotal, withdrawalsTotal: shift.withdrawalsTotal,
-    invoiceCount: shift.invoiceCount, isActive: shift.isActive,
-    startedAt: shift.startedAt?.toISOString()
-  }
-}
-
-function updateTreasuryBalance(realm, treasuryType, amount, note) {
-  if (amount === 0) return
-  const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0]
-  if (!treasury) return
-  treasury.balance += amount
-  treasury.updatedAt = new Date()
-  realm.create('TreasuryTransaction', {
-    _id: crypto.randomUUID(),
-    treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
-    amount, note: note || '',
-    refType: 'shift', refId: '',
-    paymentMethod: treasuryType === 'bank' ? 'card' : 'cash',
-    createdBy: 'system', createdAt: new Date()
-  })
+  return getActiveShift(realm, session.userId)
 }
 
 function endShift(realm, session, endingCashBalance, endingCardBalance) {
@@ -89,6 +73,16 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
     }
   })
 
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (settings && settings.notificationShifts !== false) {
+    createNotification(realm, {
+      type: 'success',
+      title: 'تم إغلاق الوردية',
+      message: `أغلق ${shift.cashierName} الوردية - إجمالي المبيعات: ${shift.totalSales} ج.م - فواتير: ${shift.invoiceCount}`,
+      referenceId: shift._id,
+      referenceType: 'shift'
+    })
+  }
   return {
     _id: shift._id, cashierId: shift.cashierId, cashierName: shift.cashierName,
     startedAt: shift.startedAt?.toISOString(), endedAt: shift.endedAt?.toISOString(),
@@ -99,6 +93,7 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
     invoiceCount: shift.invoiceCount, isActive: false
   }
 }
+
 function listShifts(realm) {
   const shifts = realm.objects('Shift').sorted('startedAt', true)
   return Array.from(shifts).map(s => ({
@@ -117,25 +112,39 @@ function getShiftSales(realm, cashierId) {
   const sales = realm.objects('Sale').filtered('cashierId == $0 AND createdAt >= $1', cashierId, shift.startedAt)
     .sorted('createdAt', true)
   const saleIds = Array.from(sales, s => s._id)
-  let returnsTotal = 0
-  if (saleIds.length > 0) {
-    const rets = realm.objects('Return').filtered('saleId IN $0', saleIds)
-    returnsTotal = Array.from(rets).reduce((sum, r) => sum + (r.refundAmount || 0) + (r.tax || 0), 0)
-  }
+  const returns = realm.objects('Return').filtered('cashierId == $0 AND createdAt >= $1', cashierId, shift.startedAt)
+  const returnsTotal = returns.reduce((sum, r) => sum + (r.subtotal + (r.tax || 0)), 0)
+  const salesTotal = sales.reduce((sum, s) => sum + (s.paid || 0), 0)
   return {
     sales: Array.from(sales).map(s => ({
       _id: s._id, invoiceNo: s.invoiceNo, total: s.total, paid: s.paid,
-      paymentMethod: s.paymentMethod, createdAt: s.createdAt?.toISOString()
+      paymentMethod: s.paymentMethod, customerName: s.customerName,
+      createdAt: s.createdAt?.toISOString()
     })),
-    total: shift.totalSales || 0,
-    cashTotal: shift.cashTotal || 0,
-    cardTotal: shift.cardTotal || 0,
-    creditTotal: shift.creditPaidTotal || 0,
+    total: salesTotal,
     count: sales.length,
-    expensesTotal: shift.expensesTotal || 0,
-    withdrawalsTotal: shift.withdrawalsTotal || 0,
-    cardWithdrawalsTotal: shift.cardWithdrawalsTotal || 0,
+    creditTotal: (sales.reduce((sum, s) => sum + (s.paymentMethod === 'credit' ? s.paid : 0), 0)),
+    cashTotal: sales.reduce((sum, s) => sum + (s.paymentMethod === 'cash' ? s.paid : 0), 0),
+    cardTotal: sales.reduce((sum, s) => sum + (s.paymentMethod === 'card' ? s.paid : 0), 0),
+    expensesTotal: shift.expensesTotal,
+    withdrawalsTotal: shift.withdrawalsTotal,
+    cardWithdrawalsTotal: shift.cardWithdrawalsTotal,
     returnsTotal
+  }
+}
+
+function updateTreasuryBalance(realm, treasuryType, amount, note) {
+  if (amount === 0) return
+  const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0]
+  if (!treasury) return
+  treasury.balance += amount
+  treasury.updatedAt = new Date()
+  if (amount < 0) {
+    const activeShift = realm.objects('Shift').filtered('isActive == true')[0]
+    if (activeShift) {
+      if (treasuryType === 'bank') activeShift.cardWithdrawalsTotal += Math.abs(amount)
+      else activeShift.withdrawalsTotal += Math.abs(amount)
+    }
   }
 }
 

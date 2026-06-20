@@ -200,6 +200,20 @@ export function StoreProvider({ children }) {
     return unsub
   }, [])
 
+  function toggleTheme() {
+    const current = state.settings?.theme || localStorage.getItem('theme') || 'dark'
+    const next = current === 'dark' ? 'light' : 'dark'
+    localStorage.setItem('theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+    setState(s => ({ ...s, settings: s.settings ? { ...s.settings, theme: next } : s.settings }))
+    const token = localStorage.getItem('token')
+    if (token) {
+      api.getSettings(token).then(s => {
+        if (s) api.saveSettings(token, { ...s, theme: next }).catch(() => {})
+      }).catch(() => {})
+    }
+  }
+
   // Sync theme attribute with state.settings.theme
   useEffect(() => {
     const theme = state.settings?.theme || localStorage.getItem('theme') || 'dark'
@@ -229,7 +243,7 @@ export function StoreProvider({ children }) {
       updateSettings, refreshLicense,
       goToReports, clearReportNav,
       markSettingsDirty,
-      registerSettingsLeaveAction,
+      registerSettingsLeaveAction, toggleTheme,
       closeSettingsPrompt,
       confirmLeaveSettings,
       clearUpdate: () => setState(s => ({ ...s, updateAvailable: null })),

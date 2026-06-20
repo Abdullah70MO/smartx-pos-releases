@@ -28,6 +28,8 @@ function listProductMeta(realm) {
 }
 
 function saveProduct(realm, data) {
+  const duplicateName = realm.objects('Product').filtered('name == $0 AND _id != $1', data.name.trim(), data._id || '')[0]
+  if (duplicateName) throw new Error('يوجد منتج بنفس الاسم "' + data.name.trim() + '" بالفعل')
   let product
   realm.write(() => {
     const existing = data._id ? realm.objectForPrimaryKey('Product', data._id) : null

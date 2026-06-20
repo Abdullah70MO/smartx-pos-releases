@@ -4,6 +4,25 @@ import api from '../api'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 
+const PERIODS = [
+  { id: 'today', label: 'اليوم' },
+  { id: 'week', label: 'هذا الأسبوع' },
+  { id: 'month', label: 'هذا الشهر' },
+  { id: 'year', label: 'السنة' },
+  { id: 'all', label: 'الكل' }
+]
+
+function getPeriodRange(p) {
+  const now = new Date()
+  let from = '', to = now.toISOString().slice(0, 10)
+  if (p === 'today') from = to
+  else if (p === 'week') { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); from = d.toISOString().slice(0, 10) }
+  else if (p === 'month') { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString().slice(0, 10) }
+  else if (p === 'year') { const d = new Date(now.getFullYear(), 0, 1); from = d.toISOString().slice(0, 10) }
+  else { from = ''; to = '' }
+  return { dateFrom: from, dateTo: to }
+}
+
 export default function ReportsPage() {
   const { reportTab, reportDateFrom, reportDateTo, clearReportNav } = useStore()
   useEffect(() => { clearReportNav() }, [])
@@ -16,7 +35,9 @@ export default function ReportsPage() {
   const [customers, setCustomers] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [treasuries, setTreasuries] = useState([])
-  const [tab, setTab] = useState(reportTab || 'overview')
+  const [employees, setEmployees] = useState([])
+  const [employeeAdvances, setEmployeeAdvances] = useState([])
+  const [salaryPayments, setSalaryPayments] = useState([])
   const [searchSales, setSearchSales] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchExpenses, setSearchExpenses] = useState({ q: '', dateFrom: reportDateFrom || '', dateTo: reportDateTo || '' })
   const [searchReturns, setSearchReturns] = useState({ q: '', dateFrom: '', dateTo: '' })
@@ -26,8 +47,45 @@ export default function ReportsPage() {
   const [treasuryTxns, setTreasuryTxns] = useState([])
   const [searchTreasury, setSearchTreasury] = useState({ q: '', dateFrom: '', dateTo: '' })
   const [period, setPeriod] = useState('all')
+  const [salesPeriod, setSalesPeriod] = useState('')
+  const [expensesPeriod, setExpensesPeriod] = useState('')
+  const [returnsPeriod, setReturnsPeriod] = useState('')
+  const [withdrawalsPeriod, setWithdrawalsPeriod] = useState('')
+  const [treasuryPeriod, setTreasuryPeriod] = useState('')
   const [filterDateFrom, setFilterDateFrom] = useState('')
   const [filterDateTo, setFilterDateTo] = useState('')
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [customerFilter, setCustomerFilter] = useState('all')
+  const [supplierFilter, setSupplierFilter] = useState('all')
+  const [treasuryFilter, setTreasuryFilter] = useState('')
+  const [employeeFilter, setEmployeeFilter] = useState('')
+
+  const reportCards = [
+    { id: 'overview', title: 'نظرة عامة', description: 'إجمالي المبيعات، المصروفات، الأرباح، إحصائيات عامة' },
+    { id: 'sales', title: 'المبيعات', description: 'قائمة فواتير المبيعات' },
+    { id: 'expenses', title: 'المصروفات', description: 'قائمة المصروفات' },
+    { id: 'withdrawals', title: 'المسحوبات الشخصية', description: 'قائمة المسحوبات الشخصية' },
+    { id: 'returns', title: 'المرتجعات', description: 'مرتجعات البيع والشراء' },
+    { id: 'inventory', title: 'المخزون', description: 'تكلفة المخزون وتفاصيل الكميات' },
+    { id: 'customers', title: 'العملاء', description: 'أرصدة وديون العملاء' },
+    { id: 'suppliers', title: 'الموردين', description: 'أرصدة وديون الموردين' },
+    { id: 'treasury', title: 'الخزينة', description: 'حركات الخزينة' },
+    { id: 'employees', title: 'الموظفين', description: 'السلف والخصومات وإحصائيات الموظفين' }
+  ]
+
+  const reportColors = { overview: 'var(--accent)', sales: 'var(--success)', expenses: 'var(--danger)', withdrawals: 'var(--warning)', returns: 'var(--warning)', inventory: 'var(--secondary)', customers: 'var(--special)', suppliers: 'var(--teal)', treasury: 'var(--accent)', employees: '#8B5CF6' }
+  const reportIcons = {
+    overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,
+    sales: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+    expenses: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    withdrawals: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    returns: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>,
+    inventory: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+    customers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    suppliers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+    treasury: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>,
+    employees: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+  }
 
   useEffect(() => {
     async function load() {
@@ -52,6 +110,14 @@ export default function ReportsPage() {
         setCustomers(customersData || [])
         setSuppliers(suppliersData || [])
         setTreasuries(treasuriesData || [])
+        const [emps, advs, salaryPmts] = await Promise.all([
+          api.listEmployees(token),
+          api.listEmployeeAdvances(token, '').catch(() => []),
+          api.listEmployeeSalaryPayments(token, '').catch(() => [])
+        ])
+        setEmployees(emps || [])
+        setEmployeeAdvances(advs || [])
+        setSalaryPayments(salaryPmts || [])
       } catch {}
     }
     load()
@@ -59,16 +125,9 @@ export default function ReportsPage() {
 
   function setPeriodFilter(p) {
     setPeriod(p)
-    const now = new Date()
-    let from = '', to = now.toISOString().slice(0, 10)
-    if (p === 'today') from = to
-    else if (p === 'month') { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString().slice(0, 10) }
-    else if (p === '3months') { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().slice(0, 10) }
-    else if (p === '6months') { const d = new Date(now); d.setMonth(d.getMonth() - 6); from = d.toISOString().slice(0, 10) }
-    else if (p === 'year') { const d = new Date(now.getFullYear(), 0, 1); from = d.toISOString().slice(0, 10) }
-    else { from = ''; to = '' }
-    setFilterDateFrom(from)
-    setFilterDateTo(to)
+    const range = getPeriodRange(p)
+    setFilterDateFrom(range.dateFrom)
+    setFilterDateTo(range.dateTo)
   }
 
   function inRange(dateStr) {
@@ -109,15 +168,6 @@ export default function ReportsPage() {
   const totalTreasuryBalance = useMemo(() => treasuries.reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
   const mainBalance = useMemo(() => treasuries.filter(t => t.type === 'main').reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
   const bankBalance = useMemo(() => treasuries.filter(t => t.type === 'bank').reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
-
-  const PERIODS = [
-    { id: 'today', label: 'اليوم' },
-    { id: 'month', label: 'هذا الشهر' },
-    { id: '3months', label: 'آخر 3 شهور' },
-    { id: '6months', label: 'آخر 6 شهور' },
-    { id: 'year', label: 'السنة' },
-    { id: 'all', label: 'الكل' }
-  ]
 
   const filteredSales = useMemo(() => sales.filter(s => {
     if (searchSales.q && !String(s.invoiceNo).includes(searchSales.q) && !s.customerName?.includes(searchSales.q) && !s.cashierName?.includes(searchSales.q)) return false
@@ -179,86 +229,181 @@ export default function ReportsPage() {
 
   const batchTotalValue = useMemo(() => batchData.reduce((s, p) => s + p.batches.reduce((ss, b) => ss + b.total, 0), 0), [batchData])
 
-  const TABS = [
-    { id: 'overview', label: 'نظرة عامة' },
-    { id: 'sales', label: 'المبيعات' },
-    { id: 'expenses', label: 'المصروفات' },
-    { id: 'withdrawals', label: 'المسحوبات الشخصية' },
-    { id: 'returns', label: 'المرتجعات' },
-    { id: 'inventory', label: 'المخزون' },
-    { id: 'customers', label: 'العملاء' },
-    { id: 'suppliers', label: 'الموردين' },
-    { id: 'treasury', label: 'الخزينة' }
-  ]
+  const currentCard = reportCards.find(c => c.id === selectedReport)
+
+  function PeriodPresets({ current, onChange, dateFrom, dateTo, onDateFrom, onDateTo }) {
+    return (
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {PERIODS.map(p => (
+          <button key={p.id} onClick={() => {
+            const range = getPeriodRange(p.id)
+            onChange(p.id); onDateFrom(range.dateFrom); onDateTo(range.dateTo)
+          }}
+            style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: current === p.id ? 'var(--accent)' : 'var(--bg3)', color: current === p.id ? '#fff' : 'var(--text2)', fontWeight: current === p.id ? 'bold' : 'normal', cursor: 'pointer', border: 'none' }}>
+            {p.label}
+          </button>
+        ))}
+        <input type="date" value={dateFrom} onInput={e => { onChange(''); onDateFrom(e.target.value) }} style={{ width: '120px', fontSize: '11px' }} title="من تاريخ" />
+        <input type="date" value={dateTo} onInput={e => { onChange(''); onDateTo(e.target.value) }} style={{ width: '120px', fontSize: '11px' }} title="إلى تاريخ" />
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-        <h1 style={{ fontSize: '20px' }}>التقارير</h1>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {PERIODS.map(p => (
-            <button key={p.id} onClick={() => setPeriodFilter(p.id)}
-              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: period === p.id ? 'var(--accent)' : 'var(--bg3)', color: period === p.id ? '#fff' : 'var(--text2)', fontWeight: period === p.id ? 'bold' : 'normal' }}>
-              {p.label}
-            </button>
-          ))}
-          <input type="date" value={filterDateFrom} onInput={e => { setFilterDateFrom(e.target.value); setPeriod('') }} style={{ width: '120px', fontSize: '11px' }} title="من تاريخ" />
-          <input type="date" value={filterDateTo} onInput={e => { setFilterDateTo(e.target.value); setPeriod('') }} style={{ width: '120px', fontSize: '11px' }} title="إلى تاريخ" />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '20px' }}>
-        <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="#22c55e" />
-        <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="#ef4444" />
-        <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="#eab308" />
-        <SummaryCard label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="#f59e0b" />
-        <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="#f97316" />
-        <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="#8b5cf6" />
-        <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? '#22c55e' : '#ef4444'} />
-        <SummaryCard label="عدد الفواتير" value={totalInvoiceCount} color="#3b82f6" />
-        <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="#8b5cf6" />
-        <SummaryCard label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="#06b6d4" />
-        <SummaryCard label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="#14b8a6" />
-        <SummaryCard label="رصيد البنك" value={formatMoney(bankBalance)} color="#3b82f6" />
-      </div>
-
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: 'var(--bg2)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', background: tab === t.id ? 'var(--bg3)' : 'transparent', color: tab === t.id ? 'var(--text)' : 'var(--text2)', whiteSpace: 'nowrap' }}>
-            {t.label}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        {selectedReport && (
+          <button type="button" onClick={() => setSelectedReport(null)} style={{
+            background: 'var(--bg3)', color: 'var(--text)', padding: '8px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
+            display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', border: 'none'
+          }}>
+            ← رجوع
           </button>
-        ))}
+        )}
+        <h1 style={{ fontSize: '20px' }}>
+          {selectedReport && currentCard ? currentCard.title : 'التقارير'}
+        </h1>
       </div>
 
-      {tab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
-            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>مبيعات اليوم</h3>
-            <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(summary?.todaySales)}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text2)' }}>عدد الفواتير: {summary?.todayInvoices}</div>
-          </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
-            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>الأكثر مبيعاً</h3>
-            {summary?.topProducts?.length > 0 ? summary.topProducts.map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
-                <span>{p.name}</span><span style={{ color: 'var(--success)' }}>{formatMoney(p.revenue)}</span>
+      {/* Cards view */}
+      {!selectedReport && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+          {reportCards.map(card => (
+            <div key={card.id} onClick={() => setSelectedReport(card.id)}
+              style={{
+                background: 'var(--bg2)', borderRadius: '16px', padding: '24px',
+                border: '1px solid var(--outline)', cursor: 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: 'var(--elevation-1)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--elevation-2)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--elevation-1)'; e.currentTarget.style.borderColor = 'var(--outline)' }}
+              role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter') setSelectedReport(card.id) }}
+            >
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '14px',
+                background: reportColors[card.id],
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: '700', fontSize: '22px', marginBottom: '14px'
+              }}>
+                {reportIcons[card.id]}
               </div>
-            )) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد بيانات</div>}
-          </div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', marginBottom: '8px' }}>
+                {card.title}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: 1.6 }}>
+                {card.description}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {tab === 'sales' && (
+      {/* Overview section */}
+      {selectedReport === 'overview' && (
+        <>
+          <div style={{ marginBottom: '16px' }}>
+            <PeriodPresets current={period} onChange={setPeriodFilter} dateFrom={filterDateFrom} dateTo={filterDateTo} onDateFrom={setFilterDateFrom} onDateTo={setFilterDateTo} />
+          </div>
+
+          {/* Summary cards - grouped */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} large />
+              <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="var(--success)" />
+              <SummaryCard label="عدد الفواتير" value={totalInvoiceCount} color="var(--accent)" />
+              <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="var(--danger)" />
+              <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="var(--warning)" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              <SummaryCard label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="var(--warning)" />
+              <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="var(--warning)" />
+              <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="var(--secondary)" />
+              <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="var(--secondary)" />
+              <SummaryCard label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="var(--special)" />
+              <SummaryCard label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="var(--teal)" />
+              <SummaryCard label="رصيد البنك" value={formatMoney(bankBalance)} color="var(--accent)" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="card" style={{ padding: '16px' }}>
+              <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>مبيعات اليوم</h3>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(summary?.todaySales)}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text2)' }}>عدد الفواتير: {summary?.todayInvoices}</div>
+            </div>
+            <div className="card" style={{ padding: '16px' }}>
+              <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>الأكثر مبيعاً</h3>
+              {summary?.topProducts?.length > 0 ? summary.topProducts.map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
+                  <span>{p.name}</span><span style={{ color: 'var(--success)' }}>{formatMoney(p.revenue)}</span>
+                </div>
+              )) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد بيانات</div>}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '20px', marginTop: '16px' }}>
+            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '16px' }}>مقارنة الأداء المالي</h3>
+            <SimpleBarChart
+              data={[
+                { label: 'إجمالي المبيعات', value: totalSales, color: 'var(--success)' },
+                { label: 'إجمالي المصروفات', value: totalExpenses, color: 'var(--danger)' },
+                { label: 'إجمالي المرتجعات', value: totalReturns + totalPurchaseReturns, color: 'var(--warning)' },
+                { label: 'المسحوبات الشخصية', value: totalWithdrawals, color: 'var(--warning)' },
+                { label: 'صافي الربح', value: Math.max(0, netProfit), color: 'var(--accent)' }
+              ]}
+            />
+          </div>
+        </>
+      )}
+
+      {selectedReport === 'sales' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي المبيعات" value={formatMoney(filteredSales.reduce((s, x) => s + x.total, 0))} color="var(--success)" />
+            <SummaryCard label="عدد الفواتير" value={filteredSales.length} color="var(--accent)" />
+            <SummaryCard label="إجمالي الضرائب" value={formatMoney(filteredSales.reduce((s, x) => s + (x.tax || 0), 0))} color="var(--secondary)" />
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <PeriodPresets current={salesPeriod} onChange={setSalesPeriod}
+              dateFrom={searchSales.dateFrom} dateTo={searchSales.dateTo}
+              onDateFrom={v => setSearchSales(s => ({ ...s, dateFrom: v }))}
+              onDateTo={v => setSearchSales(s => ({ ...s, dateTo: v }))} />
+          </div>
+          {/* Payment method breakdown */}
+          {(() => {
+            const cashTotal = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((s, x) => s + x.total, 0)
+            const cardTotal = filteredSales.filter(s => s.paymentMethod === 'card').reduce((s, x) => s + x.total, 0)
+            const creditTotal = filteredSales.filter(s => s.paymentMethod === 'credit').reduce((s, x) => s + x.total, 0)
+            const avgInvoice = filteredSales.length > 0 ? Math.round(filteredSales.reduce((s, x) => s + x.total, 0) / filteredSales.length) : 0
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px', marginBottom: '12px' }}>
+                <div className="card" style={{ padding: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text2)' }}>نقداً</div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(cashTotal)}</div>
+                </div>
+                <div className="card" style={{ padding: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text2)' }}>بطاقة</div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent)' }}>{formatMoney(cardTotal)}</div>
+                </div>
+                <div className="card" style={{ padding: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text2)' }}>آجل</div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--warning)' }}>{formatMoney(creditTotal)}</div>
+                </div>
+                <div className="card" style={{ padding: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text2)' }}>متوسط الفاتورة</div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--secondary)' }}>{formatMoney(avgInvoice)}</div>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث برقم الفاتورة أو العميل أو الكاشير..." value={searchSales.q}
               onInput={e => setSearchSales(s => ({ ...s, q: e.target.value }))}
               style={{ flex: 1, minWidth: '150px' }} />
-            <input type="date" value={searchSales.dateFrom} onInput={e => setSearchSales(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
-            <input type="date" value={searchSales.dateTo} onInput={e => setSearchSales(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>#</th><th>التاريخ</th><th>العميل</th><th>الإجمالي</th><th>طريقة الدفع</th><th>الكاشير</th></tr></thead>
               <tbody>
@@ -279,16 +424,40 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === 'expenses' && (
+      {selectedReport === 'expenses' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي المصروفات" value={formatMoney(filteredExpenses.reduce((s, x) => s + x.amount, 0))} color="var(--danger)" />
+            <SummaryCard label="عدد المصروفات" value={filteredExpenses.length} color="var(--accent)" />
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <PeriodPresets current={expensesPeriod} onChange={setExpensesPeriod}
+              dateFrom={searchExpenses.dateFrom} dateTo={searchExpenses.dateTo}
+              onDateFrom={v => setSearchExpenses(s => ({ ...s, dateFrom: v }))}
+              onDateTo={v => setSearchExpenses(s => ({ ...s, dateTo: v }))} />
+          </div>
+          {/* Category breakdown */}
+          {(() => {
+            const cats = {}
+            filteredExpenses.forEach(e => { const c = e.category || 'أخرى'; cats[c] = (cats[c] || 0) + e.amount })
+            const topCats = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 5)
+            return topCats.length > 0 ? (
+              <div className="card" style={{ padding: '12px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text2)', marginBottom: '8px' }}>أكثر التصنيفات إنفاقاً</div>
+                {topCats.map(([cat, amt]) => (
+                  <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
+                    <span>{cat}</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{formatMoney(amt)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null
+          })()}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث بالتصنيف أو البيان..." value={searchExpenses.q}
               onInput={e => setSearchExpenses(s => ({ ...s, q: e.target.value }))}
               style={{ flex: 1, minWidth: '150px' }} />
-            <input type="date" value={searchExpenses.dateFrom} onInput={e => setSearchExpenses(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
-            <input type="date" value={searchExpenses.dateTo} onInput={e => setSearchExpenses(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>التاريخ</th><th>التصنيف</th><th>المبلغ</th><th>البيان</th></tr></thead>
               <tbody>
@@ -307,16 +476,24 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === 'withdrawals' && (
+      {selectedReport === 'withdrawals' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي المسحوبات" value={formatMoney(filteredWithdrawals.reduce((s, x) => s + Math.abs(x.amount), 0))} color="var(--warning)" />
+            <SummaryCard label="عدد المسحوبات" value={filteredWithdrawals.length} color="var(--accent)" />
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <PeriodPresets current={withdrawalsPeriod} onChange={setWithdrawalsPeriod}
+              dateFrom={searchWithdrawals.dateFrom} dateTo={searchWithdrawals.dateTo}
+              onDateFrom={v => setSearchWithdrawals(s => ({ ...s, dateFrom: v }))}
+              onDateTo={v => setSearchWithdrawals(s => ({ ...s, dateTo: v }))} />
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث باسم الشخص أو البيان..." value={searchWithdrawals.q}
               onInput={e => setSearchWithdrawals(s => ({ ...s, q: e.target.value }))}
               style={{ flex: 1, minWidth: '150px' }} />
-            <input type="date" value={searchWithdrawals.dateFrom} onInput={e => setSearchWithdrawals(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
-            <input type="date" value={searchWithdrawals.dateTo} onInput={e => setSearchWithdrawals(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>التاريخ</th><th>اسم الشخص</th><th>المبلغ</th><th>البيان</th><th>الخزينة</th></tr></thead>
               <tbody>
@@ -324,7 +501,7 @@ export default function ReportsPage() {
                   <tr key={w._id}>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(w.createdAt)}</td>
                     <td style={{ fontWeight: 'bold' }}>{w.personName || '-'}</td>
-                    <td style={{ color: '#eab308', fontWeight: 'bold' }}>{formatMoney(Math.abs(w.amount))}</td>
+                    <td style={{ color: 'var(--warning)', fontWeight: 'bold' }}>{formatMoney(Math.abs(w.amount))}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{w.note || '-'}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{w.treasuryName}</td>
                   </tr>
@@ -336,18 +513,72 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === 'customers' && (
+      {selectedReport === 'customers' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي العملاء" value={filteredCustomers.length} color="var(--special)" />
+            <SummaryCard label="إجمالي الديون" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0) - (c.totalPaid || 0), 0))} color="var(--danger)" />
+            <SummaryCard label="إجمالي المشتريات" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0), 0))} color="var(--accent)" />
+            <SummaryCard label="إجمالي المدفوع" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalPaid || 0), 0))} color="var(--success)" />
+          </div>
+          {/* Debt grouping */}
+          {(() => {
+            const debtors = filteredCustomers.filter(c => (c.totalDebt || 0) > 0)
+            const clean = filteredCustomers.filter(c => (c.totalDebt || 0) <= 0)
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: customerFilter === 'debtors' ? '2px solid var(--danger)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setCustomerFilter(customerFilter === 'debtors' ? 'all' : 'debtors')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '8px' }}>عليهم ديون ({debtors.length})</div>
+                  {debtors.slice(0, 5).map(c => {
+                    const rem = (c.totalDebt || 0) - (c.totalPaid || 0)
+                    return (
+                      <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
+                        <span>{c.name}</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{formatMoney(rem)}</span>
+                      </div>
+                    )
+                  })}
+                  {debtors.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                </div>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: customerFilter === 'clean' ? '2px solid var(--success)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setCustomerFilter(customerFilter === 'clean' ? 'all' : 'clean')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--success)', marginBottom: '8px' }}>بدون ديون ({clean.length})</div>
+                  {clean.slice(0, 5).map(c => (
+                    <div key={c._id} style={{ fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
+                      {c.name}
+                    </div>
+                  ))}
+                  {clean.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                </div>
+              </div>
+            )
+          })()}
+          {customerFilter !== 'all' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: customerFilter === 'debtors' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)', color: customerFilter === 'debtors' ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
+                {customerFilter === 'debtors' ? 'عليهم ديون' : 'بدون ديون'}
+              </span>
+              <button type="button" onClick={() => setCustomerFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={searchCustomers}
               onInput={e => setSearchCustomers(e.target.value)}
               style={{ flex: 1, minWidth: '150px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>العميل</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
               <tbody>
-                {filteredCustomers.map(c => {
+                {(customerFilter === 'debtors' ? filteredCustomers.filter(c => (c.totalDebt || 0) > 0) :
+                  customerFilter === 'clean' ? filteredCustomers.filter(c => (c.totalDebt || 0) <= 0) :
+                  filteredCustomers).map(c => {
                   const remaining = (c.totalDebt || 0) - (c.totalPaid || 0)
                   return (
                     <tr key={c._id}>
@@ -359,25 +590,80 @@ export default function ReportsPage() {
                     </tr>
                   )
                 })}
-                {filteredCustomers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات عملاء</td></tr>}
+                {(customerFilter === 'debtors' ? filteredCustomers.filter(c => (c.totalDebt || 0) > 0).length === 0 :
+                  customerFilter === 'clean' ? filteredCustomers.filter(c => (c.totalDebt || 0) <= 0).length === 0 :
+                  filteredCustomers.length === 0) && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {tab === 'suppliers' && (
+      {selectedReport === 'suppliers' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي الموردين" value={filteredSuppliers.length} color="var(--special)" />
+            <SummaryCard label="إجمالي المشتريات" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + (sp.totalPurchases || 0), 0))} color="var(--accent)" />
+            <SummaryCard label="إجمالي الديون" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + Math.max(0, (sp.totalPurchases || 0) - (sp.totalPaid || 0)), 0))} color="var(--danger)" />
+          </div>
+          {/* Debt grouping */}
+          {(() => {
+            const debtors = filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) > 0)
+            const clean = filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) <= 0)
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: supplierFilter === 'debtors' ? '2px solid var(--danger)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setSupplierFilter(supplierFilter === 'debtors' ? 'all' : 'debtors')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '8px' }}>موردين مدين لهم ({debtors.length})</div>
+                  {debtors.slice(0, 5).map(s => {
+                    const rem = (s.totalPurchases || 0) - (s.totalPaid || 0)
+                    return (
+                      <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
+                        <span>{s.name}</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{formatMoney(rem)}</span>
+                      </div>
+                    )
+                  })}
+                  {debtors.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                </div>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: supplierFilter === 'clean' ? '2px solid var(--success)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setSupplierFilter(supplierFilter === 'clean' ? 'all' : 'clean')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--success)', marginBottom: '8px' }}>مسدد ({clean.length})</div>
+                  {clean.slice(0, 5).map(s => (
+                    <div key={s._id} style={{ fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
+                      {s.name}
+                    </div>
+                  ))}
+                  {clean.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                </div>
+              </div>
+            )
+          })()}
+          {supplierFilter !== 'all' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: supplierFilter === 'debtors' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)', color: supplierFilter === 'debtors' ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
+                {supplierFilter === 'debtors' ? 'موردين مدين لهم' : 'مسدد'}
+              </span>
+              <button type="button" onClick={() => setSupplierFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <input placeholder="بحث باسم المورد أو رقم الهاتف..." value={searchSuppliers}
+            <input placeholder="بحث باسم المورد..." value={searchSuppliers}
               onInput={e => setSearchSuppliers(e.target.value)}
               style={{ flex: 1, minWidth: '150px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>المورد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
               <tbody>
-                {filteredSuppliers.map(s => {
+                {(supplierFilter === 'debtors' ? filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) > 0) :
+                  supplierFilter === 'clean' ? filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) <= 0) :
+                  filteredSuppliers).map(s => {
                   const remaining = (s.totalPurchases || 0) - (s.totalPaid || 0)
                   return (
                     <tr key={s._id}>
@@ -389,23 +675,33 @@ export default function ReportsPage() {
                     </tr>
                   )
                 })}
-                {filteredSuppliers.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات موردين</td></tr>}
+                {(supplierFilter === 'debtors' ? filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) > 0).length === 0 :
+                  supplierFilter === 'clean' ? filteredSuppliers.filter(s => (s.totalPurchases || 0) - (s.totalPaid || 0) <= 0).length === 0 :
+                  filteredSuppliers.length === 0) && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {tab === 'returns' && (
+      {selectedReport === 'returns' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="إجمالي المرتجعات" value={formatMoney(filteredReturns.reduce((s, x) => s + (x.returnAmount || x.total || 0), 0))} color="var(--warning)" />
+            <SummaryCard label="عدد المرتجعات" value={filteredReturns.length} color="var(--accent)" />
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <PeriodPresets current={returnsPeriod} onChange={setReturnsPeriod}
+              dateFrom={searchReturns.dateFrom} dateTo={searchReturns.dateTo}
+              onDateFrom={v => setSearchReturns(s => ({ ...s, dateFrom: v }))}
+              onDateTo={v => setSearchReturns(s => ({ ...s, dateTo: v }))} />
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <input placeholder="بحث برقم الفاتورة أو العميل..." value={searchReturns.q}
+            <input placeholder="بحث برقم الفاتورة أو اسم المنتج..." value={searchReturns.q}
               onInput={e => setSearchReturns(s => ({ ...s, q: e.target.value }))}
               style={{ flex: 1, minWidth: '150px' }} />
-            <input type="date" value={searchReturns.dateFrom} onInput={e => setSearchReturns(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
-            <input type="date" value={searchReturns.dateTo} onInput={e => setSearchReturns(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>نوع الإرجاع</th></tr></thead>
               <tbody>
@@ -425,8 +721,13 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === 'inventory' && (
+      {selectedReport === 'inventory' && (
         <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard label="قيمة المخزون" value={formatMoney(batchTotalValue)} color="var(--accent)" />
+            <SummaryCard label="عدد الأصناف" value={batchData.length} color="var(--secondary)" />
+            <SummaryCard label="إجمالي الكميات" value={batchData.reduce((s, p) => s + (p.stock || p.batches?.reduce((ss, b) => ss + (b.quantity || 0), 0) || 0), 0)} color="var(--success)" />
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input placeholder="بحث باسم المنتج أو SKU أو الباركود..." value={batchSearch}
               onInput={e => setBatchSearch(e.target.value)}
@@ -473,7 +774,7 @@ export default function ReportsPage() {
                   </table>
                 </div>
               ) : (
-                <div style={{ padding: '12px', color: 'var(--text2)', fontSize: '12px', textAlign: 'center' }}>لا توجد batches (المخزون صفر)</div>
+                <div style={{ padding: '12px', color: 'var(--text2)', fontSize: '12px', textAlign: 'center' }}>لا توجد دفعات (المخزون صفر)</div>
               )}
             </div>
           ))}
@@ -483,20 +784,56 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === 'treasury' && (
+      {selectedReport === 'treasury' && (
         <div>
+          {(() => {
+            const displayTreasury = treasuryFilter ? filteredTreasury.filter(x => x.treasuryName === treasuryFilter) : filteredTreasury
+            return (
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <SummaryCard label="إجمالي الحركات" value={displayTreasury.length} color="var(--accent)" />
+                <SummaryCard label="إجمالي الوارد" value={formatMoney(displayTreasury.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0))} color="var(--success)" />
+                <SummaryCard label="إجمالي المنصرف" value={formatMoney(displayTreasury.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0))} color="var(--danger)" />
+              </div>
+            )
+          })()}
+          {/* Treasury balances */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            {treasuries.map(t => (
+              <div key={t._id} className="card" style={{
+                padding: '10px 16px', minWidth: '140px', textAlign: 'center', cursor: 'pointer',
+                outline: treasuryFilter === t.name ? '2px solid var(--accent)' : 'none',
+                transition: 'outline 0.2s'
+              }} onClick={() => setTreasuryFilter(treasuryFilter === t.name ? '' : t.name)}>
+                <div style={{ fontSize: '11px', color: 'var(--text2)' }}>{t.name}</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: (t.balance || 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(t.balance || 0)}</div>
+              </div>
+            ))}
+            {treasuries.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا توجد خزائن</div>}
+          </div>
+          {treasuryFilter && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,106,181,0.15)', color: 'var(--accent)', fontWeight: 'bold' }}>
+                {treasuryFilter}
+              </span>
+              <button type="button" onClick={() => setTreasuryFilter('')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
+            </div>
+          )}
+          <div style={{ marginBottom: '12px' }}>
+            <PeriodPresets current={treasuryPeriod} onChange={setTreasuryPeriod}
+              dateFrom={searchTreasury.dateFrom} dateTo={searchTreasury.dateTo}
+              onDateFrom={v => setSearchTreasury(s => ({ ...s, dateFrom: v }))}
+              onDateTo={v => setSearchTreasury(s => ({ ...s, dateTo: v }))} />
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث باسم المستخدم أو البيان أو الشخص..." value={searchTreasury.q}
               onInput={e => setSearchTreasury(s => ({ ...s, q: e.target.value }))}
               style={{ flex: 1, minWidth: '150px' }} />
-            <input type="date" value={searchTreasury.dateFrom} onInput={e => setSearchTreasury(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
-            <input type="date" value={searchTreasury.dateTo} onInput={e => setSearchTreasury(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>التاريخ</th><th>الخزينة</th><th>النوع</th><th>المبلغ</th><th>البيان</th><th>الشخص</th><th>بواسطة</th></tr></thead>
               <tbody>
-                {filteredTreasury.map(t => (
+                {(treasuryFilter ? filteredTreasury.filter(x => x.treasuryName === treasuryFilter) : filteredTreasury).map(t => (
                   <tr key={t._id}>
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.createdAt)}</td>
                     <td style={{ fontSize: '12px' }}>{t.treasuryName}</td>
@@ -505,8 +842,8 @@ export default function ReportsPage() {
                         fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
                         background: t.type === 'deposit' || t.type === 'transfer_in' ? 'rgba(34,197,94,0.15)' :
                           t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: t.type === 'deposit' || t.type === 'transfer_in' ? '#22c55e' :
-                          t.type === 'personal_withdraw' ? '#eab308' : '#ef4444'
+                        color: t.type === 'deposit' || t.type === 'transfer_in' ? 'var(--success)' :
+                          t.type === 'personal_withdraw' ? 'var(--warning)' : 'var(--danger)'
                       }}>
                         {t.type === 'deposit' ? 'إيداع' : t.type === 'withdraw' ? 'سحب' : t.type === 'personal_withdraw' ? 'سحب شخصي' : t.type === 'transfer_in' ? 'تحويل وارد' : t.type === 'transfer_out' ? 'تحويل صادر' : t.type}
                       </span>
@@ -517,21 +854,129 @@ export default function ReportsPage() {
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{t.createdBy || '-'}</td>
                   </tr>
                 ))}
-                {filteredTreasury.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد حركات</td></tr>}
+                {(treasuryFilter ? filteredTreasury.filter(x => x.treasuryName === treasuryFilter) : filteredTreasury).length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد حركات</td></tr>}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {selectedReport === 'employees' && (
+        <div>
+          {(() => {
+            const totalSalaries = employees.reduce((s, e) => s + (e.salary || 0), 0)
+            const advances = employeeAdvances.filter(a => a.type !== 'deduction')
+            const deductions = employeeAdvances.filter(a => a.type === 'deduction')
+            const pendingAdvances = advances.filter(a => !a.deducted)
+            const totalAdvances = advances.reduce((s, a) => s + a.amount, 0)
+            const totalDeductions = deductions.reduce((s, a) => s + a.amount, 0)
+            const totalPending = pendingAdvances.reduce((s, a) => s + a.amount, 0)
+            const totalAdditions = salaryPayments.reduce((s, p) => s + (p.totalAdditions || 0), 0)
+            return (
+              <>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                  <SummaryCard label="إجمالي الموظفين" value={employees.length} color="#8B5CF6" />
+                  <SummaryCard label="إجمالي الرواتب" value={formatMoney(totalSalaries)} color="var(--accent)" />
+                  <SummaryCard label="إجمالي السلف" value={formatMoney(totalAdvances)} color="var(--warning)" />
+                  <SummaryCard label="إجمالي الخصومات" value={formatMoney(totalDeductions)} color="var(--danger)" />
+                  <SummaryCard label="السلف المعلقة" value={formatMoney(totalPending)} color="var(--danger)" />
+                  <SummaryCard label="إجمالي الإضافات" value={formatMoney(totalAdditions)} color="var(--success)" />
+                </div>
+                {employees.length > 0 && (
+                  <div className="card" style={{ padding: '12px', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text2)', marginBottom: '8px' }}>الموظفون ورواتبهم</div>
+                    {employees.slice(0, 10).map(e => {
+                      const empAdvances = employeeAdvances.filter(a => a.employeeId === e._id && a.type !== 'deduction')
+                      const empPending = empAdvances.filter(a => !a.deducted)
+                      const empTotal = empAdvances.reduce((s, a) => s + a.amount, 0)
+                      const empPendingTotal = empPending.reduce((s, a) => s + a.amount, 0)
+                      return (
+                        <div key={e._id} onClick={() => setEmployeeFilter(employeeFilter === e.name ? '' : e.name)} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid var(--bg3)', alignItems: 'center', cursor: 'pointer', background: employeeFilter === e.name ? 'var(--accent-container)' : 'transparent', borderRadius: '4px', padding: '4px 8px', margin: '0 -8px' }}>
+                          <span style={{ fontWeight: 'bold' }}>{e.name}</span>
+                          <span style={{ color: 'var(--text2)' }}>
+                            الراتب: <strong style={{ color: 'var(--accent)' }}>{formatMoney(e.salary || 0)}</strong>
+                            {empTotal > 0 && <> | سلف: <strong style={{ color: 'var(--warning)' }}>{formatMoney(empTotal)}</strong></>}
+                            {empPendingTotal > 0 && <> | معلق: <strong style={{ color: 'var(--danger)' }}>{formatMoney(empPendingTotal)}</strong></>}
+                          </span>
+                        </div>
+                      )
+                    })}
+                    {employees.length > 10 && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px' }}>و {employees.length - 10} موظفين آخرين</div>}
+                  </div>
+                )}
+                {employeeAdvances.length > 0 && (
+                  <div className="table-card">
+                    {employeeFilter && <div style={{ fontSize: '11px', color: 'var(--text2)', padding: '6px 10px', background: 'var(--accent-container)', borderRadius: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>التصفية: <strong>{employeeFilter}</strong> <button onClick={() => setEmployeeFilter('')} style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>إزالة التصفية</button></div>}
+                    <table>
+                      <thead><tr><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th>البيان</th></tr></thead>
+                      <tbody>
+                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).slice(0, 50).map(a => (
+                          <tr key={a._id}>
+                            <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(a.date || a.createdAt)}</td>
+                            <td style={{ fontWeight: 'bold' }}>{a.employeeName}</td>
+                            <td>
+                              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
+                                background: a.type === 'deduction' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
+                                color: a.type === 'deduction' ? 'var(--success)' : 'var(--warning)'
+                              }}>
+                                {a.type === 'deduction' ? 'خصم' : 'سلفة'}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: 'bold', color: a.type === 'deduction' ? 'var(--success)' : 'var(--warning)' }}>{formatMoney(a.amount)}</td>
+                            <td>
+                              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
+                                background: a.deducted ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                                color: a.deducted ? 'var(--success)' : 'var(--danger)'
+                              }}>
+                                {a.deducted ? 'مخصومة' : 'معلقة'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{a.note || '-'}</td>
+                          </tr>
+                        ))}
+                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length > 50 && <tr><td colSpan="6" style={{ padding: '8px', color: 'var(--text2)', textAlign: 'center', fontSize: '11px' }}>و {((employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length - 50)} حركة أخرى</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {employees.length === 0 && <div style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات موظفين</div>}
+              </>
+            )
+          })()}
         </div>
       )}
     </div>
   )
 }
 
-function SummaryCard({ label, value, color }) {
+function SummaryCard({ label, value, color, large }) {
   return (
-    <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '10px', borderRight: `3px solid ${color}` }}>
+    <div style={{ background: 'var(--bg2)', padding: large ? '18px' : '14px', borderRadius: '10px', borderRight: `3px solid ${color}`, gridColumn: large ? 'span 2' : undefined }}>
       <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>{label}</div>
-      <div style={{ fontSize: '18px', fontWeight: 'bold', color }}>{value}</div>
+      <div style={{ fontSize: large ? '24px' : '18px', fontWeight: 'bold', color }}>{value}</div>
+    </div>
+  )
+}
+
+function SimpleBarChart({ data }) {
+  const maxVal = Math.max(...data.map(d => d.value), 1)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {data.map((d, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ width: '100px', fontSize: '12px', color: 'var(--text2)', textAlign: 'left', flexShrink: 0 }}>{d.label}</span>
+          <div style={{ flex: 1, height: '26px', background: 'var(--bg3)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              height: '100%', width: `${Math.max((d.value / maxVal) * 100, 2)}%`,
+              background: d.color, borderRadius: '6px', opacity: '0.85',
+              transition: 'width 0.4s ease'
+            }} />
+          </div>
+          <span style={{ width: '100px', fontSize: '12px', fontWeight: '600', color: 'var(--text)', textAlign: 'right', flexShrink: 0, direction: 'ltr' }}>
+            {formatMoney(d.value)}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

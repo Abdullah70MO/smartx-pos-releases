@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './store.jsx'
 import { ToastProvider, useToast } from './components/Toast'
 import Modal from './components/Modal'
 import Sidebar from './components/Sidebar'
+import NotificationBell from './components/NotificationBell'
 import { formatDateTime } from './utils/date'
 import LoginPage from './pages/LoginPage'
 import LicensePage from './pages/LicensePage'
@@ -68,7 +69,7 @@ const PAGES = {
 }
 
 function AppContent() {
-  const { page, setPage, user, license, settings, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable } = useStore()
+  const { page, setPage, user, license, settings, leaveSettingsPrompt, confirmLeaveSettings, closeSettingsPrompt, updateAvailable, toggleTheme } = useStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   useEffect(() => { const id = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(id) }, [])
@@ -115,6 +116,16 @@ function AppContent() {
             <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--accent)' }}>{settings?.businessName || 'SMART X'}</span>
             <span style={{ fontSize: '11px', color: 'var(--text2)', marginRight: '12px' }}>{formatDateTime(currentTime)}</span>
             <div style={{ flex: 1 }} />
+            <NotificationBell />
+            <button onClick={toggleTheme} title="تبديل الوضع الداكن/الفاتح" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', fontSize: '16px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '17px', height: '17px' }}>
+                {(settings?.theme || localStorage.getItem('theme') || 'dark') === 'dark' ? (
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                ) : (
+                  <><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></>
+                )}
+              </svg>
+            </button>
             <span style={{ fontSize: '12px', color: 'var(--text)', fontWeight: '500', marginLeft: '8px' }}>{user?.name}</span>
             {license?.remainingText && (
               <span style={{
@@ -128,7 +139,7 @@ function AppContent() {
           </div>
           {license?.graceWarning && (
             <div style={{
-              background: '#f97316', color: '#fff', padding: '8px 16px',
+              background: 'var(--warning)', color: '#fff', padding: '8px 16px',
               fontSize: '13px', fontWeight: '600', textAlign: 'center'
             }}>
               سيتم تعطيل التطبيق خلال يومين بسبب انقطاع الإنترنت - يرجى الاتصال بالإنترنت لتجديد الترخيص

@@ -4,6 +4,7 @@ import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { formatMoney } from '../utils/money'
+import { printBarcode } from '../utils/print'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 
@@ -243,7 +244,7 @@ export default function ProductsPage() {
         style={{ width: '100%', marginBottom: '12px' }}
       />
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead>
             <tr>
@@ -297,9 +298,15 @@ export default function ProductsPage() {
               </div>
               {showPrintBarcode && form.barcode && (
                 <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '8px', textAlign: 'center' }}>
-                  <BarcodeSVG code={form.barcode} />
+                  {(() => {
+                    const labelSize = localStorage.getItem('barcodeLabelSize') || '50x30'
+                    const dims = labelSize.split('x').map(Number)
+                    const bw = Math.min(Number(dims[0]) * 3.78, 400)
+                    const bh = Math.min(Number(dims[1]) * 3.78, 250)
+                    return <BarcodeSVG code={form.barcode} width={bw} height={bh} />
+                  })()}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>{form.barcode}</div>
-                  <button type="button" onClick={() => window.print()}
+                  <button type="button" onClick={() => printBarcode(form.barcode)}
                     style={{ marginTop: '6px', background: 'var(--success)', color: '#fff', padding: '6px 16px', borderRadius: '6px', fontSize: '11px' }}>
                     طباعة الباركود
                   </button>

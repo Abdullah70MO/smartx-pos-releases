@@ -228,7 +228,7 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead>
             <tr>
@@ -300,7 +300,7 @@ export default function EmployeesPage() {
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>العنوان</label><input value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>ساعات العمل</label>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <select value={[4,6,8,12].includes(form.workHours) ? form.workHours : 'other'} onChange={e => { if (e.target.value !== 'other') setForm(f => ({ ...f, workHours: Number(e.target.value) })) }} style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
+                  <select value={[4,6,8,12].includes(form.workHours) ? form.workHours : 'other'} onChange={e => { setForm(f => ({ ...f, workHours: e.target.value === 'other' ? '' : Number(e.target.value) })) }} style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
                     <option value={4}>4 ساعات</option><option value={6}>6 ساعات</option><option value={8}>8 ساعات</option><option value={12}>12 ساعة</option><option value="other">أخرى</option>
                   </select>
                   {![4,6,8,12].includes(form.workHours) && <input type="number" value={form.workHours} onInput={e => setForm(f => ({ ...f, workHours: Number(e.target.value) }))} style={{ width: '70px' }} />}
@@ -340,7 +340,7 @@ export default function EmployeesPage() {
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {canManage && <button onClick={() => setShowAdvanceModal(true)} style={{ background: 'var(--warning)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>+ سلفة</button>}
-            {canManage && <button onClick={() => setShowDeductionModal(true)} style={{ background: '#ef4444', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>− خصم</button>}
+            {canManage && <button onClick={() => setShowDeductionModal(true)} style={{ background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>− خصم</button>}
             {canSalaries && <button onClick={() => openPaySalary(viewEmployee)} style={{ background: 'var(--success)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>💳 صرف راتب</button>}
             <button onClick={() => { loadSalaryHistory(viewEmployee._id); setShowSalaryHistory(true) }} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>سجل الرواتب</button>
             <button onClick={() => loadAttendance(viewEmployee._id)} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>الحضور</button>
@@ -386,7 +386,7 @@ export default function EmployeesPage() {
             <form onSubmit={handleSaveDeduction} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>المبلغ</label><input type="number" value={deductionForm.amount} onInput={e => setDeductionForm(f => ({ ...f, amount: e.target.value }))} required style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>السبب</label><input value={deductionForm.note} onInput={e => setDeductionForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%' }} /></div>
-              <button type="submit" style={{ background: '#ef4444', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تسجيل الخصم</button>
+              <button type="submit" style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تسجيل الخصم</button>
             </form>
           </Modal>
 
@@ -482,13 +482,13 @@ export default function EmployeesPage() {
               return (
                 <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
                   <div onClick={e => { e.stopPropagation(); setSelectedAttDay(0) }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
-                  <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: 'var(--bg2)', border: '1px solid var(--outline)', borderRadius: '12px', padding: '20px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '220px' }}>>
+                  <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: 'var(--bg2)', border: '1px solid var(--outline)', borderRadius: '12px', padding: '20px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '220px' }}>
                     <div style={{ fontSize: '14px', color: 'var(--text2)', marginBottom: '10px' }}>{dateStr}</div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                       <button onClick={() => saveAttendanceStatus(viewEmployee._id, dateStr, 'present')} style={{ background: 'rgba(16,185,129,0.2)', color: 'var(--success)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>حاضر</button>
                       <button onClick={() => saveAttendanceStatus(viewEmployee._id, dateStr, 'absent')} style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>غائب</button>
                       <button onClick={() => saveAttendanceStatus(viewEmployee._id, dateStr, 'vacation')} style={{ background: 'rgba(245,158,11,0.2)', color: 'var(--warning)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>إجازة</button>
-                      <button onClick={() => saveAttendanceStatus(viewEmployee._id, dateStr, 'sick')} style={{ background: 'rgba(239,68,68,0.2)', color: '#f97316', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>مرضى</button>
+                      <button onClick={() => saveAttendanceStatus(viewEmployee._id, dateStr, 'sick')} style={{ background: 'rgba(239,68,68,0.2)', color: 'var(--warning)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>مرضى</button>
                       <button onClick={async () => { try { await api.removeEmployeeAttendance(localStorage.getItem('token'), { employeeId: viewEmployee._id, date: dateStr }); setSelectedAttDay(0); loadAttendance(viewEmployee._id) } catch (e) { toast(e.message, 'error') } }} style={{ background: 'transparent', color: 'var(--text2)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px' }}>لا شئ</button>
                     </div>
                     <div style={{ marginTop: '10px' }}>
@@ -502,7 +502,7 @@ export default function EmployeesPage() {
               <span><span style={{ color: 'var(--success)' }}>●</span> حاضر ({attendance.filter(a => a.status === 'present').length})</span>
               <span><span style={{ color: 'var(--danger)' }}>●</span> غائب ({attendance.filter(a => a.status === 'absent').length})</span>
               <span><span style={{ color: 'var(--warning)' }}>●</span> إجازة ({attendance.filter(a => a.status === 'vacation').length})</span>
-              <span><span style={{ color: '#f97316' }}>●</span> مرضى ({attendance.filter(a => a.status === 'sick').length})</span>
+              <span><span style={{ color: 'var(--warning)' }}>●</span> مرضى ({attendance.filter(a => a.status === 'sick').length})</span>
             </div>
           </Modal>
         </div>}

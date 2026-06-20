@@ -70,7 +70,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>التاريخ</th><th>التصنيف</th><th>المبلغ</th><th>طريقة الدفع</th><th>البيان</th><th></th></tr></thead>
           <tbody>

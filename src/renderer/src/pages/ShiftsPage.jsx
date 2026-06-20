@@ -13,8 +13,6 @@ export default function ShiftsPage() {
   const [shifts, setShifts] = useState([])
   const [showEndModal, setShowEndModal] = useState(false)
   const [endingBalance, setEndingBalance] = useState(0)
-  const [startingBalance, setStartingBalance] = useState(0)
-  const [showStartModal, setShowStartModal] = useState(false)
   const [elapsed, setElapsed] = useState('')
   const [searchCashier, setSearchCashier] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -43,15 +41,6 @@ export default function ShiftsPage() {
       setShifts(all)
       if (active) setEndingBalance(active.endingBalance)
     } catch {}
-  }
-
-  async function handleStart() {
-    const token = localStorage.getItem('token')
-    try {
-      await api.startShift(token, Number(startingBalance) || 0)
-      toast('تم بدء الوردية', 'success')
-      setShowStartModal(false); load()
-    } catch (err) { toast(err.message, 'error') }
   }
 
   async function handleEnd() {
@@ -98,12 +87,7 @@ export default function ShiftsPage() {
         </div>
       ) : (
         <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
-          <div style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px' }}>لا توجد وردية نشطة</div>
-          {user?.permissions?.includes('shifts.manage') && (
-            <button onClick={() => setShowStartModal(true)} style={{ background: 'var(--success)', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
-              بدء وردية
-            </button>
-          )}
+          <div style={{ color: 'var(--text2)', fontSize: '14px' }}>لا توجد وردية نشطة</div>
         </div>
       )}
 
@@ -116,7 +100,7 @@ export default function ShiftsPage() {
       </div>
 
       <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '8px' }}>سجل الورديات</h3>
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>الكاشير</th><th>البداية</th><th>النهاية</th><th>المدة</th><th>بداية الرصيد</th><th>المبيعات</th><th>نهاية الرصيد</th></tr></thead>
           <tbody>
@@ -143,14 +127,6 @@ export default function ShiftsPage() {
         </table>
       </div>
 
-      {/* Start modal */}
-      <Modal open={showStartModal} onClose={() => setShowStartModal(false)} title="بدء وردية جديدة">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input type="number" placeholder="رصيد البداية" value={startingBalance} onInput={e => setStartingBalance(e.target.value)} />
-          <button onClick={handleStart} style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>بدء الوردية</button>
-        </div>
-      </Modal>
-
       {/* End modal */}
       <Modal open={showEndModal} onClose={() => setShowEndModal(false)} title="إنهاء الوردية">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -163,7 +139,7 @@ export default function ShiftsPage() {
             const diff = Number(endingBalance) - expected
             if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
             if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
-            return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
+            return <div style={{ color:'var(--warning)', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
           })()}
           <button onClick={handleEnd} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>إنهاء الوردية</button>
         </div>

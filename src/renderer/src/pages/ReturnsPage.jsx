@@ -151,7 +151,7 @@ export default function ReturnsPage() {
         }}>مرتجعات بيع</button>
         <button onClick={() => setActiveTab('purchase')} style={{
           flex: 1, padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: activeTab === 'purchase' ? '700' : '500',
-          background: activeTab === 'purchase' ? '#f59e0b' : 'var(--bg3)',
+          background: activeTab === 'purchase' ? 'var(--warning)' : 'var(--bg3)',
           color: activeTab === 'purchase' ? '#fff' : 'var(--text)'
         }}>مرتجعات شراء</button>
       </div>
@@ -250,7 +250,7 @@ export default function ReturnsPage() {
           {canCreate && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {filteredPurchases.length > 0 && <div style={{ fontSize: '12px', color: 'var(--text2)', width: '100%', marginBottom: '4px' }}>اختر فاتورة شراء للإرجاع:</div>}
             {filteredPurchases.slice(0, 30).map(p => (
-              <button key={p._id} onClick={() => openPReturn(p)} style={{ background: 'var(--bg3)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', color: '#f59e0b' }}>
+              <button key={p._id} onClick={() => openPReturn(p)} style={{ background: 'var(--bg3)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', color: 'var(--warning)' }}>
                 #{p.invoiceNo} - {formatMoney(p.netCost)} ({p.supplierName || 'بدون مورد'})
               </button>
             ))}
@@ -276,7 +276,7 @@ export default function ReturnsPage() {
               <tbody>
                 {filteredPReturns.map(r => (
                   <tr key={r._id}>
-                    <td style={{ color: '#f59e0b', fontWeight: 'bold' }}>#{r.invoiceNo}</td>
+                    <td style={{ color: 'var(--warning)', fontWeight: 'bold' }}>#{r.invoiceNo}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>#{r.purchaseInvoiceNo}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(r.createdAt)}</td>
                     <td>{r.supplierName || '-'}</td>
@@ -321,7 +321,7 @@ export default function ReturnsPage() {
                 <option value="card">بطاقة</option>
                 <option value="supplier_balance">دين مستحق للمورد</option>
               </select>
-              <button onClick={handleCreatePReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+              <button onClick={handleCreatePReturn} style={{ background: 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
                 تسجيل مرتجع
               </button>
             </div>

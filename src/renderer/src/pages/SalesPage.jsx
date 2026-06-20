@@ -73,7 +73,7 @@ export default function SalesPage() {
           style={{ width: '140px' }} />
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead>
             <tr>
@@ -183,7 +183,7 @@ export default function SalesPage() {
               </div>
             })()}
             <div style={{ marginTop: '4px', color: 'var(--text2)' }}>طريقة الدفع: {viewInvoice.paymentMethod === 'card' ? 'بطاقة' : viewInvoice.paymentMethod === 'credit' ? 'آجل' : 'نقداً'}</div>
-            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316' }}>ملاحظة: {viewInvoice.note}</div>}
+            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)' }}>ملاحظة: {viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>}
             {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
             <button onClick={() => {

@@ -4,15 +4,18 @@ const UserSchema = {
   name: 'User',
   primaryKey: '_id',
   properties: {
-    _id:           'string',
-    name:          'string',
-    username:      'string',
-    passwordHash:  'string',
-    role:          { type: 'string', default: 'cashier' },
-    permissions:   'string[]',
-    active:        { type: 'bool', default: true },
-    employeeId:    { type: 'string', optional: true },
-    createdAt:     'date'
+    _id:                'string',
+    name:               'string',
+    username:           'string',
+    passwordHash:       'string',
+    role:               { type: 'string', default: 'cashier' },
+    permissions:        'string[]',
+    active:             { type: 'bool', default: true },
+    employeeId:         { type: 'string', optional: true },
+    securityQuestion:   { type: 'string', default: '' },
+    securityAnswerHash: { type: 'string', default: '' },
+    passwordHint:       { type: 'string', default: '' },
+    createdAt:          'date'
   }
 }
 
@@ -114,6 +117,12 @@ const BusinessSettingsSchema = {
     printDefaultSize:        { type: 'string', default: 'receipt' },
     printColorMode:          { type: 'string', default: 'color' },
     printDirectly:           { type: 'bool', default: false },
+    thermalPaperSize:        { type: 'string', default: '80mm' },
+    customPaperWidth:        { type: 'string', default: '' },
+    customPaperHeight:       { type: 'string', default: '' },
+    defaultPrinter:          { type: 'string', default: '' },
+    barcodePrinter:          { type: 'string', default: '' },
+    barcodeLabelSize:        { type: 'string', default: '50x30' },
     showCommercialReg:       { type: 'bool', default: true },
     showTaxReg:              { type: 'bool', default: true },
     showBusinessName:        { type: 'bool', default: true },
@@ -133,6 +142,11 @@ const BusinessSettingsSchema = {
     autoBackupInterval:      { type: 'string', default: 'weekly' },
     autoBackupLastDate:      { type: 'date', optional: true },
     autoBackupPath:          { type: 'string', default: '' },
+    notificationLowStock:    { type: 'bool', default: true },
+    notificationSales:       { type: 'bool', default: true },
+    notificationPayments:    { type: 'bool', default: true },
+    notificationReturns:     { type: 'bool', default: true },
+    notificationShifts:      { type: 'bool', default: true },
     seeded:                  { type: 'bool', default: false }
   }
 }
@@ -509,6 +523,21 @@ const SalaryPaymentSchema = {
   }
 }
 
+const NotificationSchema = {
+  name: 'Notification',
+  primaryKey: '_id',
+  properties: {
+    _id:           'string',
+    type:          { type: 'string', default: 'info' },
+    title:         'string',
+    message:       'string',
+    referenceId:   { type: 'string', default: '' },
+    referenceType: { type: 'string', default: '' },
+    read:          { type: 'bool', default: false },
+    createdAt:     'date'
+  }
+}
+
 const SCHEMAS = [
   UserSchema,
   ProductSchema,
@@ -537,7 +566,8 @@ const SCHEMAS = [
   EmployeeSchema,
   AdvanceSchema,
   AttendanceLogSchema,
-  SalaryPaymentSchema
+  SalaryPaymentSchema,
+  NotificationSchema
 ]
 
 // SCHEMA_VERSION changelog:
@@ -558,9 +588,14 @@ const SCHEMAS = [
 //   36    Added Advance.type ('advance' | 'deduction')
 //   37    Added Employee.workHours (default 12)
 //   38    Added Employee.autoAttendance (default true)
+//   39    Added User.securityQuestion, User.securityAnswerHash, User.passwordHint
+//         Added BusinessSettings.thermalPaperSize, customPaperWidth, customPaperHeight,
+//           defaultPrinter, barcodePrinter, barcodeLabelSize (non-breaking defaults)
+//   40    Added Notification schema
+//   41    Added notification settings to BusinessSettings (low_stock, sales, payments, returns, shifts)
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 38
+const SCHEMA_VERSION = 41
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

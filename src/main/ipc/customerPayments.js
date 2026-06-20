@@ -1,5 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { createNotification } = require('./notifications')
 
 function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   if (amount === 0) return
@@ -51,6 +52,16 @@ function createCustomerPayment(realm, user, { customerId, customerName, amount, 
     }
     updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
   })
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (settings && settings.notificationPayments !== false) {
+    createNotification(realm, {
+      type: 'payment',
+      title: 'سداد عميل',
+      message: `تم سداد ${payment.amount} ج.م من ${payment.customerName || 'عميل'}`,
+      referenceId: payment._id,
+      referenceType: 'customerPayment'
+    })
+  }
   return { _id: payment._id, customerId: payment.customerId, customerName: payment.customerName, amount: payment.amount, note: payment.note, paymentMethod: payment.paymentMethod, createdBy: payment.createdBy, createdAt: payment.createdAt?.toISOString() }
 }
 

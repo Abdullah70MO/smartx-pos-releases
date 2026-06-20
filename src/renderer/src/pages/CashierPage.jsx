@@ -6,7 +6,8 @@ import { useToast } from '../components/Toast'
 import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
-import { printA4 } from '../utils/print'
+import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import { printA4, printThermal } from '../utils/print'
 
 const PRICE_MODES = [
   { id: 'retail', label: 'تجزئة', field: 'priceRetail' },
@@ -71,6 +72,13 @@ const [taxRate, setTaxRate] = useState(14)
   const [returnPaymentMethod, setReturnPaymentMethod] = useState('cash')
   const [returnRefundCash, setReturnRefundCash] = useState(false)
   const [customerPaidForSale, setCustomerPaidForSale] = useState(0)
+  const [employees, setEmployees] = useState([])
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false)
+  const [advanceEmp, setAdvanceEmp] = useState('')
+  const [advanceAmount, setAdvanceAmount] = useState('')
+  const [advanceNote, setAdvanceNote] = useState('')
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState('cash')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const searchRef = useRef(null)
   const customerRef = useRef(null)
   const barcodeBuffer = useRef('')
@@ -97,7 +105,7 @@ const [taxRate, setTaxRate] = useState(14)
   }
 
   useEffect(() => {
-    loadProducts('', 200); loadCustomers(); loadShiftData(); loadSettings(); searchRef.current?.focus()
+      loadProducts('', 200); loadCustomers(); loadEmployees(); loadShiftData(); loadSettings(); searchRef.current?.focus()
   }, [])
   async function loadSettings() {
     try {
@@ -152,6 +160,12 @@ const [taxRate, setTaxRate] = useState(14)
     const token = localStorage.getItem('token')
     const data = await api.listCustomers(token)
     setCustomers(data)
+  }
+
+  async function loadEmployees() {
+    const token = localStorage.getItem('token')
+    const data = await api.listEmployees(token)
+    setEmployees(data || [])
   }
 
   async function loadShiftData() {
@@ -486,8 +500,8 @@ const [taxRate, setTaxRate] = useState(14)
           {activeShift && (
             <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
               <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>مبيعات الوردية: {formatMoney(activeShift?.totalSales || 0)}</span>
-              {activeShift?.expensesTotal > 0 && <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>مصروفات: {formatMoney(activeShift.expensesTotal)}</span>}
-              {activeShift?.withdrawalsTotal > 0 && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>مسحوبات: {formatMoney(activeShift.withdrawalsTotal)}</span>}
+              {activeShift?.expensesTotal > 0 && <span style={{ color: 'var(--warning)', fontWeight: 'bold' }}>مصروفات: {formatMoney(activeShift.expensesTotal)}</span>}
+              {activeShift?.withdrawalsTotal > 0 && <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>مسحوبات: {formatMoney(activeShift.withdrawalsTotal)}</span>}
               <span style={{ color: 'var(--text2)' }}>فواتير: {shiftSales.count}</span>
               <span style={{ color: 'var(--text2)' }}>بداية: {new Date(activeShift.startedAt).toLocaleTimeString('ar-SA')}</span>
             </div>
@@ -501,14 +515,20 @@ const [taxRate, setTaxRate] = useState(14)
             )}
             {user?.permissions?.includes('cashier.access') && (
               <button onClick={() => setShowExpenseModal(true)}
-                style={{ background: '#f59e0b', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                style={{ background: 'var(--warning)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                 مصروف
               </button>
             )}
             {user?.permissions?.includes('cashier.access') && (
               <button onClick={() => setShowWithdrawModal(true)}
-                style={{ background: '#ef4444', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                style={{ background: 'var(--danger)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                 سحب
+              </button>
+            )}
+            {user?.permissions?.includes('cashier.access') && (
+              <button onClick={() => { setAdvanceEmp(''); setAdvanceAmount(''); setAdvanceNote(''); setAdvancePaymentMethod('cash'); setShowAdvanceModal(true) }}
+                style={{ background: '#8B5CF6', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                سلفة
               </button>
             )}
             {user?.permissions?.includes('cashier.access') && !activeShift ? (
@@ -538,6 +558,10 @@ const [taxRate, setTaxRate] = useState(14)
             style={{ flex: 1, padding: '12px', fontSize: '15px' }}
             autoFocus
           />
+          <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', fontSize: '12px', width: '120px' }}>
+            <option value="">الكل</option>
+            {[...new Set(products.map(p => p.category).filter(Boolean))].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
           {PRICE_MODES.map(mode => (
             <button key={mode.id} onClick={() => setPriceMode(mode.id)}
               style={{
@@ -557,7 +581,7 @@ const [taxRate, setTaxRate] = useState(14)
               <span style={{ fontSize: '12px' }}>{search ? 'جرب بحث آخر' : 'أضف منتجات من صفحة المنتجات أولاً'}</span>
             </div>
           )}
-          {products.map(p => (
+          {(selectedCategory ? products.filter(p => p.category === selectedCategory) : products).map(p => (
             <button key={p._id} onClick={() => addToCart(p)} disabled={p.stock <= 0} style={{
               background: p.stock <= 0 ? 'var(--bg)' : 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
               border: '1px solid var(--bg3)', transition: '0.15s', opacity: p.stock <= 0 ? 0.5 : 1, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer'
@@ -639,7 +663,7 @@ const [taxRate, setTaxRate] = useState(14)
                 style={{
                   flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
                   background: paymentMethod === m
-                    ? (m === 'cash' ? 'var(--success)' : m === 'card' ? '#3b82f6' : 'var(--warning)')
+                    ? (m === 'cash' ? 'var(--success)' : m === 'card' ? 'var(--accent)' : 'var(--warning)')
                     : 'var(--bg3)',
                   color: paymentMethod === m ? '#fff' : 'var(--text)'
                 }}>
@@ -667,7 +691,7 @@ const [taxRate, setTaxRate] = useState(14)
                 onInput={e => setCreditPaid(e.target.value)}
                 style={{ width: '100%', marginBottom: '4px' }} />
               {creditRemaining > 0 && (
-                <div style={{ textAlign: 'left', fontSize: '14px', color: '#f97316', marginBottom: '8px' }}>
+                <div style={{ textAlign: 'left', fontSize: '14px', color: 'var(--warning)', marginBottom: '8px' }}>
                   رصيد مستحق من العميل: {formatMoney(creditRemaining)}
                 </div>
               )}
@@ -774,7 +798,7 @@ const [taxRate, setTaxRate] = useState(14)
 
       <Modal open={showStartShift} onClose={() => setShowStartShift(false)} title={activeShift ? 'بدء وردية جديدة' : 'بداية وردية جديدة'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {activeShift && <div style={{ color: '#f97316', fontSize: '13px' }}>سيتم إنهاء الوردية الحالية أولاً</div>}
+          {activeShift && <div style={{ color: 'var(--warning)', fontSize: '13px' }}>سيتم إنهاء الوردية الحالية أولاً</div>}
           <input type="number" placeholder="رصيد بداية الوردية" value={startBalance}
             onInput={e => setStartBalance(e.target.value)}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />
@@ -799,19 +823,19 @@ const [taxRate, setTaxRate] = useState(14)
               <span style={{ color: 'var(--text2)' }}>مبيعات بطاقة</span><span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>+{shiftSales.cardTotal?.toFixed(2)}</span>
             </div>}
             {shiftSales.creditTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مدفوعات آجلة</span><span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>+{shiftSales.creditTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مدفوعات آجلة</span><span style={{ color: 'var(--secondary)', fontWeight: 'bold' }}>+{shiftSales.creditTotal?.toFixed(2)}</span>
             </div>}
             {shiftSales.expensesTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مصروفات</span><span style={{ color: '#f97316', fontWeight: 'bold' }}>-{shiftSales.expensesTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مصروفات</span><span style={{ color: 'var(--warning)', fontWeight: 'bold' }}>-{shiftSales.expensesTotal?.toFixed(2)}</span>
             </div>}
             {shiftSales.withdrawalsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مسحوبات نقداً</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.withdrawalsTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مسحوبات نقداً</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-{shiftSales.withdrawalsTotal?.toFixed(2)}</span>
             </div>}
             {shiftSales.cardWithdrawalsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مسحوبات بطاقة</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.cardWithdrawalsTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مسحوبات بطاقة</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-{shiftSales.cardWithdrawalsTotal?.toFixed(2)}</span>
             </div>}
             {shiftSales.returnsTotal > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text2)' }}>مرتجعات</span><span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{shiftSales.returnsTotal?.toFixed(2)}</span>
+              <span style={{ color: 'var(--text2)' }}>مرتجعات</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-{shiftSales.returnsTotal?.toFixed(2)}</span>
             </div>}
             <div style={{ height: '1px', background: 'var(--bg3)', margin: '6px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -840,7 +864,7 @@ const [taxRate, setTaxRate] = useState(14)
               const diff = num - expected
               if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>الكاش مطابق</div>
               if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز كاش: {Math.abs(diff).toFixed(2)}</div>
-              return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة كاش: {diff.toFixed(2)}</div>
+              return <div style={{ color:'var(--warning)', fontSize:'13px', textAlign:'center' }}>زيادة كاش: {diff.toFixed(2)}</div>
             })()}
           </div>
           {(shiftSales.cardTotal > 0 || shiftSales.cardWithdrawalsTotal > 0) && <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
@@ -855,7 +879,7 @@ const [taxRate, setTaxRate] = useState(14)
               const diff = num - expected
               if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>البطاقة مطابقة</div>
               if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز بطاقة: {Math.abs(diff).toFixed(2)}</div>
-              return <div style={{ color:'#f59e0b', fontSize:'13px', textAlign:'center' }}>زيادة بطاقة: {diff.toFixed(2)}</div>
+              return <div style={{ color:'var(--warning)', fontSize:'13px', textAlign:'center' }}>زيادة بطاقة: {diff.toFixed(2)}</div>
             })()}
           </div>}
           <button onClick={handleEndShift} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
@@ -945,14 +969,14 @@ const [taxRate, setTaxRate] = useState(14)
                 </>
               })()}
             </div>}
-            {receipt.settings?.showNotes !== false && receipt.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{receipt.note}</div>}
+            {receipt.settings?.showNotes !== false && receipt.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{receipt.note}</div>}
             {receipt.settings?.showCashier !== false && receipt.cashierName && <div style={{ marginTop: '6px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {receipt.cashierName}</div>}
             {receipt.settings?.showReceiptFooter !== false && receipt.settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.receiptFooter}</div>}
             <button onClick={() => {
               if (receipt.settings?.printDefaultSize === 'a4') {
                 printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />)
               } else {
-                window.print()
+                printThermal(<PrintTemplateThermal data={receipt} settings={receipt.settings} />)
               }
             }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
@@ -1048,7 +1072,7 @@ const [taxRate, setTaxRate] = useState(14)
             <option value="card">بطاقة</option>
           </select>
           <button onClick={handleAddExpense}
-            style={{ width: '100%', padding: '10px', background: '#f59e0b', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+            style={{ width: '100%', padding: '10px', background: 'var(--warning)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
             تسجيل
           </button>
         </div>
@@ -1072,8 +1096,43 @@ const [taxRate, setTaxRate] = useState(14)
             <option value="card">بطاقة</option>
           </select>
           <button onClick={handleWithdraw}
-            style={{ width: '100%', padding: '10px', background: '#ef4444', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+            style={{ width: '100%', padding: '10px', background: 'var(--danger)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
             تأكيد السحب
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={showAdvanceModal} onClose={() => setShowAdvanceModal(false)} title="سلفة موظف" width="380px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <select value={advanceEmp} onChange={e => { const emp = employees.find(x => x._id === e.target.value); setAdvanceEmp(e.target.value); if (!advanceNote && emp) setAdvanceNote('سلفة ' + emp.name) }}
+            style={{ width: '100%' }}>
+            <option value="">اختر الموظف</option>
+            {employees.map(emp => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
+          </select>
+          <input type="number" placeholder="المبلغ" value={advanceAmount}
+            onInput={e => setAdvanceAmount(e.target.value)}
+            style={{ width: '100%' }} autoFocus />
+          <input placeholder="البيان (اختياري)" value={advanceNote}
+            onInput={e => setAdvanceNote(e.target.value)}
+            style={{ width: '100%' }} />
+          <select value={advancePaymentMethod} onChange={e => setAdvancePaymentMethod(e.target.value)} style={{ width: '100%' }}>
+            <option value="cash">نقداً</option>
+            <option value="card">بطاقة</option>
+          </select>
+          <button onClick={async () => {
+            if (!advanceEmp) { toast('اختر الموظف', 'error'); return }
+            if (!advanceAmount || Number(advanceAmount) <= 0) { toast('أدخل مبلغ صحيح', 'error'); return }
+            const emp = employees.find(x => x._id === advanceEmp)
+            const token = localStorage.getItem('token')
+            try {
+              await api.saveEmployeeAdvance(token, { employeeId: advanceEmp, employeeName: emp?.name || '', amount: Number(advanceAmount), note: advanceNote, type: 'advance', paymentMethod: advancePaymentMethod })
+              toast('تم تسجيل السلفة', 'success')
+              setShowAdvanceModal(false)
+              loadShiftData()
+            } catch (err) { toast(err.message, 'error') }
+          }}
+            style={{ width: '100%', padding: '10px', background: '#8B5CF6', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+            تأكيد السلفة
           </button>
         </div>
       </Modal>

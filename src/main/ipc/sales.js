@@ -1,6 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { deductFromFifo, addBatch } = require('./inventoryHelpers')
+const { checkAndCreateLowStockNotifications } = require('./notifications')
 
 function updateTreasury(realm, amount, note, session, refId, refType, paymentMethod) {
   if (amount === 0) return
@@ -145,6 +146,17 @@ function createSale(realm, session, data) {
       activeShift.invoiceCount += 1
     }
   })
+  checkAndCreateLowStockNotifications(realm)
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (settings && settings.notificationSales !== false) {
+    createNotification(realm, {
+      type: 'sale',
+      title: 'تم البيع',
+      message: `فاتورة #${invoiceNo} - ${total} ج.م`,
+      referenceId: sale._id,
+      referenceType: 'sale'
+    })
+  }
   return {
     _id: sale._id, invoiceNo: sale.invoiceNo, total: sale.total,
     paid: sale.paid, paymentMethod: sale.paymentMethod,

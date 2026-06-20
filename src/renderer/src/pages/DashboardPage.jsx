@@ -25,16 +25,16 @@ export default function DashboardPage() {
       <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>لوحة التحكم</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        <StatCard label="مبيعات اليوم" value={summary ? formatMoney(summary.todaySales) : '...'} color="#3b82f6" onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('sales', d, d) }} />
-        <StatCard label="فواتير اليوم" value={summary?.todayInvoices ?? '...'} color="#22c55e" />
-        <StatCard label="ربح اليوم" value={summary ? formatMoney(summary.grossProfit) : '...'} color="#f59e0b" />
-        <StatCard label="مصروفات اليوم" value={summary ? formatMoney(summary.expensesToday) : '...'} color="#ef4444" onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('expenses', d, d) }} />
-        <StatCard label="المنتجات" value={summary?.totalProducts ?? '...'} color="#8b5cf6" onClick={() => setPage('products')} />
-        <StatCard label="منخفضة" value={summary?.lowStock ?? '...'} color="#f97316" />
+        <StatCard label="مبيعات اليوم" value={summary ? formatMoney(summary.todaySales) : '...'} color={'var(--accent)'} onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('sales', d, d) }} />
+        <StatCard label="فواتير اليوم" value={summary?.todayInvoices ?? '...'} color={'var(--success)'} />
+        <StatCard label="ربح اليوم" value={summary ? formatMoney(summary.grossProfit) : '...'} color={'var(--warning)'} />
+        <StatCard label="مصروفات اليوم" value={summary ? formatMoney(summary.expensesToday) : '...'} color={'var(--danger)'} onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('expenses', d, d) }} />
+        <StatCard label="المنتجات" value={summary?.totalProducts ?? '...'} color={'var(--secondary)'} onClick={() => setPage('products')} />
+        <StatCard label="منخفضة" value={summary?.lowStock ?? '...'} color={'var(--warning)'} />
       </div>
 
       <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: '1fr 1fr' }}>
-        <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
+        <div className="card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>آخر المبيعات</h3>
           {summary?.recentSales?.length > 0 ? (
             <table>
@@ -57,7 +57,7 @@ export default function DashboardPage() {
           ) : <div style={{ color: 'var(--text2)', fontSize: '13px' }}>لا توجد مبيعات اليوم</div>}
         </div>
 
-        <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
+        <div className="card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '12px' }}>الأكثر مبيعاً</h3>
           {summary?.topProducts?.length > 0 ? (
             <table>
@@ -76,9 +76,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', padding: '16px', marginTop: '16px' }}>
+      <div className="card" style={{ padding: '16px', marginTop: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ color: '#f97316', fontWeight: 'bold', fontSize: '13px' }}>تنبيهات المخزون المنخفض</span>
+          <span style={{ color: 'var(--warning)', fontWeight: 'bold', fontSize: '13px' }}>تنبيهات المخزون المنخفض</span>
           {summary?.lowStock > 0 && <span style={{ background: 'var(--danger)', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' }}>{summary.lowStock}</span>}
         </div>
         {summary?.lowStockProducts?.length > 0 ? (
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, color, onClick }) {
   return (
-    <div onClick={onClick} style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '12px', borderRight: `3px solid ${color}`, cursor: onClick ? 'pointer' : 'default', transition: '0.15s' }}
+    <div onClick={onClick} style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '12px', borderRight: `3px solid ${color}`, cursor: onClick ? 'pointer' : 'default', transition: '0.15s', boxShadow: 'var(--elevation-1)' }}
       onMouseEnter={e => { if (onClick) e.currentTarget.style.background = 'var(--bg3)' }}
       onMouseLeave={e => { if (onClick) e.currentTarget.style.background = 'var(--bg2)' }}>
       <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>{label}</div>

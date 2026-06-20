@@ -1,6 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { returnToFifo, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
+const { createNotification } = require('./notifications')
 
 function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount === 0) return
@@ -185,6 +186,16 @@ function createReturn(realm, session, data) {
       }
     }
   })
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (settings && settings.notificationReturns !== false) {
+    createNotification(realm, {
+      type: 'return',
+      title: 'مرتجع منتجات',
+      message: `مرتجع فاتورة #${ret.invoiceNo} - ${ret.subtotal + ret.tax} ج.م`,
+      referenceId: ret._id,
+      referenceType: 'return'
+    })
+  }
   return { _id: ret._id, invoiceNo: ret.invoiceNo, saleId: ret.saleId, subtotal: ret.subtotal, reason: ret.reason, cashierId: ret.cashierId, cashierName: ret.cashierName, customerName: ret.customerName, isFullReturn: ret.isFullReturn, refundAmount: ret.refundAmount, tax: ret.tax, createdAt: ret.createdAt?.toISOString() }
 }
 

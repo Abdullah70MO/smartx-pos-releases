@@ -5,6 +5,9 @@ const api = {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username, password }),
   getSession: (token) => ipcRenderer.invoke('auth:session', token),
   logout: (token) => ipcRenderer.invoke('auth:logout', token),
+  getSecurityQuestion: (username) => ipcRenderer.invoke('auth:getSecurityQuestion', { username }),
+  verifySecurityAnswer: (username, answer) => ipcRenderer.invoke('auth:verifySecurityAnswer', { username, answer }),
+  resetPassword: (username, newPassword, answer) => ipcRenderer.invoke('auth:resetPassword', { username, newPassword, answer }),
 
   // License
   checkLicense: () => ipcRenderer.invoke('license:check'),
@@ -48,6 +51,14 @@ const api = {
   restoreBackup: (token) => ipcRenderer.invoke('backup:restore', { token }),
   autoBackup: (token, path) => ipcRenderer.invoke('backup:auto', { token, path }),
   resetDatabase: (token) => ipcRenderer.invoke('backup:reset', { token }),
+
+  // Notifications
+  listNotifications: (token, options) => ipcRenderer.invoke('notifications:list', { token, ...options }),
+  getUnreadCount: (token) => ipcRenderer.invoke('notifications:unreadCount', { token }),
+  markNotificationRead: (token, id) => ipcRenderer.invoke('notifications:markRead', { token, id }),
+  markAllNotificationsRead: (token) => ipcRenderer.invoke('notifications:markAllRead', { token }),
+  deleteNotification: (token, id) => ipcRenderer.invoke('notifications:delete', { token, id }),
+  clearAllNotifications: (token) => ipcRenderer.invoke('notifications:clearAll', { token }),
 
   // Returns
   listReturns: (token, saleId) => ipcRenderer.invoke('returns:list', { token, saleId }),
@@ -156,7 +167,8 @@ listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purc
   },
 
   // Print
-  printA4: (token, html, silent) => ipcRenderer.invoke('print:a4', { token, html, silent })
+  printA4: (token, html, silent, deviceName, pageSize) => ipcRenderer.invoke('print:a4', { token, html, silent, deviceName, pageSize }),
+  listPrinters: () => ipcRenderer.invoke('printers:list')
 }
 
 contextBridge.exposeInMainWorld('smartx', api)

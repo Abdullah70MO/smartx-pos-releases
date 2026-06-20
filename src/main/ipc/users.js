@@ -108,6 +108,9 @@ function listUsers(realm) {
     _id: u._id, name: u.name, username: u.username,
     role: u.role, permissions: [...u.permissions],
     active: u.active, employeeId: u.employeeId || '',
+    securityQuestion: u.securityQuestion || '',
+    hasSecurityAnswer: !!(u.securityAnswerHash),
+    passwordHint: u.passwordHint || '',
     createdAt: u.createdAt?.toISOString()
   }))
 }
@@ -131,6 +134,12 @@ function saveUser(realm, data) {
         ? existing.passwordHash
         : bcrypt.hashSync('12345678', 12)
 
+    const securityAnswerHash = data.securityAnswer && data.securityAnswer.length > 0
+      ? bcrypt.hashSync(data.securityAnswer, 12)
+      : existing
+        ? existing.securityAnswerHash
+        : ''
+
     user = realm.create('User', {
       _id: data._id || crypto.randomUUID(),
       name: data.name,
@@ -140,10 +149,13 @@ function saveUser(realm, data) {
       permissions,
       active: data.active !== false,
       employeeId: data.employeeId || null,
+      securityQuestion: data.securityQuestion || existing?.securityQuestion || '',
+      securityAnswerHash: existing && !data.securityAnswer ? existing.securityAnswerHash : securityAnswerHash,
+      passwordHint: data.passwordHint || existing?.passwordHint || '',
       createdAt: existing ? existing.createdAt : new Date()
     }, Realm.UpdateMode.Modified)
   })
-  return { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], active: user.active, employeeId: user.employeeId || '', createdAt: user.createdAt?.toISOString() }
+  return { _id: user._id, name: user.name, username: user.username, role: user.role, permissions: [...user.permissions], active: user.active, employeeId: user.employeeId || '', securityQuestion: user.securityQuestion || '', hasSecurityAnswer: !!(user.securityAnswerHash), passwordHint: user.passwordHint || '', createdAt: user.createdAt?.toISOString() }
 }
 
 function toggleUserActive(realm, id) {

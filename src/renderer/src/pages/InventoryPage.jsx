@@ -90,7 +90,7 @@ export default function InventoryPage() {
   })
 
   const typeLabels = { add: 'إضافة', remove: 'خصم', set: 'تحديد' }
-  const typeColors = { add: '#22c55e', remove: '#ef4444', set: '#3b82f6' }
+   const typeColors = { add: 'var(--success)', remove: 'var(--danger)', set: 'var(--accent)' }
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
@@ -102,7 +102,7 @@ export default function InventoryPage() {
 
       {lowStock.length > 0 && (
         <div style={{ background: '#451a03', border: '1px solid #9a3412', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px' }}>
-          <div style={{ color: '#f97316', fontWeight: 'bold', marginBottom: '8px', fontSize: '13px' }}>منتجات منخفضة المخزون</div>
+          <div style={{ color: 'var(--warning)', fontWeight: 'bold', marginBottom: '8px', fontSize: '13px' }}>منتجات منخفضة المخزون</div>
           {lowStock.map(p => (
             <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#fdba74', padding: '4px 0' }}>
               <span>{p.name}</span>
@@ -137,7 +137,7 @@ export default function InventoryPage() {
             <input type="date" value={dateTo} onInput={e => setDateTo(e.target.value)}
               style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
           <table>
             <thead><tr><th>التاريخ</th><th>المنتج</th><th>النوع</th><th>الكمية</th><th>المخزون القديم</th><th>الجديد</th><th>السبب</th><th></th></tr></thead>
             <tbody>
@@ -166,7 +166,7 @@ export default function InventoryPage() {
       )}
 
       {tab === 'stock' && (
-        <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+        <div className="table-card">
           <table>
             <thead><tr><th>المنتج</th><th>المخزون</th><th>الحد الأدنى</th><th>الحالة</th></tr></thead>
             <tbody>

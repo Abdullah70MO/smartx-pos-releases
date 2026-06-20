@@ -8,23 +8,32 @@
 
 :root, [data-theme="dark"] {
   --bg: #111318;
-  --bg2: #1e2025; /* Surface Container */
-  --bg3: #2d2f36; /* Surface Container High */
+  --bg2: #1e2025;
+  --bg3: #2d2f36;
   --text: #e2e2e9;
   --text2: #90949f;
-  --accent: #3b82f6; /* Keep primary vibrant or MD3 style */
-  --accent-rgb: 59, 130, 246;
-  --accent-container: #1e3a8a;
+  --accent: #3B6AB5;
+  --accent-rgb: 59, 106, 181;
+  --accent-container: #1e3a7a;
   --on-accent-container: #d6e2ff;
+  --secondary: #3C7896;
+  --secondary-rgb: 60, 120, 150;
+  --teal: #3C9696;
+  --teal-rgb: 60, 150, 150;
+  --special: #5A5AD2;
+  --special-rgb: 90, 90, 210;
   --success: #10b981;
+  --success-rgb: 16, 185, 129;
   --danger: #ef4444;
+  --danger-rgb: 239, 68, 68;
   --warning: #f59e0b;
-  --outline: #333940; /* أفتح للتباين */
-  --outline-strong: #475569; /* للحدود المهمة */
-  --surface-container: #272a30; /* للـ zebra stripe */
-  --elevation-1: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --elevation-2: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
-  --elevation-3: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
+  --warning-rgb: 245, 158, 11;
+  --outline: #333940;
+  --outline-strong: #475569;
+  --surface-container: #272a30;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.15);
+  --elevation-2: 0 4px 10px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+  --elevation-3: 0 8px 30px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.25);
   --radius: 16px;
   --radius-sm: 8px;
   --radius-lg: 24px;
@@ -36,19 +45,28 @@
   --bg3: #e2e8f0;
   --text: #0f172a;
   --text2: #475569;
-  --accent: #2563eb;
-  --accent-rgb: 37, 99, 235;
+  --accent: #3B6AB5;
+  --accent-rgb: 59, 106, 181;
   --accent-container: #dbeafe;
   --on-accent-container: #1e40af;
+  --secondary: #3A6B85;
+  --secondary-rgb: 58, 107, 133;
+  --teal: #3A8585;
+  --teal-rgb: 58, 133, 133;
+  --special: #4A4AB5;
+  --special-rgb: 74, 74, 181;
   --success: #059669;
+  --success-rgb: 5, 150, 105;
   --danger: #dc2626;
+  --danger-rgb: 220, 38, 38;
   --warning: #d97706;
-  --outline: #94a3b8;
-  --outline-strong: #64748b;
-  --surface-container: #f1f5f9;
-  --elevation-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-  --elevation-2: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08);
-  --elevation-3: 0 10px 15px rgba(0,0,0,0.15), 0 4px 6px rgba(0,0,0,0.1);
+  --warning-rgb: 217, 119, 6;
+  --outline: #cbd5e1;
+  --outline-strong: #94a3b8;
+  --surface-container: #f8fafc;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --elevation-2: 0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  --elevation-3: 0 8px 30px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.1);
 }
 
 body {
@@ -95,7 +113,6 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 
-/* Checkbox styling */
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -103,11 +120,19 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 
+/* Table card wrapper — gets the shadow */
+.table-card {
+  background: var(--bg2);
+  border-radius: 12px;
+  overflow: auto;
+  box-shadow: var(--elevation-1);
+}
+
 table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: var(--bg2); /* يغطي أي فراغات في الكارت */
+  background: var(--bg2);
 }
 
 th {
@@ -127,12 +152,7 @@ td {
   font-size: 13px;
   border-bottom: 1px solid var(--outline);
   color: var(--text);
-  background: var(--bg2); /* قاعدة موحدة لكل الخلايا - تتطابق مع خلفية الكارت */
-}
-
-/* Zebra striping - Material 3 style */
-tbody tr:nth-child(odd) td {
-  background: var(--surface-container);
+  background: var(--bg2);
 }
 
 tbody tr:hover td {
@@ -143,7 +163,6 @@ tr:last-child td {
   border-bottom: none;
 }
 
-/* Sticky header for long tables */
 thead th {
   position: sticky;
   top: 0;
@@ -180,6 +199,18 @@ thead th {
   box-shadow: var(--elevation-1);
   padding: 16px;
 }
+
+/* Card wrapper — subtle shadow */
+.card {
+  background: var(--bg2);
+  border-radius: 12px;
+  box-shadow: var(--elevation-1);
+}
+
+/* Elevation utility classes */
+.elevation-1 { box-shadow: var(--elevation-1); }
+.elevation-2 { box-shadow: var(--elevation-2); }
+.elevation-3 { box-shadow: var(--elevation-3); }
 
 /* Modal / Dialog */
 .modal-overlay, .modal, [role="dialog"] {
@@ -285,7 +316,6 @@ header, .toolbar, .top-bar {
     color: #000 !important;
   }
 
-  /* Reset table styles for print */
   #customer-print table, #supplier-print table {
     border-collapse: collapse;
     width: 100%;
@@ -306,7 +336,6 @@ header, .toolbar, .top-bar {
     font-size: 12px;
   }
 
-  /* Hide modal overlay and all buttons when printing */
   .modal-overlay, button, .sidebar, header {
     display: none !important;
   }

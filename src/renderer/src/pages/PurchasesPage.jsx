@@ -4,10 +4,12 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
+import { printBarcode } from '../utils/print'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
-import { printA4 } from '../utils/print'
+import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import { printA4, printThermal } from '../utils/print'
 
 function generateBarcode() {
   const first = Math.floor(Math.random() * 9) + 1
@@ -412,7 +414,7 @@ export default function PurchasesPage() {
           style={{ width: '140px' }} />
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
             <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>نوع الدفع</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
@@ -437,7 +439,7 @@ export default function PurchasesPage() {
                   <div style={{ display: 'flex', gap: '4px' }}>
                     <button onClick={() => setViewInvoice(p)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>عرض</button>
                     {canDelete && <button onClick={() => handleRemove(p._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
-                    <button onClick={() => openReturn(p)} style={{ background: 'var(--bg3)', color: '#f59e0b', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>مرتجع</button>
+                    <button onClick={() => openReturn(p)} style={{ background: 'var(--bg3)', color: 'var(--warning)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>مرتجع</button>
                   </div>
                 </td>
               </tr>
@@ -539,7 +541,7 @@ export default function PurchasesPage() {
             if (Number(discount) > 0) return <div style={{ fontSize: '12px', color: 'var(--danger)', textAlign: 'center', padding: '4px 0' }}>
               الصافي: {formatMoney(n)}
             </div>
-            if (p > 0 && p < n) return <div style={{ fontSize: '12px', color: '#f59e0b', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            if (p > 0 && p < n) return <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
               باقي دين مستحق للمورد: {formatMoney(n - p)}
             </div>
             return null
@@ -552,7 +554,7 @@ export default function PurchasesPage() {
             }}>نقداً</button>
             <button type="button" onClick={() => setPaymentMethod('card')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
-              background: paymentMethod === 'card' ? '#3b82f6' : 'var(--bg3)',
+              background: paymentMethod === 'card' ? 'var(--accent)' : 'var(--bg3)',
               color: paymentMethod === 'card' ? '#fff' : 'var(--text)', fontWeight: paymentMethod === 'card' ? '700' : '500'
             }}>بطاقة</button>
             <button type="button" onClick={() => setPaymentMethod('credit')} style={{
@@ -563,7 +565,7 @@ export default function PurchasesPage() {
           </div>
           {Number(paid) <= 0 || paid === '' ? <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             سيتم إضافة المبلغ إلى ذمة المورد. يمكنك تسديد الدفعات من صفحة الموردين.
-          </div> : paymentMethod === 'card' ? <div style={{ fontSize: '12px', color: '#3b82f6', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+          </div> : paymentMethod === 'card' ? <div style={{ fontSize: '12px', color: 'var(--accent)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             سيتم خصم {formatMoney(Number(paid))} من خزينة البنك.
           </div> : <div style={{ fontSize: '12px', color: 'var(--success)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             سيتم خصم {formatMoney(Number(paid))} من الخزينة الرئيسية.
@@ -648,13 +650,13 @@ export default function PurchasesPage() {
                 <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
               </div>
             })()}
-            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: '#f97316', fontSize: '11px' }}>{viewInvoice.note}</div>}
+            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>}
             <button onClick={() => {
               if (settings?.printDefaultSize === 'a4') {
                 printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
               } else {
-                window.print()
+                printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
               }
             }}
               style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
@@ -706,7 +708,7 @@ export default function PurchasesPage() {
                 ))
               })()}
             </select>
-            <button onClick={handleCreateReturn} style={{ background: '#f59e0b', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+            <button onClick={handleCreateReturn} style={{ background: 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
               تسجيل مرتجع
             </button>
           </div>
@@ -742,9 +744,15 @@ export default function PurchasesPage() {
               </div>
               {showPrintBarcode && productForm.barcode && (
                 <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '8px', textAlign: 'center' }}>
-                  <BarcodeSVG code={productForm.barcode} />
+                  {(() => {
+                    const labelSize = localStorage.getItem('barcodeLabelSize') || '50x30'
+                    const dims = labelSize.split('x').map(Number)
+                    const bw = Math.min(Number(dims[0]) * 3.78, 400)
+                    const bh = Math.min(Number(dims[1]) * 3.78, 250)
+                    return <BarcodeSVG code={productForm.barcode} width={bw} height={bh} />
+                  })()}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>{productForm.barcode}</div>
-                  <button type="button" onClick={() => window.print()}
+                  <button type="button" onClick={() => printBarcode(productForm.barcode)}
                     style={{ marginTop: '6px', background: 'var(--success)', color: '#fff', padding: '6px 16px', borderRadius: '6px', fontSize: '11px' }}>
                     طباعة الباركود
                   </button>

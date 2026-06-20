@@ -54,7 +54,7 @@ export default function EmployeeReportsPage() {
       <h1 style={{ fontSize: '20px', marginBottom: '16px' }}>تقارير الموظفين</h1>
       <div style={{ display: 'flex', gap: '16px' }}>
         {/* Side list */}
-        <div style={{ width: '250px', flexShrink: 0, background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto', maxHeight: 'calc(100vh - 120px)' }}>
+        <div style={{ width: '250px', flexShrink: 0, background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto', maxHeight: 'calc(100vh - 120px)', boxShadow: 'var(--elevation-1)' }}>
           {employees.map(emp => (
             <div key={emp._id} onClick={() => selectEmployee(emp)}
               style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--outline)',
@@ -67,7 +67,7 @@ export default function EmployeeReportsPage() {
           ))}
         </div>
         {/* Report content */}
-        <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: '12px', padding: '16px' }}>
+        <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: '12px', padding: '16px', boxShadow: 'var(--elevation-1)' }}>
           {!selectedEmp ? <div style={{ color: 'var(--text2)', textAlign: 'center', padding: '40px' }}>اختر موظفاً من القائمة</div> : <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h2 style={{ fontSize: '16px' }}>{selectedEmp.name}</h2>
@@ -117,7 +117,7 @@ export default function EmployeeReportsPage() {
                 <span><span style={{ color: 'var(--success)' }}>●</span> حاضر: {attendance.filter(a => a.status === 'present').length}</span>
                 <span><span style={{ color: 'var(--danger)' }}>●</span> غائب: {attendance.filter(a => a.status === 'absent').length}</span>
                 <span><span style={{ color: 'var(--warning)' }}>●</span> إجازة: {attendance.filter(a => a.status === 'vacation').length}</span>
-                <span><span style={{ color: '#f97316' }}>●</span> مرضى: {attendance.filter(a => a.status === 'sick').length}</span>
+                <span><span style={{ color: 'var(--warning)' }}>●</span> مرضى: {attendance.filter(a => a.status === 'sick').length}</span>
               </div>
             </div>}
             {tab === 'salary' && <div>
@@ -138,9 +138,10 @@ export default function EmployeeReportsPage() {
               </table>
             </div>}
             {tab === 'advances' && <div>
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '13px', flexWrap: 'wrap' }}>
                 <span>إجمالي السلف: <b style={{ color: 'var(--warning)' }}>{formatMoney(advances.filter(a => a.type !== 'deduction').reduce((s, a) => s + a.amount, 0))}</b></span>
                 <span>إجمالي الخصومات: <b style={{ color: 'var(--danger)' }}>{formatMoney(advances.filter(a => a.type === 'deduction').reduce((s, a) => s + a.amount, 0))}</b></span>
+                <span>إجمالي الإضافات: <b style={{ color: 'var(--success)' }}>{formatMoney(salaryPayments.reduce((s, p) => s + (p.totalAdditions || 0), 0))}</b></span>
               </div>
               <table style={{ fontSize: '13px' }}>
                 <thead><tr><th>النوع</th><th>المبلغ</th><th>التاريخ</th><th>البيان</th><th>الحالة</th></tr></thead>

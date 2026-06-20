@@ -2,6 +2,10 @@ import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
 import { formatDateTime } from '../utils/date'
 
+const USER_COLORS = ['var(--accent)', 'var(--success)', 'var(--danger)', 'var(--warning)', 'var(--special)', 'var(--teal)', 'var(--secondary)']
+function userColor(id) { let h = 0; for (let i = 0; i < id.length; i++) h = ((h << 5) - h) + id.charCodeAt(i); return USER_COLORS[Math.abs(h) % USER_COLORS.length] }
+function userInitial(name) { return (name || '?').charAt(0) }
+
 export default function ActivityLogPage() {
   const [logs, setLogs] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
@@ -40,14 +44,23 @@ export default function ActivityLogPage() {
           style={{ width: '140px' }} />
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>التاريخ والوقت</th><th>المستخدم</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
           <tbody>
             {filtered.map(l => (
               <tr key={l._id}>
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDateTime(l.createdAt)}</td>
-                <td style={{ fontWeight: 'bold' }}>{l.userName}</td>
+                <td style={{ fontWeight: 'bold' }}>
+                  <span style={{
+                    width: '24px', height: '24px', borderRadius: '7px',
+                    background: userColor(l.userId || l.userName),
+                    color: '#fff', fontSize: '11px', fontWeight: '700',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    marginLeft: '8px', verticalAlign: 'middle'
+                  }}>{userInitial(l.userName)}</span>
+                  <span style={{ verticalAlign: 'middle' }}>{l.userName}</span>
+                </td>
                 <td>
                   <span style={{
                     background: 'var(--bg2)', padding: '2px 8px', borderRadius: '4px', fontSize: '12px',

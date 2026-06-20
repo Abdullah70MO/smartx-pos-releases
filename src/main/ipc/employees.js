@@ -106,6 +106,19 @@ function saveAdvance(realm, data, session) {
       createdAt: new Date()
     })
     if (isAdvance) {
+      const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+      if (activeShift) {
+        if (data.paymentMethod === 'card') {
+          const cardAvailable = (activeShift.cardTotal || 0) - (activeShift.cardWithdrawalsTotal || 0)
+          if (cardAvailable < amount) throw new Error('الرصيد غير كافٍ في الوردية')
+          activeShift.cardWithdrawalsTotal += amount
+        } else {
+          const available = (activeShift.startingBalance || 0) + (activeShift.totalSales || 0) - (activeShift.expensesTotal || 0) - (activeShift.withdrawalsTotal || 0)
+          if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
+          activeShift.withdrawalsTotal += amount
+        }
+      }
+    } else {
       const pm = data.paymentMethod || 'cash'
       const treasuryType = pm === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]

@@ -107,7 +107,7 @@ export default function CustomersPage() {
       <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={search} onInput={e => setSearch(e.target.value)}
         style={{ width: '100%', marginBottom: '12px' }} />
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>الاسم</th><th>الهاتف</th><th>إجمالي الدين</th><th>المدفوع</th><th>المتبقي</th><th></th></tr></thead>
           <tbody>
@@ -170,7 +170,7 @@ export default function CustomersPage() {
             }}>نقداً</button>
             <button type="button" onClick={() => setPayMethod('card')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
-              background: payMethod === 'card' ? '#3b82f6' : 'var(--bg3)',
+              background: payMethod === 'card' ? 'var(--accent)' : 'var(--bg3)',
               color: payMethod === 'card' ? '#fff' : 'var(--text)', fontWeight: payMethod === 'card' ? '700' : '500'
             }}>بطاقة</button>
           </div>

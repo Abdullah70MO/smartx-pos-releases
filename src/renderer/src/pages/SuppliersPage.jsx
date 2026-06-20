@@ -106,7 +106,7 @@ export default function SuppliersPage() {
       <input placeholder="بحث باسم المورد أو رقم الهاتف..." value={search} onInput={e => setSearch(e.target.value)}
         style={{ width: '100%', marginBottom: '12px' }} />
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>الاسم</th><th>الهاتف</th><th>المشتريات</th><th>المدفوع</th><th>الباقي</th><th></th></tr></thead>
           <tbody>
@@ -116,7 +116,7 @@ export default function SuppliersPage() {
                 <tr key={s._id}>
                   <td style={{ fontWeight: 'bold' }}>{s.name}</td>
                   <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{s.phone || '-'}</td>
-                  <td style={{ color: '#f97316' }}>{(s.totalPurchases || 0).toFixed(2)}</td>
+                  <td style={{ color: 'var(--warning)' }}>{(s.totalPurchases || 0).toFixed(2)}</td>
                   <td style={{ color: 'var(--success)' }}>{(s.totalPaid || 0).toFixed(2)}</td>
                   <td style={{ color: balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{balance.toFixed(2)}</td>
                   <td>
@@ -160,7 +160,7 @@ export default function SuppliersPage() {
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`تسديد للمورد: ${payModal?.name}`} width="380px">
         <form onSubmit={handlePay} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text2)' }}>إجمالي المشتريات: <span style={{ color: '#f97316' }}>{(payModal?.totalPurchases || 0).toFixed(2)}</span></div>
+            <div style={{ fontSize: '13px', color: 'var(--text2)' }}>إجمالي المشتريات: <span style={{ color: 'var(--warning)' }}>{(payModal?.totalPurchases || 0).toFixed(2)}</span></div>
             <div style={{ fontSize: '13px', color: 'var(--text2)' }}>المدفوع سابقاً: <span style={{ color: 'var(--success)' }}>{(payModal?.totalPaid || 0).toFixed(2)}</span></div>
             {(() => { const r = (payModal?.totalPurchases || 0) - (payModal?.totalPaid || 0); return <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{r > 0 ? 'دين مستحق للمورد' : r < 0 ? 'رصيد مستحق من المورد' : 'المتبقي'}: <span style={{ color: r > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{Math.abs(r).toFixed(2)}</span></div> })()}
           </div>
@@ -172,7 +172,7 @@ export default function SuppliersPage() {
             }}>نقداً</button>
             <button type="button" onClick={() => setPayMethod('card')} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px',
-              background: payMethod === 'card' ? '#3b82f6' : 'var(--bg3)',
+              background: payMethod === 'card' ? 'var(--accent)' : 'var(--bg3)',
               color: payMethod === 'card' ? '#fff' : 'var(--text)', fontWeight: payMethod === 'card' ? '700' : '500'
             }}>بطاقة</button>
           </div>
@@ -198,7 +198,7 @@ export default function SuppliersPage() {
                 {transactions.map((t, i) => (
                   <tr key={i}>
                     <td style={{ fontSize: '12px' }}>{t.desc}</td>
-                    <td style={{ color: t.amount > 0 ? '#f97316' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
+                    <td style={{ color: t.amount > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
                     <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold', fontSize: '12px' }}>{t.balance.toFixed(2)}</td>
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{t.paymentMethod === 'credit' ? 'آجل' : t.paymentMethod === 'card' ? 'بطاقة' : t.paymentMethod ? 'نقداً' : '-'}</td>
                     <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>

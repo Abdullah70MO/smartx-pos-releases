@@ -99,7 +99,7 @@ function permsFromLevels(levels) {
 }
 
 const ROLE_NAMES = { admin: 'مدير النظام', general_manager: 'مدير عام', supervisor: 'مشرف', cashier: 'كاشير', employee: 'موظف' }
-const ROLE_COLORS = { admin: 'var(--accent)', general_manager: '#8b5cf6', supervisor: '#f59e0b', cashier: '#10b981', employee: '#64748b' }
+const ROLE_COLORS = { admin: 'var(--accent)', general_manager: 'var(--special)', supervisor: 'var(--warning)', cashier: 'var(--success)', employee: 'var(--text2)' }
 
 export default function UsersPage() {
   const { user } = useStore()
@@ -109,7 +109,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
-  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'cashier', levels: [], employeeId: '' })
+  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'cashier', levels: [], employeeId: '', securityQuestion: '', securityAnswer: '', passwordHint: '' })
   const [employees, setEmployees] = useState([])
 
   useEffect(() => { load() }, [])
@@ -132,7 +132,7 @@ export default function UsersPage() {
   function openEdit(u) {
     const levels = getRolePerms(u.role).map(l => ({ ...l }))
     setEdit(u)
-    setForm({ name: u.name, username: u.username, password: '', role: u.role, levels, employeeId: u.employeeId || '' })
+    setForm({ name: u.name, username: u.username, password: '', role: u.role, levels, employeeId: u.employeeId || '', securityQuestion: u.securityQuestion || '', securityAnswer: '', passwordHint: u.passwordHint || '' })
     setShowModal(true)
   }
 
@@ -153,7 +153,7 @@ export default function UsersPage() {
     const token = localStorage.getItem('token')
     try {
       const permissions = form.role === 'admin' ? ALL_PERM_IDS : permsFromLevels(form.levels)
-      await api.saveUser(token, { _id: edit?._id, name: form.name, username: form.username, password: form.password, role: form.role, permissions, employeeId: form.employeeId })
+      await api.saveUser(token, { _id: edit?._id, name: form.name, username: form.username, password: form.password, role: form.role, permissions, employeeId: form.employeeId, securityQuestion: form.securityQuestion, securityAnswer: form.securityAnswer || undefined, passwordHint: form.passwordHint })
       toast(edit ? 'تم تحديث المستخدم' : 'تمت إضافة المستخدم', 'success')
       setShowModal(false); load()
     } catch (err) { toast(err.message, 'error') }
@@ -168,12 +168,12 @@ export default function UsersPage() {
         {canManage && <button onClick={() => {
           const levels = getRolePerms('cashier')
           setEdit(null)
-          setForm({ name: '', username: '', password: '', role: 'cashier', levels, employeeId: '' })
+          setForm({ name: '', username: '', password: '', role: 'cashier', levels, employeeId: '', securityQuestion: '', securityAnswer: '', passwordHint: '' })
           setShowModal(true)
         }} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة مستخدم</button>}
       </div>
 
-      <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+      <div className="table-card">
         <table>
           <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>نشط</th><th></th></tr></thead>
           <tbody>
@@ -207,6 +207,19 @@ export default function UsersPage() {
             <input placeholder="اسم المستخدم" value={form.username} onInput={e => setForm(f => ({ ...f, username: e.target.value }))} required style={{ width: '100%' }} />
           </div>
           <input type="password" placeholder={edit ? 'اتركه فارغاً إذا لم ترد التغيير' : 'كلمة المرور'} value={form.password} onInput={e => setForm(f => ({ ...f, password: e.target.value }))} required={!edit} style={{ width: '100%' }} />
+
+          <div style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: '600', marginTop: '4px' }}>سؤال الأمان (لاستعادة كلمة السر):</div>
+          <select value={form.securityQuestion} onChange={e => setForm(f => ({ ...f, securityQuestion: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', fontSize: '13px' }}>
+            <option value="">-- اختر سؤال الأمان --</option>
+            <option value="ما هو اسم حيوانك الأليف المفضل؟">ما هو اسم حيوانك الأليف المفضل؟</option>
+            <option value="ما هي المدينة التي ولدت فيها؟">ما هي المدينة التي ولدت فيها؟</option>
+            <option value="ما هو اسم والدتك؟">ما هو اسم والدتك؟</option>
+            <option value="ما هو اسم معلمك المفضل؟">ما هو اسم معلمك المفضل؟</option>
+            <option value="ما هو طبقك المفضل؟">ما هو طبقك المفضل؟</option>
+            <option value="ما هي هوايتك المفضلة؟">ما هي هوايتك المفضلة؟</option>
+          </select>
+          <input type="text" placeholder="إجابة سؤال الأمان" value={form.securityAnswer} onInput={e => setForm(f => ({ ...f, securityAnswer: e.target.value }))} style={{ width: '100%' }} />
+          <input type="text" placeholder="تلميح لكلمة السر (اختياري)" value={form.passwordHint} onInput={e => setForm(f => ({ ...f, passwordHint: e.target.value }))} style={{ width: '100%' }} />
 
           <div style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: '600', marginTop: '4px' }}>ربط الموظف (اختياري):</div>
           <select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', fontSize: '13px' }}>

@@ -79,7 +79,7 @@ export default function TreasuryPage() {
   const currentTreasury = treasuries.find(t => t._id === activeTreasury)
 
   const typeLabels = { main: 'رئيسية', bank: 'بنك', wallet: 'محفظة' }
-  const typeColors = { main: 'var(--success)', bank: '#3b82f6', wallet: '#f59e0b' }
+  const typeColors = { main: 'var(--success)', bank: 'var(--accent)', wallet: 'var(--warning)' }
 
   const filteredTransactions = transactions.filter(t => {
     if (searchTx.q && !(t.createdBy || '').includes(searchTx.q) && !(t.personName || '').includes(searchTx.q) && !(t.note || '').includes(searchTx.q)) return false
@@ -117,7 +117,7 @@ export default function TreasuryPage() {
                 <button onClick={() => { setShowModal('add') }}
                   style={{ flex: 1, background: 'var(--success)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>إضافة</button>
                 <button onClick={() => { setShowModal('withdraw') }}
-                  style={{ flex: 1, background: '#f97316', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>سحب تشغيلي</button>
+                  style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>سحب تشغيلي</button>
                 <button onClick={() => { setShowModal('personal') }}
                   style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>سحب شخصي</button>
               </div>
@@ -156,7 +156,7 @@ export default function TreasuryPage() {
             <input type="date" value={searchTx.dateFrom} onInput={e => setSearchTx(s => ({ ...s, dateFrom: e.target.value }))} style={{ width: '140px' }} />
             <input type="date" value={searchTx.dateTo} onInput={e => setSearchTx(s => ({ ...s, dateTo: e.target.value }))} style={{ width: '140px' }} />
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: '12px', overflow: 'auto' }}>
+          <div className="table-card">
             <table>
               <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>البيان</th><th>الشخص</th><th>بواسطة</th></tr></thead>
               <tbody>
@@ -168,8 +168,8 @@ export default function TreasuryPage() {
                         fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
                         background: t.type === 'deposit' || t.type === 'transfer_in' ? 'rgba(34,197,94,0.15)' :
                           t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: t.type === 'deposit' || t.type === 'transfer_in' ? '#22c55e' :
-                          t.type === 'personal_withdraw' ? '#eab308' : '#ef4444'
+                        color: t.type === 'deposit' || t.type === 'transfer_in' ? 'var(--success)' :
+                          t.type === 'personal_withdraw' ? 'var(--warning)' : 'var(--danger)'
                       }}>
                         {t.type === 'deposit' ? 'إيداع' : t.type === 'withdraw' ? 'سحب' : t.type === 'personal_withdraw' ? 'سحب شخصي' : t.type === 'transfer_in' ? 'تحويل وارد' : t.type === 'transfer_out' ? 'تحويل صادر' : t.type}
                       </span>
@@ -255,7 +255,7 @@ export default function TreasuryPage() {
               ? 'السحوبات الشخصية تخصم من الخزينة ولا تسجل كمصروف'
               : 'السحوبات التشغيلية تسجل تلقائياً في المصروفات'}
           </div>
-          <button type="submit" style={{ background: showModal === 'personal' ? 'var(--warning)' : '#f97316', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
+          <button type="submit" style={{ background: showModal === 'personal' ? 'var(--warning)' : 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
             تأكيد السحب
           </button>
         </form>

@@ -1,19 +1,14 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { createNotification } = require('./notifications')
 
 function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   if (amount === 0) return
   const treasuryType = paymentMethod === 'card' ? 'bank' : 'main'
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
-  if (amount < 0) {
-    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', userId || '')[0]
-    if (activeShift) {
-      const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
-      if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
-    } else if (treasury.balance + amount < 0) {
-      throw new Error('الرصيد غير كافٍ في الخزينة')
-    }
+  if (amount < 0 && treasury.balance + amount < 0) {
+    throw new Error('الرصيد غير كافٍ في الخزينة')
   }
   treasury.balance += amount
   treasury.updatedAt = new Date()
@@ -51,6 +46,16 @@ function createSupplierPayment(realm, user, { supplierId, supplierName, amount, 
     }
     updateTreasury(realm, -Number(amount), 'تسديد لمورد - ' + (supplierName || ''), user.name, payment._id, paymentMethod)
   })
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (settings && settings.notificationPayments !== false) {
+    createNotification(realm, {
+      type: 'payment',
+      title: 'سداد مورد',
+      message: `تم سداد ${payment.amount} ج.م للمورد ${payment.supplierName || 'مورد'}`,
+      referenceId: payment._id,
+      referenceType: 'supplierPayment'
+    })
+  }
   return { _id: payment._id, supplierId: payment.supplierId, supplierName: payment.supplierName, amount: payment.amount, note: payment.note, paymentMethod: payment.paymentMethod, createdBy: payment.createdBy, createdAt: payment.createdAt?.toISOString() }
 }
 

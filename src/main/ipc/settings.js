@@ -24,6 +24,12 @@ function getSettings(realm) {
     printDefaultSize: settings.printDefaultSize,
     printColorMode: settings.printColorMode,
     printDirectly: settings.printDirectly === true,
+    thermalPaperSize: settings.thermalPaperSize || '80mm',
+    customPaperWidth: settings.customPaperWidth || '',
+    customPaperHeight: settings.customPaperHeight || '',
+    defaultPrinter: settings.defaultPrinter || '',
+    barcodePrinter: settings.barcodePrinter || '',
+    barcodeLabelSize: settings.barcodeLabelSize || '50x30',
     showCommercialReg: settings.showCommercialReg !== false,
     showTaxReg: settings.showTaxReg !== false,
     showBusinessName: settings.showBusinessName !== false,
@@ -43,6 +49,11 @@ function getSettings(realm) {
     autoBackupInterval: settings.autoBackupInterval,
     autoBackupLastDate: settings.autoBackupLastDate,
     autoBackupPath: settings.autoBackupPath,
+    notificationLowStock: settings.notificationLowStock !== false,
+    notificationSales: settings.notificationSales !== false,
+    notificationPayments: settings.notificationPayments !== false,
+    notificationReturns: settings.notificationReturns !== false,
+    notificationShifts: settings.notificationShifts !== false,
     seeded: settings.seeded
   }
 }
@@ -70,6 +81,12 @@ function saveSettings(realm, data) {
       printDefaultSize: data.printDefaultSize || 'receipt',
       printColorMode: data.printColorMode || 'color',
       printDirectly: data.printDirectly === true,
+      thermalPaperSize: data.thermalPaperSize || '80mm',
+      customPaperWidth: data.customPaperWidth || '',
+      customPaperHeight: data.customPaperHeight || '',
+      defaultPrinter: data.defaultPrinter || '',
+      barcodePrinter: data.barcodePrinter || '',
+      barcodeLabelSize: data.barcodeLabelSize || '50x30',
       showCommercialReg: data.showCommercialReg !== false,
       showTaxReg: data.showTaxReg !== false,
       showBusinessName: data.showBusinessName !== false,
@@ -85,11 +102,16 @@ function saveSettings(realm, data) {
       showNotes: data.showNotes !== false,
       showClientInfo: data.showClientInfo !== false,
       showSupplierInfo: data.showSupplierInfo !== false,
-      autoBackup: data.autoBackup || false,
-      autoBackupInterval: data.autoBackupInterval || 'weekly',
-      autoBackupLastDate: data.autoBackupLastDate ? new Date(data.autoBackupLastDate) : null,
-      autoBackupPath: data.autoBackupPath || '',
-      seeded: true
+    autoBackup: data.autoBackup || false,
+    autoBackupInterval: data.autoBackupInterval || 'weekly',
+    autoBackupLastDate: data.autoBackupLastDate ? new Date(data.autoBackupLastDate) : null,
+    autoBackupPath: data.autoBackupPath || '',
+    notificationLowStock: data.notificationLowStock !== false,
+    notificationSales: data.notificationSales !== false,
+    notificationPayments: data.notificationPayments !== false,
+    notificationReturns: data.notificationReturns !== false,
+    notificationShifts: data.notificationShifts !== false,
+    seeded: true
     }, Realm.UpdateMode.Modified)
   })
   return getSettings(realm)

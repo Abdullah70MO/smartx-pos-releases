@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, nativeTheme, Menu } = require('elect
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const { openRealm, closeRealm } = require('./database')
-const { login, getSession, logout, requireUser } = require('./ipc/auth')
+const { login, getSession, logout, requireUser, getSecurityQuestion, verifySecurityAnswer, resetPassword } = require('./ipc/auth')
 const bcrypt = require('bcryptjs')
 const { listProducts, listProductMeta, saveProduct, removeProduct } = require('./ipc/products')
 const { listPurchases, createPurchase, savePurchase, removePurchase } = require('./ipc/purchases')
@@ -13,6 +13,7 @@ const { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS } = requir
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
+const { listNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, checkAndCreateLowStockNotifications } = require('./ipc/notifications')
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, listReturnsByCustomer, createReturn, removeReturn } = require('./ipc/returns')
 const { listPurchaseReturns, listPurchaseReturnsBySupplier, createPurchaseReturn } = require('./ipc/purchaseReturns')
@@ -69,6 +70,9 @@ function registerIpc() {
   })
   handle('auth:session', (token) => getSession(token))
   handle('auth:logout', (token) => logout(token))
+  handle('auth:getSecurityQuestion', async ({ username }) => getSecurityQuestion(await openRealm(), username))
+  handle('auth:verifySecurityAnswer', async ({ username, answer }) => verifySecurityAnswer(await openRealm(), username, answer))
+  handle('auth:resetPassword', async ({ username, newPassword, answer }) => resetPassword(await openRealm(), username, newPassword, answer))
 
   // License
   handle('license:check', async () => checkLicense(await openRealm()))
@@ -84,14 +88,24 @@ function registerIpc() {
   handle('license:serverCheck', async () => serverLicenseCheck(await openRealm()))
 
   // Print
-  handle('print:a4', async ({ token, html, silent }) => {
+  handle('print:a4', async ({ token, html, silent, deviceName, pageSize }) => {
     if (!html) return
     requireUser(token, 'sales.view')
     const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+    const opts = { silent: !!silent }
+    if (deviceName) opts.deviceName = deviceName
+    if (pageSize) opts.pageSize = pageSize
     setTimeout(() => {
-      printWin.webContents.print({ silent: !!silent }, () => printWin.destroy())
+      printWin.webContents.print(opts, () => printWin.destroy())
     }, 300)
+  })
+  handle('printers:list', async () => {
+    const wins = BrowserWindow.getAllWindows()
+    if (wins.length > 0) {
+      return wins[0].webContents.getPrintersAsync()
+    }
+    return []
   })
 
   // Products
@@ -163,6 +177,14 @@ function registerIpc() {
   handle('backup:restore', async ({ token }) => (requireUser(token, 'backup.manage'), restoreBackup()))
   handle('backup:auto', async ({ token, path }) => (requireUser(token, 'backup.manage'), autoBackup(path)))
   handle('backup:reset', async ({ token }) => (requireUser(token, 'backup.manage'), resetDatabase()))
+
+  // Notifications
+  handle('notifications:list', async ({ token, unreadOnly, limit, offset }) => (requireUser(token, 'dashboard.view'), listNotifications(await openRealm(), { unreadOnly, limit, offset })))
+  handle('notifications:unreadCount', async ({ token }) => (requireUser(token, 'dashboard.view'), getUnreadCount(await openRealm())))
+  handle('notifications:markRead', async ({ token, id }) => (requireUser(token, 'dashboard.view'), markAsRead(await openRealm(), id)))
+  handle('notifications:markAllRead', async ({ token }) => (requireUser(token, 'dashboard.view'), markAllAsRead(await openRealm())))
+  handle('notifications:delete', async ({ token, id }) => (requireUser(token, 'dashboard.view'), deleteNotification(await openRealm(), id)))
+  handle('notifications:clearAll', async ({ token }) => (requireUser(token, 'dashboard.view'), clearAllNotifications(await openRealm())))
 
   // Returns
   handle('returns:list', async ({ token, saleId }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturns(await openRealm(), saleId)))
