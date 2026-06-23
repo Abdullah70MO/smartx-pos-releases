@@ -6,6 +6,7 @@ import { formatMoney } from '../utils/money'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, secondaryBtn, modalWarningBtn, modalPrimaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, ReturnIcon } from '../components/ActionIcons'
 
 export default function ReturnsPage() {
   const { user } = useStore()
@@ -217,7 +218,7 @@ export default function ReturnsPage() {
                   <div style={{ fontSize: '13px' }}>{item.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text2)' }}>المتبقي: {item.quantity} | السعر: {formatMoney(item.unitPrice)}</div>
                 </div>
-                <input type="number" value={item.returnQty} min="0" max={item.quantity}
+                <input type="number" step="any" value={item.returnQty} min="0" max={item.quantity}
                   onInput={e => {
                     const newItems = [...returnItems]
                     newItems[i] = { ...newItems[i], returnQty: Math.min(Number(e.target.value) || 0, item.quantity) }
@@ -228,12 +229,21 @@ export default function ReturnsPage() {
             ))}
           </div>
           <input placeholder="سبب الإرجاع (اختياري)" value={reason} onInput={e => setReason(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
-          <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)} style={{ width: '100%', marginBottom: '8px' }}>
-            <option value="cash">نقداً</option>
-            <option value="card">بطاقة</option>
-            <option value="customer_balance">تضاف إلى رصيد العميل</option>
-          </select>
-          {canCreate && <button onClick={handleReturn} style={{ width: '100%', padding: '10px', background: 'var(--warning)', color: '#fff', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تأكيد الإرجاع</button>}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+            {['cash','card','customer_balance'].map(m => (
+              <button key={m} type="button" onClick={() => setReturnPaymentMethod(m)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: returnPaymentMethod === m
+                    ? (m === 'cash' ? 'var(--success)' : m === 'card' ? 'var(--accent)' : 'var(--warning)')
+                    : 'var(--bg3)',
+                  color: returnPaymentMethod === m ? '#fff' : 'var(--text)'
+                }}>
+                {m === 'cash' ? 'نقداً' : m === 'card' ? 'بطاقة' : 'تضاف إلى رصيد العميل'}
+              </button>
+            ))}
+          </div>
+          {canCreate && <button onClick={handleReturn} style={modalWarningBtn}><ReturnIcon size={16} /> تأكيد الإرجاع</button>}
         </Modal>
       </>}
 
@@ -301,10 +311,10 @@ export default function ReturnsPage() {
                 return (
                   <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px', background: 'var(--bg)', borderRadius: '8px' }}>
                     <span style={{ flex: 2, fontSize: '13px' }}>{item.name}</span>
-                    <input type="number" placeholder="الكمية" value={item.quantity || ''}
+                    <input type="number" step="any" placeholder="الكمية" value={item.quantity || ''}
                       onInput={e => setPReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], quantity: Math.min(Number(e.target.value) || 0, maxReturn) }; return n })}
                       style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
-                    <input type="number" placeholder="سعر الوحدة" value={item.unitPrice || ''}
+                    <input type="number" step="any" placeholder="سعر الوحدة" value={item.unitPrice || ''}
                       onInput={e => setPReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], unitPrice: Number(e.target.value) || 0 }; return n })}
                       style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
                     <span style={{ fontSize: '11px', color: 'var(--text2)', minWidth: '60px', textAlign: 'left' }}>{formatMoney(Number(item.quantity) * Number(item.unitPrice))}</span>
@@ -316,14 +326,21 @@ export default function ReturnsPage() {
               </div>
               <textarea placeholder="سبب الإرجاع (اختياري)" value={pReturnReason} onInput={e => setPReturnReason(e.target.value)} rows="2"
                 style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-              <select value={pReturnPaymentMethod} onChange={e => setPReturnPaymentMethod(e.target.value)} style={{ width: '100%' }}>
-                <option value="cash">نقداً</option>
-                <option value="card">بطاقة</option>
-                <option value="supplier_balance">دين مستحق للمورد</option>
-              </select>
-              <button onClick={handleCreatePReturn} style={{ background: 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
-                تسجيل مرتجع
-              </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {['cash','card','supplier_balance'].map(m => (
+                  <button key={m} type="button" onClick={() => setPReturnPaymentMethod(m)}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                      background: pReturnPaymentMethod === m
+                        ? (m === 'cash' ? 'var(--success)' : m === 'card' ? 'var(--accent)' : 'var(--warning)')
+                        : 'var(--bg3)',
+                      color: pReturnPaymentMethod === m ? '#fff' : 'var(--text)'
+                    }}>
+                    {m === 'cash' ? 'نقداً' : m === 'card' ? 'بطاقة' : 'دين مستحق للمورد'}
+                  </button>
+                ))}
+              </div>
+              <button onClick={handleCreatePReturn} style={modalWarningBtn}><ReturnIcon size={16} /> تسجيل مرتجع</button>
             </div>
           )}
         </Modal>

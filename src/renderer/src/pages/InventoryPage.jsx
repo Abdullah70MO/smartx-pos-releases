@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalSuccessBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon } from '../components/ActionIcons'
 
 export default function InventoryPage() {
   const { user } = useStore()
@@ -24,12 +26,20 @@ export default function InventoryPage() {
   const [searchType, setSearchType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, searchProduct, searchType, dateFrom, dateTo])
 
   async function load() {
     const token = localStorage.getItem('token')
-    setAdjustments(await api.listAdjustments(token))
+    const filter = { productName: searchProduct, type: searchType, from: dateFrom, to: dateTo }
+    const result = await api.listAdjustments(token, filter, page, pageSize)
+    setAdjustments(result.data)
+    setTotal(result.total)
+    setTotalPages(result.totalPages)
     setLowStock(await api.getLowStockProducts(token))
     setProducts(await api.listProducts(token, '', 1000))
   }
@@ -81,14 +91,6 @@ export default function InventoryPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filteredAdjustments = adjustments.filter(a => {
-    if (searchProduct && !a.productName.includes(searchProduct)) return false
-    if (searchType && a.type !== searchType) return false
-    if (dateFrom && a.createdAt && a.createdAt.slice(0, 10) < dateFrom) return false
-    if (dateTo && a.createdAt && a.createdAt.slice(0, 10) > dateTo) return false
-    return true
-  })
-
   const typeLabels = { add: 'إضافة', remove: 'خصم', set: 'تحديد' }
    const typeColors = { add: 'var(--success)', remove: 'var(--danger)', set: 'var(--accent)' }
 
@@ -97,7 +99,7 @@ export default function InventoryPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المخزون</h1>
         {canAdjust && <button onClick={() => { setEditAdjustment(null); setForm({ productId: '', type: 'add', quantity: 0, reason: '', date: '', batchId: '' }); setProductBatches([]); setShowModal(true) }}
-          style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ تسوية مخزون</button>}
+          style={headerBtn}><AddIcon size={16} /> تسوية مخزون</button>}
       </div>
 
       {lowStock.length > 0 && (
@@ -123,25 +125,31 @@ export default function InventoryPage() {
         <div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input placeholder="بحث بالمنتج..." value={searchProduct}
-              onInput={e => setSearchProduct(e.target.value)}
+              onInput={e => { setSearchProduct(e.target.value); setPage(0) }}
               style={{ flex: '1', minWidth: '150px' }} />
-            <select value={searchType} onChange={e => setSearchType(e.target.value)}
-              style={{ width: '120px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-              <option value="">كل الأنواع</option>
-              <option value="add">إضافة</option>
-              <option value="remove">خصم</option>
-              <option value="set">تحديد</option>
-            </select>
-            <input type="date" value={dateFrom} onInput={e => setDateFrom(e.target.value)}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              {['','add','remove','set'].map(v => (
+                <button key={v} type="button" onClick={() => { setSearchType(v); setPage(0) }}
+                  style={{
+                    padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold',
+                    background: searchType === v ? 'var(--accent)' : 'var(--bg3)',
+                    color: searchType === v ? '#fff' : 'var(--text)',
+                    border: 'none', cursor: 'pointer'
+                  }}>
+                  {v === '' ? 'الكل' : v === 'add' ? 'إضافة' : v === 'remove' ? 'خصم' : v === 'set' ? 'تحديد' : v}
+                </button>
+              ))}
+            </div>
+            <input type="date" value={dateFrom} onInput={e => { setDateFrom(e.target.value); setPage(0) }}
               style={{ width: '140px' }} />
-            <input type="date" value={dateTo} onInput={e => setDateTo(e.target.value)}
+            <input type="date" value={dateTo} onInput={e => { setDateTo(e.target.value); setPage(0) }}
               style={{ width: '140px' }} />
           </div>
           <div className="table-card">
           <table>
             <thead><tr><th>التاريخ</th><th>المنتج</th><th>النوع</th><th>الكمية</th><th>المخزون القديم</th><th>الجديد</th><th>السبب</th><th></th></tr></thead>
             <tbody>
-              {filteredAdjustments.map(a => (
+              {adjustments.map(a => (
                 <tr key={a._id}>
                   <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(a.createdAt)}</td>
                   <td>{a.productName}</td>
@@ -152,16 +160,17 @@ export default function InventoryPage() {
                   <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{a.reason || '-'}</td>
                   <td>
                     {canAdjust && <div style={{ display: 'flex', gap: '4px' }}>
-                      <button onClick={() => openEditAdjustment(a)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>تعديل</button>
-                      <button onClick={() => handleRemoveAdjustment(a._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>
+                      <button onClick={() => openEditAdjustment(a)} title="تعديل" style={iconBtn('warning')}><EditIcon size={14} /></button>
+                      <button onClick={() => handleRemoveAdjustment(a._id)} title="حذف" style={iconBtn('danger')}><DeleteIcon size={14} /></button>
                     </div>}
                   </td>
                 </tr>
               ))}
-              {filteredAdjustments.length === 0 && <tr><td colSpan="8" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد تسويات</td></tr>}
+              {adjustments.length === 0 && <tr><td colSpan="8" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد تسويات</td></tr>}
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
         </div>
       )}
 
@@ -200,12 +209,20 @@ export default function InventoryPage() {
             ))}
           </select>
 
-          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-            style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-            <option value="add">إضافة إلى المخزون</option>
-            <option value="remove">خصم من المخزون</option>
-            <option value="set">تحديد الكمية</option>
-          </select>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[{v:'add',l:'إضافة إلى المخزون'},{v:'remove',l:'خصم من المخزون'},{v:'set',l:'تحديد الكمية'}].map(o => (
+              <button key={o.v} type="button" onClick={() => setForm(f => ({ ...f, type: o.v }))}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: form.type === o.v
+                    ? (o.v === 'add' ? 'var(--success)' : o.v === 'remove' ? 'var(--danger)' : 'var(--accent)')
+                    : 'var(--bg3)',
+                  color: form.type === o.v ? '#fff' : 'var(--text)'
+                }}>
+                {o.l}
+              </button>
+            ))}
+          </div>
 
           {form.type === 'remove' && productBatches.length > 0 && (
             <div style={{ background: 'var(--bg3)', borderRadius: '8px', padding: '8px' }}>
@@ -245,7 +262,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-          <input type="number" placeholder="الكمية" value={form.quantity || ''}
+          <input type="number" step="any" placeholder="الكمية" value={form.quantity || ''}
             onInput={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} required
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
 
@@ -257,9 +274,7 @@ export default function InventoryPage() {
             onInput={e => setForm(f => ({ ...f, reason: e.target.value }))}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
 
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            حفظ
-          </button>
+          <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> حفظ</button>
         </form>
       </Modal>
       <ConfirmDialog />

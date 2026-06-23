@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalSuccessBtn, modalWarningBtn, modalDangerBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, PaymentIcon, WithdrawIcon, SalaryIcon, HistoryIcon, AttendanceIcon, CloseIcon, AdvanceIcon } from '../components/ActionIcons'
 
 export default function EmployeesPage() {
   const { user } = useStore()
@@ -17,6 +19,10 @@ export default function EmployeesPage() {
 
   const [employees, setEmployees] = useState([])
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', photo: '', idPhoto: '', idNumber: '', idExpiryDate: '', jobTitle: '', department: '', salary: '', salaryPeriod: 'شهري', hireDate: '', emergencyContact: '', emergencyPhone: '', notes: '' })
@@ -40,13 +46,15 @@ export default function EmployeesPage() {
   const idPhotoRef = useRef(null)
   const nameRef = useRef(null)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, search])
   useEffect(() => { if (viewEmployee) loadAttendance(viewEmployee._id) }, [attendanceMonth, attendanceYear])
 
   async function load() {
     const token = localStorage.getItem('token')
-    const data = await api.listEmployees(token)
-    setEmployees(data)
+    const result = await api.listEmployees(token, search, page, pageSize)
+    setEmployees(result.data)
+    setTotal(result.total)
+    setTotalPages(result.totalPages)
   }
 
   function openAdd() {
@@ -74,6 +82,7 @@ export default function EmployeesPage() {
   async function handleSave(e) {
     e.preventDefault()
     if (!form.name.trim()) { toast('الرجاء إدخال اسم الموظف', 'error'); return }
+    if (!form.salary || Number(form.salary) <= 0) { toast('الرجاء إدخال الراتب', 'error'); return }
     const token = localStorage.getItem('token')
     try {
       await api.saveEmployee(token, { ...form, _id: edit?._id, salary: Number(form.salary) || 0 })
@@ -213,60 +222,62 @@ export default function EmployeesPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filtered = search ? employees.filter(e => e.name.includes(search) || e.phone?.includes(search) || e.jobTitle?.includes(search)) : employees
+  function handleSearch(v) { setSearch(v); setPage(0) }
 
   if (!canView) return <div style={{ padding: '20px', color: 'var(--text2)' }}>ليس لديك صلاحية</div>
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '20px' }}>الموظفين</h1>
+        <h1 style={{ fontSize: '20px' }}>الموظفون ({total})</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <input placeholder="بحث..." value={search} onInput={e => setSearch(e.target.value)}
+          <input placeholder="بحث..." value={search} onInput={e => handleSearch(e.target.value)}
             style={{ width: '250px' }} />
-          {canManage && <button onClick={openAdd} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold' }}>+ إضافة موظف</button>}
+          {canManage && <button onClick={openAdd} style={headerBtn}><AddIcon size={16} /> إضافة موظف</button>}
         </div>
       </div>
 
-      <div className="table-card">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: '50px' }}></th>
-              <th>الاسم</th>
-              <th>الوظيفة</th>
-              <th>التلفون</th>
-              <th>الراتب</th>
-              <th>المدة</th>
-              <th>ساعات العمل</th>
-              <th>الحالة</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(emp => (
-              <tr key={emp._id} style={{ cursor: 'pointer' }} onClick={() => openView(emp)}>
-                <td>
-                  {emp.photo ? <img src={emp.photo} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
-                    : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: 'var(--text2)' }}>👤</div>}
-                </td>
-                <td style={{ fontWeight: 'bold' }}>{emp.name}</td>
-                <td>{emp.jobTitle || '-'}</td>
-                <td>{emp.phone || '-'}</td>
-                <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>{formatMoney(emp.salary)}</td>
-                <td>{emp.salaryPeriod}</td>
-                <td style={{ color: 'var(--text2)', fontSize: '12px' }}>{emp.workHours || 12} س</td>
-                <td><span style={{ color: 'var(--success)', fontSize: '12px' }}>نشط</span></td>
-                <td>
-                  {canManage && <button onClick={e => { e.stopPropagation(); openEdit(emp) }} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', marginLeft: '4px' }}>تعديل</button>}
-                  {canManage && <button onClick={e => { e.stopPropagation(); handleRemove(emp) }} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan="9" style={{ padding: '24px', color: 'var(--text2)' }}>لا يوجد موظفون</td></tr>}
-          </tbody>
-        </table>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+        {employees.map(emp => (
+          <div key={emp._id} style={{
+            background: 'var(--bg2)', borderRadius: '14px', padding: '16px',
+            border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)',
+            transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '10px', cursor: 'pointer'
+          }}
+            onClick={() => openView(emp)}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--elevation-2)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--elevation-1)'; e.currentTarget.style.borderColor = 'var(--outline)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {emp.photo ? <img src={emp.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text)' }}>{emp.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text2)' }}>{emp.jobTitle || emp.phone || '-'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', background: 'var(--bg)', borderRadius: '10px', padding: '10px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text2)' }}>الراتب</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(emp.salary)}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text2)' }}>المدة</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)' }}>{emp.salaryPeriod}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+              {canManage && <button onClick={e => { e.stopPropagation(); openEdit(emp) }} title="تعديل" style={iconBtn('warning')}><EditIcon size={13} /></button>}
+              {canManage && <button onClick={e => { e.stopPropagation(); handleRemove(emp) }} title="حذف" style={iconBtn('danger')}><DeleteIcon size={13} /></button>}
+            </div>
+          </div>
+        ))}
+        {employees.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', padding: '32px', color: 'var(--text2)', textAlign: 'center' }}>لا يوجد موظفون</div>
+        )}
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       {/* Add/Edit Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل موظف' : 'إضافة موظف'} width="780px">
@@ -283,15 +294,22 @@ export default function EmployeesPage() {
               </div>
             </div>
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الاسم</label><input ref={nameRef} value={form.name} onInput={e => setForm(f => ({ ...f, name: e.target.value }))} required style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الاسم *</label><input ref={nameRef} value={form.name} onInput={e => setForm(f => ({ ...f, name: e.target.value }))} required style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التلفون</label><input value={form.phone} onInput={e => setForm(f => ({ ...f, phone: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>البريد</label><input type="email" value={form.email} onInput={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الوظيفة</label><input value={form.jobTitle} onInput={e => setForm(f => ({ ...f, jobTitle: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>القسم</label><input value={form.department} onInput={e => setForm(f => ({ ...f, department: e.target.value }))} style={{ width: '100%' }} /></div>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الراتب</label><input type="number" value={form.salary} onInput={e => setForm(f => ({ ...f, salary: e.target.value }))} style={{ width: '100%' }} /></div>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>مدة الراتب</label><select value={form.salaryPeriod} onChange={e => setForm(f => ({ ...f, salaryPeriod: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-                <option value="شهري">شهري</option><option value="أسبوعي">أسبوعي</option><option value="يومي">يومي</option>
-              </select></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الراتب *</label><input type="number" step="any" value={form.salary} onInput={e => setForm(f => ({ ...f, salary: e.target.value }))} style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>مدة الراتب</label><div style={{ display: 'flex', gap: '6px' }}>
+                {['شهري','أسبوعي','يومي'].map(p => (
+                  <button key={p} type="button" onClick={() => setForm(f => ({ ...f, salaryPeriod: p }))}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                      background: form.salaryPeriod === p ? 'var(--accent)' : 'var(--bg3)',
+                      color: form.salaryPeriod === p ? '#fff' : 'var(--text)'
+                    }}>{p}</button>
+                ))}
+              </div></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>رقم إثبات الشخصية</label><input value={form.idNumber} onInput={e => setForm(f => ({ ...f, idNumber: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>تاريخ انتهاء الإثبات</label><input type="date" value={form.idExpiryDate} onInput={e => setForm(f => ({ ...f, idExpiryDate: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>تاريخ التعيين</label><input type="date" value={form.hireDate} onInput={e => setForm(f => ({ ...f, hireDate: e.target.value }))} style={{ width: '100%' }} /></div>
@@ -299,11 +317,28 @@ export default function EmployeesPage() {
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>تلفون الطوارئ</label><input value={form.emergencyPhone} onInput={e => setForm(f => ({ ...f, emergencyPhone: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>العنوان</label><input value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>ساعات العمل</label>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <select value={[4,6,8,12].includes(form.workHours) ? form.workHours : 'other'} onChange={e => { setForm(f => ({ ...f, workHours: e.target.value === 'other' ? '' : Number(e.target.value) })) }} style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-                    <option value={4}>4 ساعات</option><option value={6}>6 ساعات</option><option value={8}>8 ساعات</option><option value={12}>12 ساعة</option><option value="other">أخرى</option>
-                  </select>
-                  {![4,6,8,12].includes(form.workHours) && <input type="number" value={form.workHours} onInput={e => setForm(f => ({ ...f, workHours: Number(e.target.value) }))} style={{ width: '70px' }} />}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[4,6,8,12].map(h => (
+                    <button key={h} type="button" onClick={() => setForm(f => ({ ...f, workHours: h }))}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', minWidth: '60px',
+                        background: form.workHours === h ? 'var(--accent)' : 'var(--bg3)',
+                        color: form.workHours === h ? '#fff' : 'var(--text)',
+                        border: 'none', cursor: 'pointer'
+                      }}>
+                      {h} ساعات
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setForm(f => ({ ...f, workHours: '' }))}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', minWidth: '60px',
+                      background: ![4,6,8,12].includes(form.workHours) && form.workHours !== '' ? 'var(--accent)' : 'var(--bg3)',
+                      color: ![4,6,8,12].includes(form.workHours) && form.workHours !== '' ? '#fff' : 'var(--text)',
+                      border: 'none', cursor: 'pointer'
+                    }}>
+                    أخرى
+                  </button>
+                  {![4,6,8,12].includes(form.workHours) && <input type="number" step="any" value={form.workHours} onInput={e => setForm(f => ({ ...f, workHours: Number(e.target.value) }))} style={{ width: '70px' }} />}
                 </div>
               </div>
             </div>
@@ -311,7 +346,7 @@ export default function EmployeesPage() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <div style={{ flex: 1 }}><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>ملاحظات</label><textarea value={form.notes} onInput={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ width: '100%', resize: 'vertical' }} rows="2" /></div>
           </div>
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>{edit ? 'تحديث' : 'إضافة'}</button>
+          <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> {edit ? 'تحديث' : 'إضافة'}</button>
         </form>
       </Modal>
 
@@ -339,11 +374,11 @@ export default function EmployeesPage() {
           {viewEmployee.notes && <div style={{ fontSize: '13px', color: 'var(--text2)' }}>ملاحظات: {viewEmployee.notes}</div>}
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {canManage && <button onClick={() => setShowAdvanceModal(true)} style={{ background: 'var(--warning)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>+ سلفة</button>}
-            {canManage && <button onClick={() => setShowDeductionModal(true)} style={{ background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>− خصم</button>}
-            {canSalaries && <button onClick={() => openPaySalary(viewEmployee)} style={{ background: 'var(--success)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>💳 صرف راتب</button>}
-            <button onClick={() => { loadSalaryHistory(viewEmployee._id); setShowSalaryHistory(true) }} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>سجل الرواتب</button>
-            <button onClick={() => loadAttendance(viewEmployee._id)} style={{ background: 'var(--bg3)', color: 'var(--text)', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>الحضور</button>
+            {canManage && <button onClick={() => setShowAdvanceModal(true)} style={{ ...secondaryBtn, background: 'var(--warning)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}><AdvanceIcon size={14} /> سلفة</button>}
+            {canManage && <button onClick={() => setShowDeductionModal(true)} style={{ ...secondaryBtn, background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}><WithdrawIcon size={14} /> خصم</button>}
+            {canSalaries && <button onClick={() => openPaySalary(viewEmployee)} style={{ ...secondaryBtn, background: 'var(--success)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}><SalaryIcon size={14} /> صرف راتب</button>}
+            <button onClick={() => { loadSalaryHistory(viewEmployee._id); setShowSalaryHistory(true) }} style={secondaryBtn}><HistoryIcon size={14} /> سجل الرواتب</button>
+            <button onClick={() => loadAttendance(viewEmployee._id)} style={secondaryBtn}><AttendanceIcon size={14} /> الحضور</button>
           </div>
 
           {/* Advances + Deductions List */}
@@ -371,22 +406,33 @@ export default function EmployeesPage() {
           {/* Advance Modal */}
           <Modal open={showAdvanceModal} onClose={() => setShowAdvanceModal(false)} title="سلفة جديدة" width="350px">
             <form onSubmit={handleSaveAdvance} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>المبلغ</label><input type="number" value={advanceForm.amount} onInput={e => setAdvanceForm(f => ({ ...f, amount: e.target.value }))} required style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>المبلغ</label><input type="number" step="any" value={advanceForm.amount} onInput={e => setAdvanceForm(f => ({ ...f, amount: e.target.value }))} required style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>من الخزنة</label>
-                <select value={advanceForm.paymentMethod} onChange={e => setAdvanceForm(f => ({ ...f, paymentMethod: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-                  <option value="cash">نقداً (الخزنة الرئيسية)</option><option value="card">بطاقة (خزنة البنك)</option>
-                </select></div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['cash','card'].map(m => (
+                    <button key={m} type="button" onClick={() => setAdvanceForm(f => ({ ...f, paymentMethod: m }))}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                        background: advanceForm.paymentMethod === m
+                          ? (m === 'cash' ? 'var(--success)' : 'var(--accent)')
+                          : 'var(--bg3)',
+                        color: advanceForm.paymentMethod === m ? '#fff' : 'var(--text)'
+                      }}>
+                      {m === 'cash' ? 'نقداً' : 'بطاقة'}
+                    </button>
+                  ))}
+                </div></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>البيان</label><input value={advanceForm.note} onInput={e => setAdvanceForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%' }} /></div>
-              <button type="submit" style={{ background: 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تسجيل السلفة</button>
+              <button type="submit" style={modalWarningBtn}><AdvanceIcon size={16} /> تسجيل السلفة</button>
             </form>
           </Modal>
 
           {/* Deduction Modal */}
           <Modal open={showDeductionModal} onClose={() => setShowDeductionModal(false)} title="خصم جديد" width="350px">
             <form onSubmit={handleSaveDeduction} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>المبلغ</label><input type="number" value={deductionForm.amount} onInput={e => setDeductionForm(f => ({ ...f, amount: e.target.value }))} required style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>المبلغ</label><input type="number" step="any" value={deductionForm.amount} onInput={e => setDeductionForm(f => ({ ...f, amount: e.target.value }))} required style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>السبب</label><input value={deductionForm.note} onInput={e => setDeductionForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%' }} /></div>
-              <button type="submit" style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>تسجيل الخصم</button>
+              <button type="submit" style={modalDangerBtn}><WithdrawIcon size={16} /> تسجيل الخصم</button>
             </form>
           </Modal>
 
@@ -398,18 +444,29 @@ export default function EmployeesPage() {
                   <select value={salaryData.month} onChange={e => setSalaryData(f => ({ ...f, month: Number(e.target.value) }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>{m}</option>)}
                   </select></div>
-                <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>السنة</label><input type="number" value={salaryData.year} onInput={e => setSalaryData(f => ({ ...f, year: Number(e.target.value) }))} style={{ width: '100%' }} /></div>
+                <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>السنة</label><input type="number" step="any" value={salaryData.year} onInput={e => setSalaryData(f => ({ ...f, year: Number(e.target.value) }))} style={{ width: '100%' }} /></div>
               </div>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الراتب الأساسي</label><input type="number" value={salaryData.baseSalary} onInput={e => setSalaryData(f => ({ ...f, baseSalary: Number(e.target.value), netAmount: Math.max(0, Number(e.target.value) - f.totalDeductions + f.totalAdditions) }))} style={{ width: '100%' }} /></div>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الخصومات (سلف + غياب + غيره)</label><input type="number" value={salaryData.totalDeductions} onInput={e => setSalaryData(f => ({ ...f, totalDeductions: Number(e.target.value), netAmount: Math.max(0, f.baseSalary - Number(e.target.value) + f.totalAdditions) }))} style={{ width: '100%' }} /></div>
-              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الإضافات</label><input type="number" value={salaryData.totalAdditions} onInput={e => setSalaryData(f => ({ ...f, totalAdditions: Number(e.target.value), netAmount: Math.max(0, f.baseSalary - f.totalDeductions + Number(e.target.value)) }))} style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الراتب الأساسي</label><input type="number" step="any" value={salaryData.baseSalary} onInput={e => setSalaryData(f => ({ ...f, baseSalary: Number(e.target.value), netAmount: Math.max(0, Number(e.target.value) - f.totalDeductions + f.totalAdditions) }))} style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الخصومات (سلف + غياب + غيره)</label><input type="number" step="any" value={salaryData.totalDeductions} onInput={e => setSalaryData(f => ({ ...f, totalDeductions: Number(e.target.value), netAmount: Math.max(0, f.baseSalary - Number(e.target.value) + f.totalAdditions) }))} style={{ width: '100%' }} /></div>
+              <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الإضافات</label><input type="number" step="any" value={salaryData.totalAdditions} onInput={e => setSalaryData(f => ({ ...f, totalAdditions: Number(e.target.value), netAmount: Math.max(0, f.baseSalary - f.totalDeductions + Number(e.target.value)) }))} style={{ width: '100%' }} /></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الصافي</label><div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--success)', padding: '8px', background: 'var(--bg)', borderRadius: '8px' }}>{formatMoney(salaryData.netAmount)}</div></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>طريقة الدفع</label>
-                <select value={salaryData.paymentMethod} onChange={e => setSalaryData(f => ({ ...f, paymentMethod: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
-                  <option value="cash">نقداً</option><option value="card">بطاقة</option>
-                </select></div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['cash','card'].map(m => (
+                    <button key={m} type="button" onClick={() => setSalaryData(f => ({ ...f, paymentMethod: m }))}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                        background: salaryData.paymentMethod === m
+                          ? (m === 'cash' ? 'var(--success)' : 'var(--accent)')
+                          : 'var(--bg3)',
+                        color: salaryData.paymentMethod === m ? '#fff' : 'var(--text)'
+                      }}>
+                      {m === 'cash' ? 'نقداً' : 'بطاقة'}
+                    </button>
+                  ))}
+                </div></div>
               <div><label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>البيان</label><input value={salaryData.note} onInput={e => setSalaryData(f => ({ ...f, note: e.target.value }))} style={{ width: '100%' }} /></div>
-              <button type="submit" style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>صرف الراتب</button>
+              <button type="submit" style={modalSuccessBtn}><SalaryIcon size={16} /> صرف الراتب</button>
             </form>
           </Modal>
 
@@ -442,7 +499,7 @@ export default function EmployeesPage() {
               <select value={attendanceMonth} onChange={e => { setAttendanceMonth(Number(e.target.value)); }} style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }}>
                 {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <input type="number" value={attendanceYear} onInput={e => { setAttendanceYear(Number(e.target.value)); }} style={{ width: '80px' }} />
+              <input type="number" step="any" value={attendanceYear} onInput={e => { setAttendanceYear(Number(e.target.value)); }} style={{ width: '80px' }} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', direction: 'ltr' }}>
               {['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'].map(d => (
@@ -492,7 +549,7 @@ export default function EmployeesPage() {
                       <button onClick={async () => { try { await api.removeEmployeeAttendance(localStorage.getItem('token'), { employeeId: viewEmployee._id, date: dateStr }); setSelectedAttDay(0); loadAttendance(viewEmployee._id) } catch (e) { toast(e.message, 'error') } }} style={{ background: 'transparent', color: 'var(--text2)', padding: '8px 14px', borderRadius: '6px', fontSize: '12px' }}>لا شئ</button>
                     </div>
                     <div style={{ marginTop: '10px' }}>
-                      <button onClick={() => setSelectedAttDay(0)} style={{ background: 'var(--bg)', color: 'var(--text2)', padding: '6px 20px', borderRadius: '6px', fontSize: '11px' }}>إغلاق</button>
+                      <button onClick={() => setSelectedAttDay(0)} style={secondaryBtn}><CloseIcon size={14} /> إغلاق</button>
                     </div>
                   </div>
                 </div>

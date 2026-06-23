@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
 import { useToast } from './Toast'
+import { CheckIcon, DeleteIcon } from './ActionIcons'
 
 const NOTIFICATION_ICONS = {
   low_stock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
@@ -49,7 +50,8 @@ const S = {
   actionBtn: {
     background: 'none', border: 'none', color: 'var(--accent)',
     fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-    padding: '4px 8px', borderRadius: '6px'
+    padding: '4px 8px', borderRadius: '6px',
+    display: 'inline-flex', alignItems: 'center', gap: '4px'
   },
   list: { flex: 1, overflow: 'auto', maxHeight: '400px', padding: '4px' },
   item: {
@@ -69,7 +71,8 @@ const S = {
   itemBtn: {
     background: 'var(--bg2)', border: '1px solid var(--outline)',
     color: 'var(--text)', fontSize: '11px', fontWeight: '600',
-    padding: '4px 10px', borderRadius: '6px', cursor: 'pointer'
+    padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: '4px'
   },
   itemBtnDanger: { color: 'var(--danger)', borderColor: 'var(--danger)' },
   empty: { padding: '24px', textAlign: 'center', color: 'var(--text2)', fontSize: '13px' }
@@ -185,16 +188,16 @@ export default function NotificationBell() {
         {open && (
           <div style={S.dropdown} onClick={e => e.stopPropagation()}>
             <div style={S.header}>
-              <span style={S.headerTitle}>🔔 الإشعارات</span>
+              <span style={S.headerTitle}>الإشعارات</span>
               <div style={S.headerActions}>
                 {unreadCount > 0 && (
                   <button onClick={handleMarkAllRead} style={S.actionBtn} title="تعليم الكل كمقروء">
-                    ✓ الكل
+<CheckIcon size={14} /> الكل
                   </button>
                 )}
                 {notifications.length > 0 && (
                   <button onClick={handleClearAll} style={{ ...S.actionBtn, color: 'var(--danger)' }} title="مسح الكل">
-                    🗑️
+                    <DeleteIcon size={14} />
                   </button>
                 )}
               </div>
@@ -214,11 +217,11 @@ export default function NotificationBell() {
                       <div style={S.itemActions}>
                         {!n.read && (
                           <button onClick={() => handleMarkRead(n._id)} style={S.itemBtn} title="تعليم كمقروء">
-                            ✓ مقروء
+<CheckIcon size={14} /> مقروء
                           </button>
                         )}
                         <button onClick={() => handleDelete(n._id)} style={{ ...S.itemBtn, ...S.itemBtnDanger }} title="حذف">
-                          🗑️
+                          <DeleteIcon size={14} />
                         </button>
                       </div>
                     </div>
@@ -229,12 +232,6 @@ export default function NotificationBell() {
           </div>
         )}
       </div>
-
-      <style>{`
-        @media (max-width: 480px) {
-          ${S.dropdown.selector || ''} { width: calc(100vw - 16px); right: 8px; }
-        }
-      `}</style>
     </>
   )
 }

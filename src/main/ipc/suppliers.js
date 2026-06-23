@@ -1,15 +1,24 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { paginate } = require('../database')
 
-function listSuppliers(realm) {
-  const suppliers = realm.objects('Supplier').sorted('updatedAt', true)
-  return Array.from(suppliers).map(s => ({
+function listSuppliers(realm, query, page, pageSize) {
+  let results = realm.objects('Supplier').sorted('updatedAt', true)
+  if (query) {
+    results = results.filtered('name CONTAINS[c] $0 OR phone CONTAINS[c] $0', query)
+  }
+  const mapSupplier = s => ({
     _id: s._id, name: s.name, phone: s.phone, email: s.email,
     commercialReg: s.commercialReg, taxReg: s.taxReg,
     address: s.address, notes: s.notes,
     totalPurchases: s.totalPurchases, totalPaid: s.totalPaid,
     createdAt: s.createdAt?.toISOString(), updatedAt: s.updatedAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapSupplier) }
+  }
+  return Array.from(results).map(mapSupplier)
 }
 
 function saveSupplier(realm, data) {

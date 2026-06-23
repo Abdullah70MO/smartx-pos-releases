@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
@@ -10,66 +11,31 @@ import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
 import { printA4, printThermal } from '../utils/print'
+import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalWarningBtn, modalSuccessBtn, modalDangerBtn, EditIcon, DeleteIcon, AddIcon, PrintIcon, CheckIcon, PaymentIcon, ReturnIcon, BarcodeIcon, SearchIcon } from '../components/ActionIcons'
 
-function generateBarcode() {
-  const first = Math.floor(Math.random() * 9) + 1
-  const rest = Array.from({ length: 11 }, () => Math.floor(Math.random() * 10)).join('')
-  const digits = String(first) + rest
-  const check = calcEAN13Check(digits)
-  return digits + check
-}
+import { generateBarcode as genBarcode, encodeEAN13 } from '../utils/barcode'
 
-function calcEAN13Check(code) {
-  let sum = 0
-  for (let i = 0; i < code.length; i++) {
-    sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3)
-  }
-  const mod = sum % 10
-  return String(mod === 0 ? 0 : 10 - mod)
-}
-
-const L_CODE = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011']
-const G_CODE = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111']
-const R_CODE = ['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100']
-const PARITY = [
-  'LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG',
-  'LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'
-]
-
-function encodeEAN13(code) {
-  const first = parseInt(code[0])
-  const left = code.slice(1, 7).split('')
-  const right = code.slice(7).split('')
-  const parity = PARITY[first]
-  let pattern = '101'
-  left.forEach((d, i) => {
-    pattern += (parity[i] === 'L' ? L_CODE : G_CODE)[parseInt(d)]
-  })
-  pattern += '01010'
-  right.forEach(d => {
-    pattern += R_CODE[parseInt(d)]
-  })
-  pattern += '101'
-  return pattern
-}
+function generateBarcode() { return genBarcode() }
 
 function BarcodeSVG({ code, width = 220, height = 55 }) {
   const pattern = encodeEAN13(code)
   const moduleWidth = width / pattern.length
-  let x = 0
   const rects = []
+  let x = 0
   for (let i = 0; i < pattern.length; i++) {
     if (pattern[i] === '1') {
-      rects.push(`<rect x="${x}" y="0" width="${moduleWidth}" height="${height-16}" fill="#000" />`)
+      rects.push(<rect key={i} x={x} y={0} width={moduleWidth} height={height - 16} fill="#000" />)
     }
     x += moduleWidth
   }
-  const svgContent = rects.join('')
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background:#fff">
-    ${svgContent}
-    <text x="${width/2}" y="${height-2}" text-anchor="middle" font-family="monospace" font-size="11" fill="#000">${code}</text>
-  </svg>`
-  return <div style={{ textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: svg }} />
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <svg width={width} height={height} xmlns="http://www.w3.org/2000/svg" style={{ background: '#fff' }}>
+        {rects}
+        <text x={width / 2} y={height - 2} text-anchor="middle" font-family="monospace" font-size="11" fill="#000">{code}</text>
+      </svg>
+    </div>
+  )
 }
 
 export default function PurchasesPage() {
@@ -95,6 +61,10 @@ export default function PurchasesPage() {
   const [supplierPaidForReturn, setSupplierPaidForReturn] = useState(0)
   const [purchaseReturns, setPurchaseReturns] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
   const [items, setItems] = useState([{ productId: '', name: '', quantity: '', cost: '' }])
   const [productSearch, setProductSearch] = useState([''])
   const [showProductDropdown, setShowProductDropdown] = useState([false])
@@ -112,18 +82,20 @@ export default function PurchasesPage() {
   const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' })
   const [productForm, setProductForm] = useState({
     name: '', category: '', unit: '', barcode: '',
-    cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0,
-    stock: 0, reorderPoint: 0
+    cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '',
+    stock: '', reorderPoint: '', image: ''
   })
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
+  const [printingBarcode, setPrintingBarcode] = useState(false)
   const [settings, setSettings] = useState(null)
   const [categories, setCategories] = useState([])
   const [units, setUnits] = useState([])
   const categoryRef = useRef(null)
   const productSearchTimer = useRef(null)
+  const imgRef = useRef(null)
 
-  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns(); loadProductMeta() }, [])
+  useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns(); loadProductMeta() }, [page, search.q, search.dateFrom, search.dateTo])
   useEffect(() => {
     let timer
     const handler = () => {
@@ -136,8 +108,10 @@ export default function PurchasesPage() {
 
   async function loadPurchases() {
     const token = localStorage.getItem('token')
-    const data = await api.listPurchases(token)
-    setPurchases(data)
+    const result = await api.listPurchases(token, { query: search.q, from: search.dateFrom, to: search.dateTo }, page, pageSize)
+    setPurchases(result.data)
+    setTotal(result.total)
+    setTotalPages(result.totalPages)
   }
 
   async function loadProducts() {
@@ -379,38 +353,31 @@ export default function PurchasesPage() {
   async function handleSaveProduct(e) {
     e.preventDefault()
     const token = localStorage.getItem('token')
+    const data = { ...productForm, cost: Number(productForm.cost) || 0, priceRetail: Number(productForm.priceRetail) || 0, priceHalfWholesale: Number(productForm.priceHalfWholesale) || 0, priceWholesale: Number(productForm.priceWholesale) || 0, stock: Number(productForm.stock) || 0, reorderPoint: Number(productForm.reorderPoint) || 0 }
     try {
-      await api.saveProduct(token, productForm)
+      await api.saveProduct(token, data)
       toast('تمت إضافة المنتج', 'success')
       setShowProductModal(false)
-      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 })
+      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '', stock: '', reorderPoint: '', image: '' })
       setGeneratedBarcode(''); setShowPrintBarcode(false)
       window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filtered = purchases.filter(p => {
-    const q = search.q
-    const matchQ = !q || String(p.invoiceNo).includes(q) || p.supplierName?.includes(q) || p.supplierPhone?.includes(q)
-    const matchDate = (!search.dateFrom || new Date(p.createdAt) >= new Date(search.dateFrom)) &&
-      (!search.dateTo || new Date(p.createdAt) <= new Date(search.dateTo + 'T23:59:59'))
-    return matchQ && matchDate
-  })
-
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '20px' }}>فواتير الشراء</h1>
-        {canCreate && <button onClick={openNew} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ فاتورة شراء</button>}
+        <h1 style={{ fontSize: '20px' }}>فواتير الشراء ({total})</h1>
+        {canCreate && <button onClick={openNew} style={headerBtn}><AddIcon size={16} /> فاتورة شراء</button>}
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <input placeholder="بحث برقم الفاتورة أو اسم المورد أو رقم الهاتف..." value={search.q}
-          onInput={e => setSearch(s => ({ ...s, q: e.target.value }))}
+          onInput={e => { setSearch(s => ({ ...s, q: e.target.value })); setPage(0) }}
           style={{ flex: 1, minWidth: '200px' }} />
-        <input type="date" value={search.dateFrom} onInput={e => setSearch(s => ({ ...s, dateFrom: e.target.value }))}
+        <input type="date" value={search.dateFrom} onInput={e => { setSearch(s => ({ ...s, dateFrom: e.target.value })); setPage(0) }}
           style={{ width: '140px' }} />
-        <input type="date" value={search.dateTo} onInput={e => setSearch(s => ({ ...s, dateTo: e.target.value }))}
+        <input type="date" value={search.dateTo} onInput={e => { setSearch(s => ({ ...s, dateTo: e.target.value })); setPage(0) }}
           style={{ width: '140px' }} />
       </div>
 
@@ -418,7 +385,7 @@ export default function PurchasesPage() {
         <table>
             <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الهاتف</th><th>عدد الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>نوع الدفع</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
-            {filtered.map(p => (
+            {purchases.map(p => (
               <tr key={p._id}>
                 <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>#{p.invoiceNo}</td>
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(p.createdAt)}</td>
@@ -437,19 +404,20 @@ export default function PurchasesPage() {
                 })(p.paymentStatus)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    <button onClick={() => setViewInvoice(p)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>عرض</button>
-                    {canDelete && <button onClick={() => handleRemove(p._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
-                    <button onClick={() => openReturn(p)} style={{ background: 'var(--bg3)', color: 'var(--warning)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>مرتجع</button>
+                    <button onClick={() => setViewInvoice(p)} title="عرض" style={iconBtn('accent')}><SearchIcon size={14} /></button>
+                    {canDelete && <button onClick={() => handleRemove(p._id)} title="حذف" style={iconBtn('danger')}><DeleteIcon size={14} /></button>}
+                    <button onClick={() => openReturn(p)} title="مرتجع" style={iconBtn('warning')}><ReturnIcon size={14} /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {purchases.length === 0 && (
               <tr><td colSpan="12" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد فواتير شراء</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       <Modal open={showModal} onClose={() => { setShowModal(false); setEditPurchase(null) }} title={editPurchase ? 'تعديل فاتورة شراء' : 'إضافة فاتورة شراء'} width="650px">
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -458,7 +426,7 @@ export default function PurchasesPage() {
               onInput={handleSupplierSearch} onFocus={() => setShowSupplierDropdown(true)} onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
               style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
             {canCreate && <button type="button" onClick={() => { setSupplierForm({ name: '', phone: '', email: '', commercialReg: '', taxReg: '', address: '', notes: '' }); setShowSupplierModal(true) }}
-              style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', whiteSpace: 'nowrap' }}>مورد جديد</button>}
+              style={secondaryBtn}><AddIcon size={12} /> مورد جديد</button>}
             {showSupplierDropdown && filteredSuppliers.length > 0 && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg2)', border: '1px solid var(--bg3)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflow: 'auto' }}>
                 {filteredSuppliers.map(s => (
@@ -492,8 +460,7 @@ export default function PurchasesPage() {
                   onFocus={() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = true; return n })}
                   onBlur={() => setTimeout(() => setShowProductDropdown(arr => { const n = [...arr]; n[idx] = false; return n }), 200)}
                   style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
-                {canCreate && <button type="button" onClick={() => { setProductForm({ name: productSearch[idx] || '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }}
-                  style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap' }}>+</button>}
+                {canCreate && <button type="button" onClick={() => { setProductForm({ name: productSearch[idx] || '', category: '', unit: '', barcode: '', cost: 0, priceRetail: 0, priceHalfWholesale: 0, priceWholesale: 0, stock: 0, reorderPoint: 0 }); setGeneratedBarcode(''); setShowPrintBarcode(false); setShowProductModal(true) }} title="إضافة صنف" style={iconBtn('accent')}><AddIcon size={14} /></button>}
                 {showProductDropdown[idx] && filteredProducts(productSearch[idx]).length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg2)', border: '1px solid var(--bg3)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflow: 'auto' }}>
                     {filteredProducts(productSearch[idx]).map(p => (
@@ -505,17 +472,17 @@ export default function PurchasesPage() {
                   </div>
                 )}
               </div>
-              <input type="number" placeholder="الكمية" value={item.quantity || ''}
+              <input type="number" step="any" placeholder="الكمية" value={item.quantity || ''}
                 onInput={e => setItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], quantity: Number(e.target.value) }; return n })}
                 style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', width: '70px', minWidth: '0' }} />
-              <input type="number" placeholder="التكلفة" value={item.cost || ''}
+              <input type="number" step="any" placeholder="التكلفة" value={item.cost || ''}
                 onInput={e => setItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], cost: Number(e.target.value) }; return n })}
                 style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', width: '80px', minWidth: '0' }} />
               <span style={{ fontSize: '12px', color: 'var(--text2)', minWidth: '60px', textAlign: 'left' }}>{formatMoney(Number(item.quantity) * Number(item.cost))}</span>
               {canCreate && items.length > 1 && <button type="button" onClick={() => removeItem(idx)} style={{ color: 'var(--danger)', background: 'none', fontSize: '16px' }}>✕</button>}
             </div>
           ))}
-          {canCreate && <button type="button" onClick={addItem} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '6px', borderRadius: '6px', fontSize: '12px' }}>+ إضافة صنف</button>}
+          {canCreate && <button type="button" onClick={addItem} style={{ ...secondaryBtn, padding: '6px', borderRadius: '6px', fontSize: '12px' }}><AddIcon size={14} /> إضافة صنف</button>}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <div style={{ textAlign: 'left', fontSize: '15px', fontWeight: 'bold', color: 'var(--success)', flex: 1 }}>الإجمالي: {formatMoney(totalCost)}</div>
             <div style={{ flex: 1 }}>
@@ -525,13 +492,13 @@ export default function PurchasesPage() {
                   style={{ background: 'var(--bg3)', color: 'var(--text2)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                   {discountType === 'amount' ? 'قيمة' : '%'}
                 </button>
-                <input type="number" placeholder="0" value={discount} onInput={e => setDiscount(e.target.value)}
+                <input type="number" step="any" placeholder="0" value={discount} onInput={e => setDiscount(e.target.value)}
                   style={{ flex: 1, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
               </div>
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>المدفوع</label>
-              <input type="number" placeholder="المدفوع" value={paid} onInput={e => setPaid(e.target.value)}
+              <input type="number" step="any" placeholder="المدفوع" value={paid} onInput={e => setPaid(e.target.value)}
                 style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
             </div>
           </div>
@@ -572,8 +539,8 @@ export default function PurchasesPage() {
           </div>}
           <textarea placeholder="ملاحظة" value={note} onInput={e => setNote(e.target.value)} rows="2"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-          {canCreate && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            {editPurchase ? 'تحديث الفاتورة' : 'حفظ الفاتورة'}
+          {canCreate && <button type="submit" style={modalPrimaryBtn}>
+            <CheckIcon size={16} /> {editPurchase ? 'تحديث الفاتورة' : 'حفظ الفاتورة'}
           </button>}
         </form>
       </Modal>
@@ -652,15 +619,19 @@ export default function PurchasesPage() {
             })()}
             {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>}
-            <button onClick={() => {
-              if (settings?.printDefaultSize === 'a4') {
-                printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
-              } else {
-                printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+            <button onClick={async () => {
+              try {
+                if (settings?.printDefaultSize === 'a4') {
+                  await printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
+                } else {
+                  await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                }
+              } catch (err) {
+                toast('فشلت الطباعة: ' + err.message, 'error')
               }
             }}
-              style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+              style={modalPrimaryBtn}>
+              <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
             </button>
           </div>
         )}
@@ -682,10 +653,10 @@ export default function PurchasesPage() {
               return (
                 <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px', background: 'var(--bg)', borderRadius: '8px' }}>
                   <span style={{ flex: 2, fontSize: '13px' }}>{item.name}</span>
-                  <input type="number" placeholder="الكمية" value={item.quantity || ''}
+                  <input type="number" step="any" placeholder="الكمية" value={item.quantity || ''}
                     onInput={e => setReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], quantity: Math.min(Number(e.target.value) || 0, maxReturn) }; return n })}
                     style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
-                  <input type="number" placeholder="سعر الوحدة" value={item.unitPrice || ''}
+                  <input type="number" step="any" placeholder="سعر الوحدة" value={item.unitPrice || ''}
                     onInput={e => setReturnItems(arr => { const n = [...arr]; n[idx] = { ...n[idx], unitPrice: Number(e.target.value) || 0 }; return n })}
                     style={{ flex: 1, width: '60px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }} />
                   <span style={{ fontSize: '11px', color: 'var(--text2)', minWidth: '60px', textAlign: 'left' }}>{formatMoney(Number(item.quantity) * Number(item.unitPrice))}</span>
@@ -697,19 +668,22 @@ export default function PurchasesPage() {
             </div>
             <textarea placeholder="سبب الإرجاع (اختياري)" value={returnReason} onInput={e => setReturnReason(e.target.value)} rows="2"
               style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-            <select value={returnPaymentMethod} onChange={e => setReturnPaymentMethod(e.target.value)}
-              style={{ width: '100%' }}>
-              {(() => {
-                const opts = ['cash', 'card', 'supplier_balance']
-                const first = returnPurchase?.paymentMethod === 'credit' ? 'supplier_balance' : (returnPurchase?.paymentMethod || 'cash')
-                opts.sort((a, b) => a === first ? -1 : b === first ? 1 : 0)
-                return opts.map(v => (
-                  <option key={v} value={v}>{v === 'cash' ? 'نقداً' : v === 'card' ? 'بطاقة' : 'رصيد مستحق للمورد'}</option>
-                ))
-              })()}
-            </select>
-            <button onClick={handleCreateReturn} style={{ background: 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>
-              تسجيل مرتجع
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {['cash','card','supplier_balance'].map(m => (
+                <button key={m} type="button" onClick={() => setReturnPaymentMethod(m)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                    background: returnPaymentMethod === m
+                      ? (m === 'cash' ? 'var(--success)' : m === 'card' ? 'var(--accent)' : 'var(--warning)')
+                      : 'var(--bg3)',
+                    color: returnPaymentMethod === m ? '#fff' : 'var(--text)'
+                  }}>
+                  {m === 'cash' ? 'نقداً' : m === 'card' ? 'بطاقة' : 'رصيد مستحق للمورد'}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleCreateReturn} style={modalWarningBtn}>
+              <ReturnIcon size={16} /> تسجيل مرتجع
             </button>
           </div>
         )}
@@ -728,19 +702,24 @@ export default function PurchasesPage() {
           </div>
           <input placeholder="العنوان" value={supplierForm.address} onInput={e => setSupplierForm(s => ({ ...s, address: e.target.value }))} style={{ width: '100%' }} />
           <textarea placeholder="ملاحظات" value={supplierForm.notes} onInput={e => setSupplierForm(s => ({ ...s, notes: e.target.value }))} rows="2" style={{ width: '100%', resize: 'vertical' }} />
-          <button type="submit" style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>إضافة</button>
+          <button type="submit" style={modalSuccessBtn}><CheckIcon size={16} /> إضافة</button>
         </form>
       </Modal>
 
-      <Modal open={showProductModal} onClose={() => { setShowProductModal(false); setGeneratedBarcode(''); setShowPrintBarcode(false) }} title="إضافة منتج جديد">
+      <Modal open={showProductModal} onClose={() => { setShowProductModal(false); setGeneratedBarcode(''); setShowPrintBarcode(false) }} title="إضافة منتج جديد" width="750px">
         <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display:'flex', gap:'12px', alignItems:'start' }}>
+            <div onClick={() => imgRef.current?.click()} style={{ minWidth:'100px',width:'100px',height:'100px',borderRadius:'12px',border:'2px dashed var(--bg3)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',background:'var(--bg)',fontSize:'11px',color:'var(--text2)',textAlign:'center' }}>
+              {productForm.image ? <img src={productForm.image} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : 'إضافة صورة'}
+              <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => setProductForm(x => ({ ...x, image: r.result })); r.readAsDataURL(f) }} />
+            </div>
+            <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
             <Input label="الاسم" value={productForm.name} onInput={v => setProductForm(f => ({ ...f, name: v }))} required />
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الباركود</label>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <input value={productForm.barcode} onInput={e => setProductForm(f => ({ ...f, barcode: e.target.value }))} onKeyDown={handleBarcodeKeyDown} style={{ flex: 1 }} />
-                <button type="button" onClick={handleGenerateBarcode} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap' }}>إنشاء</button>
+                <button type="button" onClick={handleGenerateBarcode} title="إنشاء" style={iconBtn('accent')}><BarcodeIcon size={14} /></button>
               </div>
               {showPrintBarcode && productForm.barcode && (
                 <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '8px', textAlign: 'center' }}>
@@ -752,9 +731,9 @@ export default function PurchasesPage() {
                     return <BarcodeSVG code={productForm.barcode} width={bw} height={bh} />
                   })()}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>{productForm.barcode}</div>
-                  <button type="button" onClick={() => printBarcode(productForm.barcode)}
-                    style={{ marginTop: '6px', background: 'var(--success)', color: '#fff', padding: '6px 16px', borderRadius: '6px', fontSize: '11px' }}>
-                    طباعة الباركود
+                  <button type="button" onClick={async () => { setPrintingBarcode(true); try { await printBarcode(productForm.barcode) } catch (err) { toast('فشلت طباعة الباركود: ' + err.message, 'error') }; setPrintingBarcode(false) }} disabled={printingBarcode}
+                    style={{ ...secondaryBtn, background: 'var(--success)', color: '#fff' }}>
+                    <PrintIcon size={14} /> {printingBarcode ? 'جاري...' : 'طباعة الباركود'}
                   </button>
                 </div>
               )}
@@ -805,15 +784,16 @@ export default function PurchasesPage() {
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التكلفة {productForm.stock > 0 && <span style={{ color: 'var(--warning)', fontSize: '10px' }}>(محسوبة من المشتريات)</span>}</label>
-              <input type="number" value={productForm.cost || ''} onInput={e => setProductForm(f => ({ ...f, cost: Number(e.target.value) }))} placeholder="التكلفة" disabled={productForm.stock > 0} style={{ width: '100%', opacity: productForm.stock > 0 ? 0.6 : 1 }} />
+              <input type="number" step="any" value={productForm.cost} onInput={e => setProductForm(f => ({ ...f, cost: e.target.value }))} placeholder="التكلفة" disabled={productForm.stock > 0} style={{ width: '100%', opacity: productForm.stock > 0 ? 0.6 : 1 }} />
             </div>
-            <Input label="سعر التجزئة" type="number" value={productForm.priceRetail || ''} onInput={v => setProductForm(f => ({ ...f, priceRetail: Number(v) }))} placeholder="سعر التجزئة" />
-            <Input label="سعر نصف الجملة" type="number" value={productForm.priceHalfWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceHalfWholesale: Number(v) }))} placeholder="سعر نصف الجملة" />
-            <Input label="سعر الجملة" type="number" value={productForm.priceWholesale || ''} onInput={v => setProductForm(f => ({ ...f, priceWholesale: Number(v) }))} placeholder="سعر الجملة" />
-            <Input label="المخزون" type="number" value={productForm.stock || ''} onInput={v => setProductForm(f => ({ ...f, stock: Number(v) }))} placeholder="المخزون" />
-            <Input label="تنبيه انتهاء المخزون" type="number" value={productForm.reorderPoint || ''} onInput={v => setProductForm(f => ({ ...f, reorderPoint: Number(v) }))} placeholder="تنبيه انتهاء المخزون" />
+            <Input label="سعر التجزئة" type="number" step="any" value={productForm.priceRetail} onInput={v => setProductForm(f => ({ ...f, priceRetail: v }))} placeholder="سعر التجزئة" />
+            <Input label="سعر نصف الجملة" type="number" step="any" value={productForm.priceHalfWholesale} onInput={v => setProductForm(f => ({ ...f, priceHalfWholesale: v }))} placeholder="سعر نصف الجملة" />
+            <Input label="سعر الجملة" type="number" step="any" value={productForm.priceWholesale} onInput={v => setProductForm(f => ({ ...f, priceWholesale: v }))} placeholder="سعر الجملة" />
+            <Input label="المخزون" type="number" step="any" value={productForm.stock} onInput={v => setProductForm(f => ({ ...f, stock: v }))} placeholder="المخزون" />
+            <Input label="تنبيه انتهاء المخزون" type="number" step="any" value={productForm.reorderPoint} onInput={v => setProductForm(f => ({ ...f, reorderPoint: v }))} placeholder="تنبيه انتهاء المخزون" />
           </div>
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', marginTop: '8px' }}>إضافة</button>
+          </div>
+          <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> إضافة</button>
         </form>
       </Modal>
       <ConfirmDialog />

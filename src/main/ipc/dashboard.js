@@ -7,10 +7,15 @@ function dashboardSummary(realm) {
   const monthSales = realm.objects('Sale').filtered('createdAt >= $0', startOfMonth)
   const todayExpenses = realm.objects('Expense').filtered('date >= $0', startOfDay)
   const monthExpenses = realm.objects('Expense').filtered('date >= $0', startOfMonth)
-  const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0)
+  const todayReturns = realm.objects('Return').filtered('createdAt >= $0', startOfDay)
+  const monthReturns = realm.objects('Return').filtered('createdAt >= $0', startOfMonth)
+  const todayTotal = todaySales.reduce((sum, s) => sum + (s.paid || 0), 0) - todayReturns.reduce((sum, r) => sum + (r.refundAmount || 0) + (r.tax || 0), 0)
   const todayProfit = todaySales.reduce((sum, s) => {
     const cost = s.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
-    return sum + (s.total - (s.tax || 0)) - cost
+    return sum + (s.paid - (s.tax || 0)) - cost
+  }, 0) - todayReturns.reduce((sum, r) => {
+    const cost = r.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
+    return sum + (r.refundAmount || 0) + (r.tax || 0) - cost
   }, 0)
 
   const productSalesMap = new Map()

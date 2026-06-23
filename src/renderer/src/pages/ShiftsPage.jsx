@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'preact/hooks'
 import { useStore } from '../store'
 import api from '../api'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import Modal from '../components/Modal'
 import { formatDateTime, formatTime } from '../utils/date'
 import { formatMoney } from '../utils/money'
+import { iconBtn, modalPrimaryBtn, modalDangerBtn, secondaryBtn, DeleteIcon, CheckIcon, ShiftIcon, CloseIcon } from '../components/ActionIcons'
 
 export default function ShiftsPage() {
   const toast = useToast()
@@ -17,8 +19,12 @@ export default function ShiftsPage() {
   const [searchCashier, setSearchCashier] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, searchCashier, dateFrom, dateTo])
 
   useEffect(() => {
     if (!activeShift) return
@@ -36,9 +42,12 @@ export default function ShiftsPage() {
   async function load() {
     const token = localStorage.getItem('token')
     try {
-      const [active, all] = await Promise.all([api.getActiveShift(token), api.listShifts(token)])
+      const filter = { query: searchCashier, from: dateFrom, to: dateTo }
+      const [active, all] = await Promise.all([api.getActiveShift(token), api.listShifts(token, filter, page, pageSize)])
       setActiveShift(active)
-      setShifts(all)
+      setShifts(all.data)
+      setTotal(all.total)
+      setTotalPages(all.totalPages)
       if (active) setEndingBalance(active.endingBalance)
     } catch {}
   }
@@ -52,13 +61,12 @@ export default function ShiftsPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filteredShifts = shifts.filter(s => {
-    const q = searchCashier
-    const matchUser = !q || s.cashierName?.includes(q)
-    const matchDate = (!dateFrom || new Date(s.startedAt) >= new Date(dateFrom)) &&
-      (!dateTo || new Date(s.startedAt) <= new Date(dateTo + 'T23:59:59'))
-    return matchUser && matchDate
-  })
+  function handleSearch(key, value) {
+    if (key === 'q') setSearchCashier(value)
+    else if (key === 'from') setDateFrom(value)
+    else if (key === 'to') setDateTo(value)
+    setPage(0)
+  }
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
@@ -77,10 +85,7 @@ export default function ShiftsPage() {
               <div style={{ fontSize: '13px', color: 'var(--text2)' }}>مبيعات الوردية</div>
               <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(activeShift.totalSales)}</div>
               {user?.permissions?.includes('shifts.manage') && (
-                <button onClick={() => setShowEndModal(true)}
-                  style={{ marginTop: '8px', background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px' }}>
-                  إنهاء الوردية
-                </button>
+                <button onClick={() => setShowEndModal(true)} title="إنهاء الوردية" style={iconBtn('danger')}><ShiftIcon size={14} /></button>
               )}
             </div>
           </div>
@@ -93,10 +98,10 @@ export default function ShiftsPage() {
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <input placeholder="بحث باسم الكاشير..." value={searchCashier}
-          onInput={e => setSearchCashier(e.target.value)}
+          onInput={e => handleSearch('q', e.target.value)}
           style={{ flex: 1, minWidth: '200px' }} />
-        <input type="date" value={dateFrom} onInput={e => setDateFrom(e.target.value)} style={{ width: '140px' }} />
-        <input type="date" value={dateTo} onInput={e => setDateTo(e.target.value)} style={{ width: '140px' }} />
+        <input type="date" value={dateFrom} onInput={e => handleSearch('from', e.target.value)} style={{ width: '140px' }} />
+        <input type="date" value={dateTo} onInput={e => handleSearch('to', e.target.value)} style={{ width: '140px' }} />
       </div>
 
       <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '8px' }}>سجل الورديات</h3>
@@ -104,7 +109,7 @@ export default function ShiftsPage() {
         <table>
           <thead><tr><th>الكاشير</th><th>البداية</th><th>النهاية</th><th>المدة</th><th>بداية الرصيد</th><th>المبيعات</th><th>نهاية الرصيد</th></tr></thead>
           <tbody>
-            {filteredShifts.map(s => {
+            {shifts.map(s => {
               const start = new Date(s.startedAt)
               const end = s.endedAt ? new Date(s.endedAt) : new Date()
               const diff = Math.floor((end - start) / 1000)
@@ -126,6 +131,7 @@ export default function ShiftsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       {/* End modal */}
       <Modal open={showEndModal} onClose={() => setShowEndModal(false)} title="إنهاء الوردية">
@@ -133,15 +139,15 @@ export default function ShiftsPage() {
           <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '8px' }}>
             مبيعات الوردية: <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>{formatMoney(activeShift?.totalSales)}</span>
           </div>
-          <input type="number" placeholder="رصيد النهاية" value={endingBalance} onInput={e => setEndingBalance(e.target.value)} />
+          <input type="number" step="any" placeholder="رصيد النهاية" value={endingBalance} onInput={e => setEndingBalance(e.target.value)} />
           {endingBalance !== '' && endingBalance !== undefined && (() => {
-            const expected = (activeShift?.startingBalance || 0) + (activeShift?.totalSales || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
+            const expected = (activeShift?.startingBalance || 0) + (activeShift?.cashTotal || 0) + (activeShift?.creditPaidTotal || 0) - (activeShift?.expensesTotal || 0) - (activeShift?.withdrawalsTotal || 0)
             const diff = Number(endingBalance) - expected
             if (Math.abs(diff) < 0.005) return <div style={{ color:'var(--success)', fontSize:'13px', textAlign:'center' }}>مطابق للرصيد</div>
             if (diff < 0) return <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>عجز: {Math.abs(diff).toFixed(2)}</div>
             return <div style={{ color:'var(--warning)', fontSize:'13px', textAlign:'center' }}>زيادة: {diff.toFixed(2)}</div>
           })()}
-          <button onClick={handleEnd} style={{ background: 'var(--danger)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold' }}>إنهاء الوردية</button>
+          <button onClick={handleEnd} style={modalDangerBtn}><CheckIcon size={16} /> إنهاء الوردية</button>
         </div>
       </Modal>
     </div>

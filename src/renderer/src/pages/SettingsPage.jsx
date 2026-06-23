@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(null)
   const [contact, setContact] = useState([])
   const [form, setForm] = useState({})
-  const [notificationSettings, setNotificationSettings] = useState({})
   const [initialForm, setInitialForm] = useState(null)
   const [updateStatus, setUpdateStatus] = useState(null)
   const [updateModal, setUpdateModal] = useState(null)
@@ -38,7 +37,7 @@ export default function SettingsPage() {
     { id: 'config', title: 'التهيئة', description: 'مظهر التطبيق، التقويم، الوقت، الخطوط، العملة، الضريبة' },
     { id: 'printing', title: 'الطباعة', description: 'الطابعة الافتراضية، طابعة الباركود، مقاسات الطباعة، تذييل الفاتورة' },
     { id: 'invoice', title: 'الفاتورة', description: 'إظهار وإخفاء عناصر الفاتورة' },
-    { id: 'notifications', title: 'الإشعارات', description: 'تفعيل/تعطيل أنواع الإشعارات (مخزون، مبيعات، مدفوعات، مرتجعات)' },
+    { id: 'notifications', title: 'الإشعارات', description: 'تفعيل/تعطيل أنواع الإشعارات (مخزون، مبيعات، مدفوعات، مرتجعات، ورديات)' },
     { id: 'data', title: 'البيانات', description: 'النسخ الاحتياطي، الاستعادة، إعادة التعيين', adminOnly: true },
     { id: 'updates', title: 'التحديثات', description: 'التحقق من تحديثات التطبيق', adminOnly: true },
     { id: 'license', title: 'الترخيص', description: 'حالة الترخيص، التفعيل' },
@@ -59,12 +58,11 @@ export default function SettingsPage() {
 }
 
   const NOTIFICATION_TYPES = [
-    { key: 'lowStock', label: 'تنبيه نقص المخزون', description: 'عند وصول منتج لحد التنبيه', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-    { key: 'sales', label: 'إشعار المبيعات', description: 'عند إتمام عملية بيع', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
-    { key: 'payments', label: 'إشعار المدفوعات', description: 'سداد عملاء أو موردين', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
-    { key: 'returns', label: 'إشعار المرتجعات', description: 'عند عمل مرتجع منتجات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> },
-    { key: 'shifts', label: 'إشعارات النجاح', description: 'إغلاق وردية، عمليات ناجحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> },
-    { key: 'info', label: 'إشعارات عامة', description: 'نسخ احتياطي، تحديثات، تنبيهات عامة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> },
+    { key: 'notificationLowStock', label: 'تنبيه نقص المخزون', description: 'عند وصول منتج لحد التنبيه', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
+    { key: 'notificationSales', label: 'إشعار المبيعات', description: 'عند إتمام عملية بيع', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
+    { key: 'notificationPayments', label: 'إشعار المدفوعات', description: 'سداد عملاء أو موردين', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
+    { key: 'notificationReturns', label: 'إشعار المرتجعات', description: 'عند عمل مرتجع منتجات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> },
+    { key: 'notificationShifts', label: 'إشعارات النجاح', description: 'إغلاق وردية، عمليات ناجحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> },
   ]
 
   useEffect(() => { load() }, [])
@@ -76,10 +74,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!initialForm) return
-    const formChanged = JSON.stringify(form) !== JSON.stringify(initialForm)
-    const notifChanged = JSON.stringify(notificationSettings) !== JSON.stringify(initialForm.notificationSettings || {})
-    markSettingsDirty(formChanged || notifChanged)
-  }, [form, initialForm, notificationSettings])
+    markSettingsDirty(JSON.stringify(form) !== JSON.stringify(initialForm))
+  }, [form, initialForm])
 
   async function load() {
     const token = localStorage.getItem('token')
@@ -141,21 +137,13 @@ export default function SettingsPage() {
           notificationReturns: s.notificationReturns !== false,
           notificationShifts: s.notificationShifts !== false
         }
-        setInitialForm({ ...loadedForm, notificationSettings: {
-          lowStock: s.notificationLowStock !== false,
-          sales: s.notificationSales !== false,
-          payments: s.notificationPayments !== false,
-          returns: s.notificationReturns !== false,
-          shifts: s.notificationShifts !== false
-        }})
+        setInitialForm(loadedForm)
         setForm(loadedForm)
-        setNotificationSettings({
-          lowStock: s.notificationLowStock !== false,
-          sales: s.notificationSales !== false,
-          payments: s.notificationPayments !== false,
-          returns: s.notificationReturns !== false,
-          shifts: s.notificationShifts !== false
-        })
+        const labelSize = s.barcodeLabelSize || '50x30'
+        setBarcodeLabel(labelSize)
+        const parts = labelSize.split('x').map(Number)
+        setBarcodeLabelWidth(String(parts[0] || 50))
+        setBarcodeLabelHeight(String(parts[1] || 30))
         markSettingsDirty(false)
       }
       setContact(c || [])
@@ -247,14 +235,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const unsub = api.onUpdateStatus((status) => {
-      setUpdateStatus(status)
       if (status.type === 'available') {
+        setUpdateStatus(null)
+        setCheckingUpdate(false)
         setUpdateModal({ type: 'available', info: status.info })
+      } else if (status.type === 'not-available') {
+        setUpdateStatus({ type: 'not-available' })
+        setCheckingUpdate(false)
       } else if (status.type === 'downloaded') {
         setUpdateModal({ type: 'downloaded' })
         toast('تم تحميل التحديث', 'success')
       } else if (status.type === 'error') {
-        setUpdateModal({ type: 'error', message: status.message })
+        setUpdateStatus({ type: 'error', message: status.message })
+        setCheckingUpdate(false)
       }
     })
     return unsub
@@ -274,9 +267,9 @@ export default function SettingsPage() {
     try {
       await api.checkForUpdates()
     } catch (err) {
-      setUpdateModal({ type: 'error', message: err.message })
+      setUpdateStatus({ type: 'error', message: err.message })
+      setCheckingUpdate(false)
     }
-    setCheckingUpdate(false)
   }
 
   async function handleDownloadUpdate() {
@@ -331,14 +324,7 @@ export default function SettingsPage() {
 
   async function saveSettingsNow() {
     try {
-      const nextForm = { 
-        ...form,
-        notificationLowStock: notificationSettings.lowStock !== false,
-        notificationSales: notificationSettings.sales !== false,
-        notificationPayments: notificationSettings.payments !== false,
-        notificationReturns: notificationSettings.returns !== false,
-        notificationShifts: notificationSettings.shifts !== false
-      }
+      const nextForm = { ...form }
       localStorage.setItem('currency', nextForm.currency)
       localStorage.setItem('calendarType', nextForm.calendarType)
       localStorage.setItem('timeFormat', nextForm.timeFormat)
@@ -353,13 +339,6 @@ export default function SettingsPage() {
       const normalized = updated || nextForm
       setInitialForm(normalized)
       setForm(normalized)
-      setNotificationSettings({
-        lowStock: normalized.notificationLowStock !== false,
-        sales: normalized.notificationSales !== false,
-        payments: normalized.notificationPayments !== false,
-        returns: normalized.notificationReturns !== false,
-        shifts: normalized.notificationShifts !== false
-      })
       markSettingsDirty(false)
       toast('تم حفظ الإعدادات بنجاح', 'success')
       window.dispatchEvent(new Event('dataChanged'))
@@ -542,7 +521,7 @@ export default function SettingsPage() {
                     {form.taxEnabled && (
                       <div>
                         <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>نسبة الضريبة (%)</label>
-                        <input type="number" placeholder="14" value={form.taxRate} onInput={e => setForm(f => ({ ...f, taxRate: Number(e.target.value) }))} style={{ width: '100%' }} readOnly={!canManage} />
+                        <input type="number" step="any" placeholder="14" value={form.taxRate} onInput={e => setForm(f => ({ ...f, taxRate: Number(e.target.value) }))} style={{ width: '100%' }} readOnly={!canManage} />
                       </div>
                     )}
                   </div>
@@ -597,11 +576,11 @@ export default function SettingsPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
                         <div>
                           <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العرض (mm)</label>
-                          <input type="number" value={form.customPaperWidth} onInput={e => setForm(f => ({ ...f, customPaperWidth: e.target.value }))} style={{ width: '100%' }} disabled={!canManage} />
+                          <input type="number" step="any" value={form.customPaperWidth} onInput={e => setForm(f => ({ ...f, customPaperWidth: e.target.value }))} style={{ width: '100%' }} disabled={!canManage} />
                         </div>
                         <div>
                           <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>الطول (mm)</label>
-                          <input type="number" value={form.customPaperHeight} onInput={e => setForm(f => ({ ...f, customPaperHeight: e.target.value }))} style={{ width: '100%' }} disabled={!canManage} />
+                          <input type="number" step="any" value={form.customPaperHeight} onInput={e => setForm(f => ({ ...f, customPaperHeight: e.target.value }))} style={{ width: '100%' }} disabled={!canManage} />
                         </div>
                       </div>
                     )}
@@ -629,7 +608,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مقاس لاصقة الباركود</label>
-                        <select value={barcodeLabel} onChange={e => setBarcodeLabel(e.target.value)} style={{ width: '100%' }}>
+                        <select value={barcodeLabel} onChange={e => { setBarcodeLabel(e.target.value); setForm(f => ({ ...f, barcodeLabelSize: e.target.value })) }} style={{ width: '100%' }}>
                           <option value="25x25">25 × 25 mm</option>
                           <option value="30x20">30 × 20 mm</option>
                           <option value="40x30">40 × 30 mm</option>
@@ -643,11 +622,11 @@ export default function SettingsPage() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
                             <div>
                               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>العرض (mm)</label>
-                              <input type="number" value={barcodeLabelWidth} onInput={e => setBarcodeLabelWidth(e.target.value)} style={{ width: '100%' }} />
+                              <input type="number" step="any" value={barcodeLabelWidth} onInput={e => { setBarcodeLabelWidth(e.target.value); setForm(f => ({ ...f, barcodeLabelSize: `${e.target.value}x${barcodeLabelHeight}` })) }} style={{ width: '100%' }} />
                             </div>
                             <div>
                               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الطول (mm)</label>
-                              <input type="number" value={barcodeLabelHeight} onInput={e => setBarcodeLabelHeight(e.target.value)} style={{ width: '100%' }} />
+                              <input type="number" step="any" value={barcodeLabelHeight} onInput={e => { setBarcodeLabelHeight(e.target.value); setForm(f => ({ ...f, barcodeLabelSize: `${barcodeLabelWidth}x${e.target.value}` })) }} style={{ width: '100%' }} />
                             </div>
                           </div>
                         )}
@@ -799,11 +778,8 @@ export default function SettingsPage() {
                           }}>
                             <input
                               type="checkbox"
-                              checked={notificationSettings[t.key] || false}
-                              onChange={e => setNotificationSettings(ns => ({
-                                ...ns,
-                                [t.key]: e.target.checked
-                              }))}
+                              checked={form[t.key] ?? false}
+                              onChange={e => setForm(f => ({ ...f, [t.key]: e.target.checked }))}
                               style={{
                                 width: '20px',
                                 height: '20px',

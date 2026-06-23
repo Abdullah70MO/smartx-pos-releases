@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, modalPrimaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon } from '../components/ActionIcons'
 
 const SECTIONS = [
   { id: 'dashboard', label: 'لوحة التحكم' },
@@ -98,6 +99,20 @@ function permsFromLevels(levels) {
   return perms
 }
 
+function levelsFromPerms(permissions) {
+  if (!permissions || !Array.isArray(permissions)) return []
+  const permSet = new Set(permissions)
+  return SECTIONS.map(s => {
+    const viewPerm = getViewPerm(s.id)
+    const managePerms = getManagePerms(s.id)
+    const hasView = permSet.has(viewPerm)
+    const hasManage = managePerms.every(p => permSet.has(p))
+    if (hasManage) return { section: s.id, level: 'manage' }
+    if (hasView) return { section: s.id, level: 'view' }
+    return { section: s.id, level: 'hidden' }
+  })
+}
+
 const ROLE_NAMES = { admin: 'مدير النظام', general_manager: 'مدير عام', supervisor: 'مشرف', cashier: 'كاشير', employee: 'موظف' }
 const ROLE_COLORS = { admin: 'var(--accent)', general_manager: 'var(--special)', supervisor: 'var(--warning)', cashier: 'var(--success)', employee: 'var(--text2)' }
 
@@ -130,7 +145,7 @@ export default function UsersPage() {
   }
 
   function openEdit(u) {
-    const levels = getRolePerms(u.role).map(l => ({ ...l }))
+    const levels = levelsFromPerms(u.permissions)
     setEdit(u)
     setForm({ name: u.name, username: u.username, password: '', role: u.role, levels, employeeId: u.employeeId || '', securityQuestion: u.securityQuestion || '', securityAnswer: '', passwordHint: u.passwordHint || '' })
     setShowModal(true)
@@ -170,7 +185,7 @@ export default function UsersPage() {
           setEdit(null)
           setForm({ name: '', username: '', password: '', role: 'cashier', levels, employeeId: '', securityQuestion: '', securityAnswer: '', passwordHint: '' })
           setShowModal(true)
-        }} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة مستخدم</button>}
+        }} style={headerBtn}><AddIcon size={16} /> إضافة مستخدم</button>}
       </div>
 
       <div className="table-card">
@@ -189,8 +204,8 @@ export default function UsersPage() {
                 <td>{u.active ? <span style={{ color: 'var(--success)' }}>نشط</span> : <span style={{ color: 'var(--danger)' }}>غير نشط</span>}</td>
                 <td>
                   {canManage && <>
-                    <button onClick={() => openEdit(u)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', marginLeft: '4px' }}>تعديل</button>
-                    <button onClick={() => handleToggleActive(u)} style={{ background: 'var(--bg3)', color: u.active ? 'var(--danger)' : 'var(--success)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>{u.active ? 'تعطيل' : 'تفعيل'}</button>
+                    <button onClick={() => openEdit(u)} title="تعديل" style={iconBtn('warning')}><EditIcon size={14} /></button>
+                    <button onClick={() => handleToggleActive(u)} title="حذف" style={iconBtn('danger')}><DeleteIcon size={14} /></button>
                   </>}
                 </td>
               </tr>
@@ -281,9 +296,7 @@ export default function UsersPage() {
             </div>
           )}
 
-          {canManage && <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', marginTop: '8px' }}>
-            {edit ? 'تحديث' : 'إضافة'}
-          </button>}
+          {canManage && <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> {edit ? 'تحديث' : 'إضافة'}</button>}
         </form>
       </Modal>
       <ConfirmDialog />

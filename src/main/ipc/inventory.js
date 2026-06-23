@@ -1,13 +1,35 @@
 const crypto = require('node:crypto')
 const { addBatch, deductFromFifo, deductFromBatch, syncProductStock } = require('./inventoryHelpers')
+const { checkAndCreateLowStockNotifications } = require('./notifications')
+const { paginate } = require('../database')
 
-function listAdjustments(realm) {
-  return Array.from(realm.objects('InventoryAdjustment').sorted('createdAt', true)).map(a => ({
+function listAdjustments(realm, filter, page, pageSize) {
+  let results = realm.objects('InventoryAdjustment').sorted('createdAt', true)
+  if (filter?.productName) {
+    results = results.filtered('productName CONTAINS[c] $0', filter.productName)
+  }
+  if (filter?.type) {
+    results = results.filtered('type == $0', filter.type)
+  }
+  if (filter?.from) {
+    const from = new Date(filter.from)
+    if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
+  }
+  if (filter?.to) {
+    const to = new Date(filter.to + 'T23:59:59')
+    if (!isNaN(to)) results = results.filtered('createdAt <= $0', to)
+  }
+  const mapAdjustment = a => ({
     _id: a._id, productId: a.productId, productName: a.productName,
     type: a.type, quantity: a.quantity, oldStock: a.oldStock,
     newStock: a.newStock, reason: a.reason, createdBy: a.createdBy,
     createdAt: a.createdAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapAdjustment) }
+  }
+  return Array.from(results).map(mapAdjustment)
 }
 
 function createAdjustment(realm, user, { productId, productName, type, quantity, reason, date, batchId }) {
@@ -46,6 +68,7 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
       createdAt: date ? new Date(date) : new Date()
     })
   })
+  checkAndCreateLowStockNotifications(realm)
   return { _id: adjustment._id, productId: adjustment.productId, productName: adjustment.productName, type: adjustment.type, quantity: adjustment.quantity, oldStock: adjustment.oldStock, newStock: adjustment.newStock, reason: adjustment.reason, createdBy: adjustment.createdBy, createdAt: adjustment.createdAt?.toISOString() }
 }
 
@@ -117,6 +140,7 @@ function saveAdjustment(realm, user, data) {
       if (data.date) adjustment.createdAt = new Date(data.date)
     }
   })
+  checkAndCreateLowStockNotifications(realm)
   return {
     _id: adjustment._id, productId: adjustment.productId,
     productName: adjustment.productName, type: adjustment.type,

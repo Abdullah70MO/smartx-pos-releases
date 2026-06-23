@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'preact/hooks'
+import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
@@ -8,6 +9,7 @@ import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import StatementA4 from '../components/StatementA4'
 import { printA4 } from '../utils/print'
+import { iconBtn, headerBtn, modalSuccessBtn, modalPrimaryBtn, printBtn, EditIcon, DeleteIcon, ViewIcon, PaymentIcon, AddIcon, PrintIcon, CheckIcon } from '../components/ActionIcons'
 
 export default function CustomersPage() {
   const { user } = useStore()
@@ -28,13 +30,19 @@ export default function CustomersPage() {
   const [transactions, setTransactions] = useState([])
   const [search, setSearch] = useState('')
   const [settings, setSettings] = useState(null)
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, search])
 
   async function load() {
-    const token = localStorage.getItem('token')
-    const [cust, s, sett] = await Promise.all([api.listCustomers(token), api.listSales(token), api.getSettings(token)])
-    setCustomers(cust); setSales(s); setSettings(sett)
+    try {
+      const token = localStorage.getItem('token')
+      const [cust, s, sett] = await Promise.all([api.listCustomers(token, search, page, pageSize), api.listSales(token), api.getSettings(token)])
+      setCustomers(cust.data); setTotal(cust.total); setTotalPages(cust.totalPages); setSales(s); setSettings(sett)
+    } catch (err) { console.error(err) }
   }
 
   function openEdit(c) {
@@ -43,6 +51,7 @@ export default function CustomersPage() {
 
   async function handleSave(e) {
     e.preventDefault()
+    if (!form.name.trim()) { toast('الرجاء إدخال اسم العميل', 'error'); return }
     const token = localStorage.getItem('token')
     try {
       await api.saveCustomer(token, { ...form, _id: edit?._id })
@@ -72,6 +81,8 @@ export default function CustomersPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
+  function handleSearch(v) { setSearch(v); setPage(0) }
+
   async function openTransactions(c) {
     const token = localStorage.getItem('token')
     const creditSales = sales.filter(s => s.customerName === c.name && s.paymentMethod === 'credit').flatMap(s => [
@@ -92,49 +103,73 @@ export default function CustomersPage() {
     setTransModal(c)
   }
 
-  const filteredCustomers = useMemo(() => customers.filter(c =>
-    !search || c.name.includes(search) || c.phone?.includes(search)
-  ), [customers, search])
-
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '20px' }}>عملاء آجل</h1>
+        <h1 style={{ fontSize: '20px' }}>عملاء آجل ({total})</h1>
         {canManage && <button onClick={() => { setEdit(null); setForm({ name: '', phone: '', commercialReg: '', taxReg: '', address: '', notes: '', previousDebt: '' }); setShowModal(true) }}
-          style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة عميل</button>}
+          style={headerBtn}><AddIcon size={16} /> إضافة عميل</button>}
       </div>
 
-      <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={search} onInput={e => setSearch(e.target.value)}
+      <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={search} onInput={e => handleSearch(e.target.value)}
         style={{ width: '100%', marginBottom: '12px' }} />
 
-      <div className="table-card">
-        <table>
-          <thead><tr><th>الاسم</th><th>الهاتف</th><th>إجمالي الدين</th><th>المدفوع</th><th>المتبقي</th><th></th></tr></thead>
-          <tbody>
-            {filteredCustomers.map(c => {
-              const remaining = (c.totalDebt || 0) - (c.totalPaid || 0)
-              return (
-                <tr key={c._id}>
-                  <td style={{ fontWeight: 'bold' }}>{c.name}</td>
-                  <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{c.phone || '-'}</td>
-                  <td style={{ color: 'var(--danger)' }}>{(c.totalDebt || 0).toFixed(2)}</td>
-                  <td style={{ color: 'var(--success)' }}>{(c.totalPaid || 0).toFixed(2)}</td>
-                  <td style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>{remaining.toFixed(2)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {canPay && <button onClick={() => openPay(c)} style={{ background: 'var(--bg3)', color: 'var(--success)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>تسديد</button>}
-                      <button onClick={() => openTransactions(c)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>كشف حساب</button>
-                      {canManage && <button onClick={() => openEdit(c)} style={{ background: 'var(--bg3)', color: 'var(--warning)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>تعديل</button>}
-                      {canManage && <button onClick={() => handleRemove(c._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-            {filteredCustomers.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا يوجد عملاء</td></tr>}
-          </tbody>
-        </table>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
+        {customers.map(c => {
+          const remaining = (c.totalDebt || 0) - (c.totalPaid || 0)
+          const hasDebt = remaining > 0
+          return (
+            <div key={c._id} style={{
+              background: 'var(--bg2)', borderRadius: '14px', padding: '18px',
+              border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)',
+              transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '12px'
+            }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--elevation-2)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--elevation-1)'; e.currentTarget.style.borderColor = 'var(--outline)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: hasDebt ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke={hasDebt ? '#ef4444' : '#22c55e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text)' }}>{c.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>{c.phone || 'لا يوجد هاتف'}</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', background: 'var(--bg)', borderRadius: '10px', padding: '10px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text2)' }}>الدين</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--danger)' }}>{formatMoney(c.totalDebt || 0)}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text2)' }}>المدفوع</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--success)' }}>{formatMoney(c.totalPaid || 0)}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text2)' }}>المتبقي</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: hasDebt ? 'var(--danger)' : 'var(--success)' }}>{formatMoney(remaining)}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                {canPay && <button onClick={() => openPay(c)} title="تسديد" style={iconBtn('success')}><PaymentIcon size={13} /></button>}
+                <button onClick={() => openTransactions(c)} title="كشف حساب" style={iconBtn('accent')}><ViewIcon size={13} /></button>
+                {canManage && <button onClick={() => openEdit(c)} title="تعديل" style={iconBtn('warning')}><EditIcon size={13} /></button>}
+                {canManage && <button onClick={() => handleRemove(c._id)} title="حذف" style={iconBtn('danger')}><DeleteIcon size={13} /></button>}
+              </div>
+            </div>
+          )
+        })}
+        {customers.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', padding: '32px', color: 'var(--text2)', textAlign: 'center' }}>لا يوجد عملاء</div>
+        )}
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل عميل' : 'إضافة عميل'} width="450px">
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -145,13 +180,11 @@ export default function CustomersPage() {
             <input placeholder="رقم السجل الضريبي" value={form.taxReg} onInput={e => setForm(f => ({ ...f, taxReg: e.target.value }))} />
           </div>
           <input placeholder="العنوان" value={form.address} onInput={e => setForm(f => ({ ...f, address: e.target.value }))} />
-          {!edit && <input type="number" placeholder="مبلغ مستحق سابق (دين)" value={form.previousDebt || ''} onInput={e => setForm(f => ({ ...f, previousDebt: e.target.value }))}
+          {!edit && <input type="number" step="any" placeholder="مبلغ مستحق سابق (دين)" value={form.previousDebt || ''} onInput={e => setForm(f => ({ ...f, previousDebt: e.target.value }))}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />}
           <textarea placeholder="ملاحظات" value={form.notes} onInput={e => setForm(f => ({ ...f, notes: e.target.value }))} rows="3"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            {edit ? 'تحديث' : 'إضافة'}
-          </button>
+          <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> {edit ? 'تحديث' : 'إضافة'}</button>
         </form>
       </Modal>
 
@@ -174,11 +207,11 @@ export default function CustomersPage() {
               color: payMethod === 'card' ? '#fff' : 'var(--text)', fontWeight: payMethod === 'card' ? '700' : '500'
             }}>بطاقة</button>
           </div>
-          <input type="number" placeholder="المبلغ" value={payAmount} onInput={e => setPayAmount(e.target.value)} required
+          <input type="number" step="any" placeholder="المبلغ" value={payAmount} onInput={e => setPayAmount(e.target.value)} required
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
           <textarea placeholder="ملاحظات (اختياري)" value={payNote} onInput={e => setPayNote(e.target.value)} rows="2"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-          <button type="submit" style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>تسديد</button>
+          <button type="submit" style={modalSuccessBtn}><CheckIcon size={16} /> تسديد</button>
         </form>
       </Modal>
 
@@ -207,9 +240,7 @@ export default function CustomersPage() {
             </table>
           </div>
         </div>
-        <button onClick={() => printA4(<StatementA4 type="customer" party={transModal} transactions={transactions} settings={settings} />)} style={{ marginTop: '12px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-          طباعة كشف حساب
-        </button>
+        <button onClick={async () => { try { await printA4(<StatementA4 type="customer" party={transModal} transactions={transactions} settings={settings} />) } catch (err) { toast('فشلت الطباعة: ' + err.message, 'error') } }} style={{ ...printBtn, marginTop: '12px' }}><PrintIcon size={16} /> طباعة كشف حساب</button>
       </Modal>
       <ConfirmDialog />
     </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import { formatMoney } from '../utils/money'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, modalPrimaryBtn, modalWarningBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon } from '../components/ActionIcons'
 
 export default function ExpensesPage() {
   const { user } = useStore()
@@ -16,13 +18,19 @@ export default function ExpensesPage() {
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
   const [form, setForm] = useState({ amount: 0, category: '', note: '', date: new Date().toISOString().slice(0, 10), paymentMethod: 'cash' })
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page])
 
   async function load() {
     const token = localStorage.getItem('token')
-    const data = await api.listExpenses(token)
-    setExpenses(data)
+    const result = await api.listExpenses(token, null, page, pageSize)
+    setExpenses(result.data)
+    setTotal(result.total)
+    setTotalPages(result.totalPages)
   }
 
   function openEdit(exp) {
@@ -55,7 +63,7 @@ export default function ExpensesPage() {
   }
 
   const categories = [...new Set(expenses.map(e => e.category).filter(Boolean))]
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
+  const pageTotal = expenses.reduce((s, e) => s + e.amount, 0)
 
   const pmLabel = { cash: 'نقداً', card: 'بطاقة' }
 
@@ -64,9 +72,9 @@ export default function ExpensesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ fontSize: '20px' }}>المصروفات</h1>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ color: 'var(--danger)', fontSize: '15px', fontWeight: 'bold' }}>الإجمالي: {formatMoney(total)}</span>
+          <span style={{ color: 'var(--danger)', fontSize: '15px', fontWeight: 'bold' }}>إجمالي الصفحة: {formatMoney(pageTotal)}</span>
           {canManage && <button onClick={() => { setEdit(null); setForm({ amount: 0, category: '', note: '', date: new Date().toISOString().slice(0, 10), paymentMethod: 'cash' }); setShowModal(true) }}
-            style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ إضافة مصروف</button>}
+            style={headerBtn}><AddIcon size={16} /> إضافة مصروف</button>}
         </div>
       </div>
 
@@ -82,8 +90,8 @@ export default function ExpensesPage() {
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{pmLabel[e.paymentMethod] || e.paymentMethod || 'نقداً'}</td>
                 <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{e.note || '-'}</td>
                 <td>
-                  {canManage && <button onClick={() => openEdit(e)} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', marginLeft: '4px' }}>تعديل</button>}
-                  {canManage && <button onClick={() => handleRemove(e._id)} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
+                  {canManage && <button onClick={() => openEdit(e)} title="تعديل" style={iconBtn('warning')}><EditIcon size={14} /></button>}
+                  {canManage && <button onClick={() => handleRemove(e._id)} title="حذف" style={iconBtn('danger')}><DeleteIcon size={14} /></button>}
                 </td>
               </tr>
             ))}
@@ -91,22 +99,32 @@ export default function ExpensesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={edit ? 'تعديل مصروف' : 'إضافة مصروف'}>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input type="number" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} required />
+          <input type="number" step="any" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} required />
           <input list="exp-cat-list" placeholder="التصنيف" value={form.category} onInput={e => setForm(f => ({ ...f, category: e.target.value }))} />
           <datalist id="exp-cat-list">{categories.map(c => <option key={c} value={c} />)}</datalist>
-          <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-            style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }}>
-            <option value="cash">نقداً</option>
-            <option value="card">بطاقة</option>
-          </select>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['cash','card'].map(m => (
+              <button key={m} type="button" onClick={() => setForm(f => ({ ...f, paymentMethod: m }))}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: form.paymentMethod === m
+                    ? (m === 'cash' ? 'var(--success)' : 'var(--accent)')
+                    : 'var(--bg3)',
+                  color: form.paymentMethod === m ? '#fff' : 'var(--text)'
+                }}>
+                {m === 'cash' ? 'نقداً' : 'بطاقة'}
+              </button>
+            ))}
+          </div>
           <input type="date" value={form.date} onInput={e => setForm(f => ({ ...f, date: e.target.value }))} />
           <textarea placeholder="البيان" value={form.note} onInput={e => setForm(f => ({ ...f, note: e.target.value }))} rows="3"
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', resize: 'vertical' }} />
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            {edit ? 'تحديث' : 'إضافة'}
+          <button type="submit" style={modalPrimaryBtn}>
+            <CheckIcon size={16} /> {edit ? 'تحديث' : 'إضافة'}
           </button>
         </form>
       </Modal>

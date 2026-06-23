@@ -2,6 +2,7 @@ const Realm = require('realm')
 const crypto = require('node:crypto')
 const { returnToFifo, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
 const { createNotification } = require('./notifications')
+const { paginate } = require('../database')
 
 function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount === 0) return
@@ -11,7 +12,7 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount < 0) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
-      const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
+      const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
     } else if (treasury.balance + amount < 0) {
       throw new Error('الرصيد غير كافٍ في الخزينة')
@@ -22,21 +23,30 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
+    type: 'return',
     amount, note: note || '', refType: 'return',
     paymentMethod: paymentMethod || 'cash',
     createdBy: session.name || session.userId || 'system', createdAt: new Date()
   })
 }
 
-function listReturns(realm, saleId) {
-  let returns
+function listReturns(realm, filter, page, pageSize) {
+  let results
+  const saleId = filter?.saleId
   if (saleId) {
-    returns = realm.objects('Return').filtered('saleId == $0', saleId).sorted('createdAt', true)
+    results = realm.objects('Return').filtered('saleId == $0', saleId).sorted('createdAt', true)
   } else {
-    returns = realm.objects('Return').sorted('createdAt', true)
+    results = realm.objects('Return').sorted('createdAt', true)
   }
-  return Array.from(returns).map(r => ({
+  if (filter?.from) {
+    const from = new Date(filter.from)
+    if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
+  }
+  if (filter?.to) {
+    const to = new Date(filter.to + 'T23:59:59')
+    if (!isNaN(to)) results = results.filtered('createdAt <= $0', to)
+  }
+  const mapReturn = r => ({
     _id: r._id, saleId: r.saleId, invoiceNo: r.invoiceNo,
     items: Array.from(r.items).map(item => ({
       productId: item.productId, name: item.name,
@@ -47,12 +57,17 @@ function listReturns(realm, saleId) {
     customerName: r.customerName, isFullReturn: r.isFullReturn,
     paymentMethod: r.paymentMethod, refundAmount: r.refundAmount, tax: r.tax,
     createdAt: r.createdAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapReturn) }
+  }
+  return Array.from(results).map(mapReturn)
 }
 
-function listReturnsByCustomer(realm, customerName) {
-  const returns = realm.objects('Return').filtered('customerName == $0', customerName).sorted('createdAt', true)
-  return Array.from(returns).map(r => ({
+function listReturnsByCustomer(realm, customerName, page, pageSize) {
+  let results = realm.objects('Return').filtered('customerName == $0', customerName).sorted('createdAt', true)
+  const mapReturn = r => ({
     _id: r._id, saleId: r.saleId, invoiceNo: r.invoiceNo,
     items: Array.from(r.items).map(item => ({
       productId: item.productId, name: item.name,
@@ -63,7 +78,12 @@ function listReturnsByCustomer(realm, customerName) {
     customerName: r.customerName, isFullReturn: r.isFullReturn,
     paymentMethod: r.paymentMethod, refundAmount: r.refundAmount, tax: r.tax,
     createdAt: r.createdAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapReturn) }
+  }
+  return Array.from(results).map(mapReturn)
 }
 
 function createReturn(realm, session, data) {
@@ -169,7 +189,6 @@ function createReturn(realm, session, data) {
       } else if (data.paymentMethod === 'credit') {
         const creditAmount = Number(data.subtotal) + returnTaxAmount
         if (customer) {
-          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - Number(data.subtotal))
           customer.totalPaid = Math.max(0, (customer.totalPaid || 0) + creditAmount)
           customer.updatedAt = new Date()
         } else {
@@ -240,7 +259,7 @@ function removeReturn(realm, id, session) {
           realm.create('TreasuryTransaction', {
             _id: crypto.randomUUID(),
             treasuryId: treasury._id, treasuryName: treasury.name,
-            type: 'deposit', amount: fullAmount,
+            type: 'sale', amount: fullAmount,
             note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
             paymentMethod: pm,
             createdBy: 'system', createdAt: new Date()
@@ -259,7 +278,7 @@ function removeReturn(realm, id, session) {
           realm.create('TreasuryTransaction', {
             _id: crypto.randomUUID(),
             treasuryId: treasury._id, treasuryName: treasury.name,
-            type: 'deposit', amount: retRefundAmount,
+            type: 'sale', amount: retRefundAmount,
             note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
             paymentMethod: pm,
             createdBy: 'system', createdAt: new Date()
@@ -283,7 +302,6 @@ function removeReturn(realm, id, session) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', ret.customerName)[0]
         const creditAmount = Number(ret.subtotal) + Number(ret.tax || 0)
         if (customer) {
-          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) + Number(ret.subtotal))
           customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - creditAmount)
           customer.updatedAt = new Date()
         }

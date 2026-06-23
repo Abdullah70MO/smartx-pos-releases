@@ -6,6 +6,7 @@ import { useStore } from '../store'
 import { formatMoney } from '../utils/money'
 import { formatDate } from '../utils/date'
 import { useConfirm } from '../components/ConfirmModal'
+import { iconBtn, headerBtn, modalPrimaryBtn, modalSuccessBtn, modalWarningBtn, modalDangerBtn, secondaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, WithdrawIcon, PaymentIcon } from '../components/ActionIcons'
 
 export default function TreasuryPage() {
   const { user } = useStore()
@@ -15,7 +16,7 @@ export default function TreasuryPage() {
   const [transactions, setTransactions] = useState([])
   const [activeTreasury, setActiveTreasury] = useState(null)
   const [showModal, setShowModal] = useState(null)
-  const [form, setForm] = useState({ name: '', type: 'main', initialBalance: '', withdrawCategory: '' })
+  const [form, setForm] = useState({ name: '', type: 'main', initialBalance: '', withdrawCategory: '', paymentMethod: 'cash' })
   const [editTreasury, setEditTreasury] = useState(null)
   const [withdrawCategories, setWithdrawCategories] = useState([])
   const [searchTx, setSearchTx] = useState({ q: '', dateFrom: '', dateTo: '' })
@@ -94,7 +95,7 @@ export default function TreasuryPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <h1 style={{ fontSize: '20px' }}>الخزينة</h1>
         {canManage && <button onClick={() => { setEditTreasury(null); setForm({ name: '', type: 'main', initialBalance: '' }); setShowModal('treasury') }}
-          style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>+ خزينة جديدة</button>}
+          style={headerBtn}><AddIcon size={16} /> خزينة جديدة</button>}
       </div>
 
       {/* Treasury cards */}
@@ -115,11 +116,11 @@ export default function TreasuryPage() {
             {canManage && activeTreasury === t._id && (
               <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
                 <button onClick={() => { setShowModal('add') }}
-                  style={{ flex: 1, background: 'var(--success)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>إضافة</button>
-                <button onClick={() => { setShowModal('withdraw') }}
-                  style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>سحب تشغيلي</button>
-                <button onClick={() => { setShowModal('personal') }}
-                  style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>سحب شخصي</button>
+                  style={{ flex: 1, background: 'var(--success)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}><PaymentIcon size={12} /> إضافة</button>
+                <button onClick={() => { setForm(f => ({ ...f, amount: '', note: '', personName: '', withdrawCategory: '', paymentMethod: 'cash' })); setShowModal('withdraw') }}
+                  style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}><WithdrawIcon size={12} /> سحب تشغيلي</button>
+                <button onClick={() => { setForm(f => ({ ...f, amount: '', note: '', personName: '', paymentMethod: 'cash' })); setShowModal('personal') }}
+                  style={{ flex: 1, background: 'var(--warning)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}><WithdrawIcon size={12} /> سحب شخصي</button>
               </div>
             )}
           </div>
@@ -166,12 +167,12 @@ export default function TreasuryPage() {
                     <td>
                       <span style={{
                         fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
-                        background: t.type === 'deposit' || t.type === 'transfer_in' ? 'rgba(34,197,94,0.15)' :
-                          t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: t.type === 'deposit' || t.type === 'transfer_in' ? 'var(--success)' :
-                          t.type === 'personal_withdraw' ? 'var(--warning)' : 'var(--danger)'
+                        background: t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' :
+                          t.amount > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                        color: t.type === 'personal_withdraw' ? 'var(--warning)' :
+                          t.amount > 0 ? 'var(--success)' : 'var(--danger)'
                       }}>
-                        {t.type === 'deposit' ? 'إيداع' : t.type === 'withdraw' ? 'سحب' : t.type === 'personal_withdraw' ? 'سحب شخصي' : t.type === 'transfer_in' ? 'تحويل وارد' : t.type === 'transfer_out' ? 'تحويل صادر' : t.type}
+                        {({deposit:'إيداع',expense:'مصروف',personal_withdraw:'سحب شخصي',operational_withdraw:'سحب تشغيلي',sale:'مبيعات',settlement:'تسوية',customerPayment:'تسديد عميل',supplierPayment:'تسديد مورد',purchase:'مشتريات',purchaseReturn:'مرتجع مشتريات',return:'مرتجع بيع',advance:'سلفة',salary:'راتب',transfer_in:'تحويل وارد',transfer_out:'تحويل صادر'})[t.type] || t.type}
                       </span>
                     </td>
                     <td style={{ fontWeight: 'bold', color: t.amount > 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(t.amount)}</td>
@@ -191,16 +192,22 @@ export default function TreasuryPage() {
       <Modal open={showModal === 'treasury'} onClose={() => { setShowModal(null); setEditTreasury(null) }} title={editTreasury ? 'تعديل خزينة' : 'إضافة خزينة جديدة'}>
         <form onSubmit={handleSaveTreasury} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input placeholder="اسم الخزينة" value={form.name} onInput={e => setForm(f => ({ ...f, name: e.target.value }))} required />
-          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-            style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }}>
-            <option value="main">رئيسية</option>
-            <option value="bank">بنك</option>
-            <option value="wallet">محفظة</option>
-          </select>
-          {!editTreasury && <input type="number" placeholder="الرصيد الافتتاحي" value={form.initialBalance || ''} onInput={e => setForm(f => ({ ...f, initialBalance: e.target.value }))} />}
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            {editTreasury ? 'تحديث' : 'إضافة'}
-          </button>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[{v:'main',l:'رئيسية'},{v:'bank',l:'بنك'},{v:'wallet',l:'محفظة'}].map(o => (
+              <button key={o.v} type="button" onClick={() => setForm(f => ({ ...f, type: o.v }))}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: form.type === o.v
+                    ? (o.v === 'main' ? 'var(--success)' : o.v === 'bank' ? 'var(--accent)' : 'var(--warning)')
+                    : 'var(--bg3)',
+                  color: form.type === o.v ? '#fff' : 'var(--text)'
+                }}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+          {!editTreasury && <input type="number" step="any" placeholder="الرصيد الافتتاحي" value={form.initialBalance || ''} onInput={e => setForm(f => ({ ...f, initialBalance: e.target.value }))} />}
+          <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> {editTreasury ? 'تحديث' : 'إضافة'}</button>
         </form>
       </Modal>
 
@@ -213,16 +220,24 @@ export default function TreasuryPage() {
             toast('تمت الإضافة', 'success'); setShowModal(null); load()
           } catch (err) { toast(err.message, 'error') }
         }} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input type="number" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
-          <select value={form.method || 'cash'} onChange={e => setForm(f => ({ ...f, method: e.target.value }))}
-            style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }}>
-            <option value="cash">كاش</option>
-            <option value="bank_transfer">تحويل بنكي</option>
-            <option value="from_owner">من المالك</option>
-          </select>
+          <input type="number" step="any" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[{v:'cash',l:'كاش'},{v:'bank_transfer',l:'تحويل بنكي'},{v:'from_owner',l:'من المالك'}].map(o => (
+              <button key={o.v} type="button" onClick={() => setForm(f => ({ ...f, method: o.v }))}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: (form.method || 'cash') === o.v
+                    ? (o.v === 'cash' ? 'var(--success)' : o.v === 'bank_transfer' ? 'var(--accent)' : 'var(--warning)')
+                    : 'var(--bg3)',
+                  color: (form.method || 'cash') === o.v ? '#fff' : 'var(--text)'
+                }}>
+                {o.l}
+              </button>
+            ))}
+          </div>
           <input placeholder="اسم الشخص (اختياري)" value={form.personName || ''} onInput={e => setForm(f => ({ ...f, personName: e.target.value }))} />
           <input placeholder="البيان" value={form.note || ''} onInput={e => setForm(f => ({ ...f, note: e.target.value }))} />
-          <button type="submit" style={{ background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>إضافة</button>
+          <button type="submit" style={modalSuccessBtn}><CheckIcon size={16} /> إضافة</button>
         </form>
       </Modal>
 
@@ -236,12 +251,13 @@ export default function TreasuryPage() {
             await api.withdrawFromTreasury(token, {
               treasuryId: activeTreasury, amount: Number(form.amount), note,
               personName: form.personName, isPersonal: showModal === 'personal',
-              withdrawCategory: showModal === 'personal' ? '' : form.withdrawCategory
+              withdrawCategory: showModal === 'personal' ? '' : form.withdrawCategory,
+              paymentMethod: form.paymentMethod || 'cash'
             })
             toast('تم السحب', 'success'); setShowModal(null); load()
           } catch (err) { toast(err.message, 'error') }
         }} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input type="number" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+          <input type="number" step="any" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
           {showModal === 'withdraw' && (
             <>
               <input list="w-cat-list" placeholder="التصنيف" value={form.withdrawCategory || ''} onInput={e => setForm(f => ({ ...f, withdrawCategory: e.target.value }))} style={{ width: '100%' }} />
@@ -250,14 +266,26 @@ export default function TreasuryPage() {
           )}
           {showModal === 'personal' && <input placeholder="اسم الشخص" value={form.personName || ''} onInput={e => setForm(f => ({ ...f, personName: e.target.value }))} required />}
           <input placeholder="البيان" value={form.note || ''} onInput={e => setForm(f => ({ ...f, note: e.target.value }))} />
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['cash','card'].map(m => (
+              <button key={m} type="button" onClick={() => setForm(f => ({ ...f, paymentMethod: m }))}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                  background: (form.paymentMethod || 'cash') === m
+                    ? (m === 'cash' ? 'var(--success)' : 'var(--accent)')
+                    : 'var(--bg3)',
+                  color: (form.paymentMethod || 'cash') === m ? '#fff' : 'var(--text)'
+                }}>
+                {m === 'cash' ? 'نقداً' : 'بطاقة'}
+              </button>
+            ))}
+          </div>
           <div style={{ fontSize: '12px', color: 'var(--text2)', background: 'var(--bg)', borderRadius: '8px', padding: '8px' }}>
             {showModal === 'personal'
               ? 'السحوبات الشخصية تخصم من الخزينة ولا تسجل كمصروف'
               : 'السحوبات التشغيلية تسجل تلقائياً في المصروفات'}
           </div>
-          <button type="submit" style={{ background: showModal === 'personal' ? 'var(--warning)' : 'var(--warning)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
-            تأكيد السحب
-          </button>
+          <button type="submit" style={modalDangerBtn}><CheckIcon size={16} /> تأكيد السحب</button>
         </form>
       </Modal>
 
@@ -280,9 +308,9 @@ export default function TreasuryPage() {
             <option value="">إلى خزينة</option>
             {treasuries.filter(t => t._id !== form.fromId).map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
           </select>
-          <input type="number" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+          <input type="number" step="any" placeholder="المبلغ" value={form.amount || ''} onInput={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
           <input placeholder="البيان (اختياري)" value={form.note || ''} onInput={e => setForm(f => ({ ...f, note: e.target.value }))} />
-          <button type="submit" style={{ background: 'var(--accent)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>تحويل</button>
+          <button type="submit" style={modalWarningBtn}><WithdrawIcon size={16} /> تحويل</button>
         </form>
       </Modal>
 

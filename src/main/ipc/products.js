@@ -1,23 +1,29 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { addBatch, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
+const { paginate } = require('../database')
 
-function listProducts(realm, query, limit) {
-  let products
+function listProducts(realm, query, limit, page, pageSize) {
+  let results
   if (query) {
-    products = realm.objects('Product')
+    results = realm.objects('Product')
       .filtered('active == true AND (name CONTAINS[c] $0 OR sku CONTAINS[c] $0 OR barcode CONTAINS[c] $0 OR category CONTAINS[c] $0)', query)
   } else {
-    products = realm.objects('Product').filtered('active == true').sorted('name')
+    results = realm.objects('Product').filtered('active == true').sorted('name')
   }
-  const materialized = limit ? products.slice(0, limit) : products
-  return Array.from(materialized).map(p => ({
+  const mapProduct = p => ({
     _id: p._id, sku: p.sku, barcode: p.barcode, name: p.name,
     category: p.category, unit: p.unit, cost: p.cost,
     priceRetail: p.priceRetail, priceHalfWholesale: p.priceHalfWholesale, priceWholesale: p.priceWholesale,
     stock: p.stock, reorderPoint: p.reorderPoint,
     active: p.active, image: p.image || '', updatedAt: p.updatedAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 50)
+    return { ...result, data: result.data.map(mapProduct) }
+  }
+  const materialized = limit ? results.slice(0, limit) : results
+  return Array.from(materialized).map(mapProduct)
 }
 
 function listProductMeta(realm) {

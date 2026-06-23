@@ -15,7 +15,7 @@ function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
+    type: 'supplierPayment',
     amount, note: note || '', refType: 'supplierPayment', refId: refId || '',
     paymentMethod: paymentMethod || 'cash',
     createdBy: userId, createdAt: new Date()

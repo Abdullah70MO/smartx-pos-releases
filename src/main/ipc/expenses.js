@@ -1,5 +1,6 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { paginate } = require('../database')
 
 function updateTreasury(realm, amount, note, session, refId, paymentMethod) {
   if (amount === 0) return
@@ -9,7 +10,7 @@ function updateTreasury(realm, amount, note, session, refId, paymentMethod) {
   if (amount < 0) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
-      const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
+      const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
     } else if (treasury.balance + amount < 0) {
       throw new Error('الرصيد غير كافٍ في الخزينة')
@@ -20,7 +21,7 @@ function updateTreasury(realm, amount, note, session, refId, paymentMethod) {
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
+    type: 'expense',
     amount, note: note || '',
     refType: 'expense', refId: refId || '',
     paymentMethod: paymentMethod || 'cash',
@@ -28,13 +29,29 @@ function updateTreasury(realm, amount, note, session, refId, paymentMethod) {
   })
 }
 
-function listExpenses(realm) {
-  const expenses = realm.objects('Expense').sorted('createdAt', true)
-  return Array.from(expenses).map(e => ({
+function listExpenses(realm, filter, page, pageSize) {
+  let results = realm.objects('Expense').sorted('createdAt', true)
+  if (filter?.query) {
+    results = results.filtered('category CONTAINS[c] $0 OR note CONTAINS[c] $0', filter.query)
+  }
+  if (filter?.from) {
+    const from = new Date(filter.from)
+    if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
+  }
+  if (filter?.to) {
+    const to = new Date(filter.to + 'T23:59:59')
+    if (!isNaN(to)) results = results.filtered('createdAt <= $0', to)
+  }
+  const mapExpense = e => ({
     _id: e._id, amount: e.amount, category: e.category,
     note: e.note, date: e.date?.toISOString(), createdAt: e.createdAt?.toISOString(),
     paymentMethod: e.paymentMethod
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapExpense) }
+  }
+  return Array.from(results).map(mapExpense)
 }
 
 function updateShiftExpenses(realm, shiftId, amount) {
@@ -44,7 +61,7 @@ function updateShiftExpenses(realm, shiftId, amount) {
 }
 
 function checkShiftBalance(shift, amount) {
-  const available = shift.startingBalance + shift.totalSales - shift.expensesTotal - shift.withdrawalsTotal
+  const available = shift.startingBalance + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - shift.expensesTotal - shift.withdrawalsTotal
   if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
 }
 

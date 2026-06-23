@@ -1,6 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { returnToFifo, syncProductStock } = require('./inventoryHelpers')
+const { paginate } = require('../database')
 
 function deductBatches(realm, purchaseId, productId, quantity) {
   let remaining = Number(quantity)
@@ -30,7 +31,7 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   if (amount < 0) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
-      const available = activeShift.startingBalance + activeShift.totalSales - activeShift.expensesTotal - activeShift.withdrawalsTotal
+      const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
       if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
     } else if (treasury.balance + amount < 0) {
       throw new Error('الرصيد غير كافٍ في الخزينة')
@@ -41,7 +42,7 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
+    type: 'purchaseReturn',
     amount, note: note || '', refType: 'purchaseReturn',
     paymentMethod: paymentMethod || 'cash',
     createdBy: session.name || session.userId || 'system', createdAt: new Date()
@@ -61,9 +62,17 @@ function updateSupplierBalance(realm, supplierId, delta) {
   }
 }
 
-function listPurchaseReturns(realm) {
-  const returns = realm.objects('PurchaseReturn').sorted('createdAt', true)
-  return Array.from(returns).map(r => {
+function listPurchaseReturns(realm, filter, page, pageSize) {
+  let results = realm.objects('PurchaseReturn').sorted('createdAt', true)
+  if (filter?.from) {
+    const from = new Date(filter.from)
+    if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
+  }
+  if (filter?.to) {
+    const to = new Date(filter.to + 'T23:59:59')
+    if (!isNaN(to)) results = results.filtered('createdAt <= $0', to)
+  }
+  const mapReturn = r => {
     const purchase = realm.objectForPrimaryKey('Purchase', r.purchaseId)
     return {
       _id: r._id, purchaseId: r.purchaseId, purchaseInvoiceNo: purchase?.invoiceNo || 0,
@@ -76,12 +85,17 @@ function listPurchaseReturns(realm) {
       refundAmount: r.refundAmount, paymentMethod: r.paymentMethod,
       createdBy: r.createdBy, createdAt: r.createdAt?.toISOString()
     }
-  })
+  }
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapReturn) }
+  }
+  return Array.from(results).map(mapReturn)
 }
 
-function listPurchaseReturnsBySupplier(realm, supplierName) {
-  const returns = realm.objects('PurchaseReturn').filtered('supplierName == $0', supplierName).sorted('createdAt', true)
-  return Array.from(returns).map(r => {
+function listPurchaseReturnsBySupplier(realm, supplierName, page, pageSize) {
+  let results = realm.objects('PurchaseReturn').filtered('supplierName == $0', supplierName).sorted('createdAt', true)
+  const mapReturn = r => {
     const purchase = realm.objectForPrimaryKey('Purchase', r.purchaseId)
     return {
       _id: r._id, purchaseId: r.purchaseId, purchaseInvoiceNo: purchase?.invoiceNo || 0,
@@ -94,7 +108,12 @@ function listPurchaseReturnsBySupplier(realm, supplierName) {
       refundAmount: r.refundAmount, paymentMethod: r.paymentMethod,
       createdBy: r.createdBy, createdAt: r.createdAt?.toISOString()
     }
-  })
+  }
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapReturn) }
+  }
+  return Array.from(results).map(mapReturn)
 }
 
 function createPurchaseReturn(realm, session, data) {
@@ -213,7 +232,7 @@ function removePurchaseReturn(realm, id) {
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
-          type: 'withdraw', amount: retRefund,
+          type: 'purchase', amount: retRefund,
           note: 'إلغاء مرتجع مشتريات #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
           paymentMethod: pm,
           createdBy: 'system', createdAt: new Date()

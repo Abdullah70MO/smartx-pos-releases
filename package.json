@@ -8,9 +8,10 @@
   "private": true,
   "repository": "Abdullah70MO/smartx-pos",
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
-    "dev:simple": "npx vite --port 5173 & sleep 3 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 npx electron .",
-    "dev:auto": "concurrently \"vite --port 5173\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
+    "dev": "node scripts/dev.js",
+    "dev:legacy": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
+    "dev:simple": "start /b npx vite --port 5173 & ping -n 5 localhost >nul && set ELECTRON_RENDERER_URL=http://localhost:5173 && npx electron .",
+    "dev:auto": "concurrently --default-input-target 0 -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",
     "dev:vite": "vite",
     "dev:electron": "electron .",
     "obfuscate": "node scripts/obfuscate.js obfuscate",
@@ -43,6 +44,7 @@
   "build": {
     "appId": "com.smartx.pos.v3",
     "productName": "SMART X POS",
+    "artifactName": "SMART X POS Setup ${version}.${ext}",
     "directories": {
       "output": "build-out"
     },

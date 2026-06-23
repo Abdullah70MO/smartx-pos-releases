@@ -1,6 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { addBatch, syncProductStock, removeBatchesByRef } = require('./inventoryHelpers')
+const { paginate } = require('../database')
 
 function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   if (amount === 0) return
@@ -15,7 +16,7 @@ function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   realm.create('TreasuryTransaction', {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id, treasuryName: treasury.name,
-    type: amount > 0 ? 'deposit' : 'withdraw',
+    type: 'purchase',
     amount, note: note || '',
     refType: 'purchase', refId: refId || '',
     paymentMethod: paymentMethod || 'cash',
@@ -33,8 +34,30 @@ function getNextInvoice(realm) {
   return counter.value
 }
 
-function listPurchases(realm) {
-  return Array.from(realm.objects('Purchase').sorted('createdAt', true)).map(p => flattenPurchase(p))
+function listPurchases(realm, filter, page, pageSize) {
+  let results
+  if (filter?.query) {
+    const q = filter.query
+    results = realm.objects('Purchase').filtered(
+      'invoiceNo == $0 OR supplierName CONTAINS[c] $1 OR createdBy CONTAINS[c] $1',
+      Number(q) || 0, q
+    ).sorted('createdAt', true)
+  } else {
+    results = realm.objects('Purchase').sorted('createdAt', true)
+  }
+  if (filter?.from) {
+    const from = new Date(filter.from)
+    if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
+  }
+  if (filter?.to) {
+    const to = new Date(filter.to + 'T23:59:59')
+    if (!isNaN(to)) results = results.filtered('createdAt <= $0', to)
+  }
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(p => flattenPurchase(p)) }
+  }
+  return Array.from(results).map(p => flattenPurchase(p))
 }
 
 function getOrCreateProduct(realm, item) {

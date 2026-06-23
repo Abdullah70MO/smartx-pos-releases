@@ -17,19 +17,19 @@ const api = {
   serverCheckLicense: () => ipcRenderer.invoke('license:serverCheck'),
 
   // Products
-  listProducts: (token, query, limit) => ipcRenderer.invoke('products:list', { token, query, limit }),
+  listProducts: (token, query, limit, page, pageSize) => ipcRenderer.invoke('products:list', { token, query, limit, page, pageSize }),
   listProductMeta: (token) => ipcRenderer.invoke('products:meta', { token }),
   saveProduct: (token, product) => ipcRenderer.invoke('products:save', { token, product }),
   removeProduct: (token, id) => ipcRenderer.invoke('products:remove', { token, id }),
 
   // Sales
-  listSales: (token, filter) => ipcRenderer.invoke('sales:list', { token, filter }),
+  listSales: (token, filter, page, pageSize) => ipcRenderer.invoke('sales:list', { token, filter, page, pageSize }),
   createSale: (token, sale) => ipcRenderer.invoke('sales:create', { token, sale }),
   removeSale: (token, id) => ipcRenderer.invoke('sales:remove', { token, id }),
   getSalePaidAmount: (token, saleId) => ipcRenderer.invoke('sales:paidForSale', { token, saleId }),
 
   // Expenses
-  listExpenses: (token) => ipcRenderer.invoke('expenses:list', { token }),
+  listExpenses: (token, filter, page, pageSize) => ipcRenderer.invoke('expenses:list', { token, filter, page, pageSize }),
   saveExpense: (token, expense) => ipcRenderer.invoke('expenses:save', { token, expense }),
   removeExpense: (token, id) => ipcRenderer.invoke('expenses:remove', { token, id }),
 
@@ -61,33 +61,33 @@ const api = {
   clearAllNotifications: (token) => ipcRenderer.invoke('notifications:clearAll', { token }),
 
   // Returns
-  listReturns: (token, saleId) => ipcRenderer.invoke('returns:list', { token, saleId }),
-listReturnsByCustomer: (token, customerName) => ipcRenderer.invoke('returns:listByCustomer', { token, customerName }),
+  listReturns: (token, filter, page, pageSize) => ipcRenderer.invoke('returns:list', { token, filter, page, pageSize }),
+listReturnsByCustomer: (token, customerName, page, pageSize) => ipcRenderer.invoke('returns:listByCustomer', { token, customerName, page, pageSize }),
   createReturn: (token, ret) => ipcRenderer.invoke('returns:create', { token, ret }),
   removeReturn: (token, id) => ipcRenderer.invoke('returns:remove', { token, id }),
 
-  listPurchaseReturns: (token) => ipcRenderer.invoke('purchaseReturns:list', { token }),
-listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purchaseReturns:listBySupplier', { token, supplierName }),
+  listPurchaseReturns: (token, filter, page, pageSize) => ipcRenderer.invoke('purchaseReturns:list', { token, filter, page, pageSize }),
+listPurchaseReturnsBySupplier: (token, supplierName, page, pageSize) => ipcRenderer.invoke('purchaseReturns:listBySupplier', { token, supplierName, page, pageSize }),
   createPurchaseReturn: (token, ret) => ipcRenderer.invoke('purchaseReturns:create', { token, ret }),
 
   // Shifts
   getActiveShift: (token) => ipcRenderer.invoke('shifts:getActive', { token }),
   startShift: (token, startingBalance) => ipcRenderer.invoke('shifts:start', { token, startingBalance }),
   endShift: (token, endingCashBalance, endingCardBalance) => ipcRenderer.invoke('shifts:end', { token, endingCashBalance, endingCardBalance }),
-  listShifts: (token) => ipcRenderer.invoke('shifts:list', { token }),
+  listShifts: (token, filter, page, pageSize) => ipcRenderer.invoke('shifts:list', { token, filter, page, pageSize }),
   getShiftSales: (token) => ipcRenderer.invoke('shifts:sales', { token }),
 
   // Activity
-  listActivity: (token) => ipcRenderer.invoke('activity:list', { token }),
+  listActivity: (token, filter, page, pageSize) => ipcRenderer.invoke('activity:list', { token, filter, page, pageSize }),
   logActivity: (token, action, details) => ipcRenderer.invoke('activity:log', { token, action, details }),
 
   // Customers
-  listCustomers: (token) => ipcRenderer.invoke('customers:list', { token }),
+  listCustomers: (token, query, page, pageSize) => ipcRenderer.invoke('customers:list', { token, query, page, pageSize }),
   saveCustomer: (token, customer) => ipcRenderer.invoke('customers:save', { token, customer }),
   removeCustomer: (token, id) => ipcRenderer.invoke('customers:remove', { token, id }),
 
   // Suppliers
-  listSuppliers: (token) => ipcRenderer.invoke('suppliers:list', { token }),
+  listSuppliers: (token, query, page, pageSize) => ipcRenderer.invoke('suppliers:list', { token, query, page, pageSize }),
   saveSupplier: (token, supplier) => ipcRenderer.invoke('suppliers:save', { token, supplier }),
   removeSupplier: (token, id) => ipcRenderer.invoke('suppliers:remove', { token, id }),
 
@@ -102,7 +102,7 @@ listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purc
   removeCustomerPayment: (token, id) => ipcRenderer.invoke('customerPayments:remove', { token, id }),
 
   // Employees
-  listEmployees: (token) => ipcRenderer.invoke('employees:list', { token }),
+  listEmployees: (token, query, page, pageSize) => ipcRenderer.invoke('employees:list', { token, query, page, pageSize }),
   getEmployee: (token, id) => ipcRenderer.invoke('employees:get', { token, id }),
   saveEmployee: (token, employee) => ipcRenderer.invoke('employees:save', { token, employee }),
   removeEmployee: (token, id) => ipcRenderer.invoke('employees:remove', { token, id }),
@@ -115,13 +115,13 @@ listPurchaseReturnsBySupplier: (token, supplierName) => ipcRenderer.invoke('purc
   listEmployeeSalaryPayments: (token, employeeId) => ipcRenderer.invoke('employees:salaryPayments', { token, employeeId }),
 
   // Purchases
-  listPurchases: (token) => ipcRenderer.invoke('purchases:list', { token }),
+  listPurchases: (token, filter, page, pageSize) => ipcRenderer.invoke('purchases:list', { token, filter, page, pageSize }),
   createPurchase: (token, purchase) => ipcRenderer.invoke('purchases:create', { token, purchase }),
   savePurchase: (token, purchase) => ipcRenderer.invoke('purchases:save', { token, purchase }),
   removePurchase: (token, id) => ipcRenderer.invoke('purchases:remove', { token, id }),
 
   // Inventory
-  listAdjustments: (token) => ipcRenderer.invoke('inventory:adjustments', { token }),
+  listAdjustments: (token, filter, page, pageSize) => ipcRenderer.invoke('inventory:adjustments', { token, filter, page, pageSize }),
   createAdjustment: (token, adjustment) => ipcRenderer.invoke('inventory:createAdjustment', { token, adjustment }),
   saveAdjustment: (token, adjustment) => ipcRenderer.invoke('inventory:saveAdjustment', { token, adjustment }),
   removeAdjustment: (token, id) => ipcRenderer.invoke('inventory:removeAdjustment', { token, id }),

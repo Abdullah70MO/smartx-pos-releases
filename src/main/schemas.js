@@ -257,6 +257,7 @@ const ShiftSchema = {
     expensesTotal:   { type: 'double', default: 0 },
     withdrawalsTotal:{ type: 'double', default: 0 },
     cardWithdrawalsTotal: { type: 'double', default: 0 },
+    cardEndingBalance:    { type: 'double', default: 0 },
     invoiceCount:    { type: 'int', default: 0 },
     isActive:        { type: 'bool', default: true }
   }
@@ -593,9 +594,10 @@ const SCHEMAS = [
 //           defaultPrinter, barcodePrinter, barcodeLabelSize (non-breaking defaults)
 //   40    Added Notification schema
 //   41    Added notification settings to BusinessSettings (low_stock, sales, payments, returns, shifts)
+//   42    Added Shift.cardEndingBalance
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 41
+const SCHEMA_VERSION = 42
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

@@ -1,15 +1,24 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { paginate } = require('../database')
 
-function listCustomers(realm) {
-  const customers = realm.objects('CreditCustomer').sorted('updatedAt', true)
-  return Array.from(customers).map(c => ({
+function listCustomers(realm, query, page, pageSize) {
+  let results = realm.objects('CreditCustomer').sorted('updatedAt', true)
+  if (query) {
+    results = results.filtered('name CONTAINS[c] $0 OR phone CONTAINS[c] $0', query)
+  }
+  const mapCustomer = c => ({
     _id: c._id, name: c.name, phone: c.phone,
     commercialReg: c.commercialReg, taxReg: c.taxReg, address: c.address,
     totalDebt: c.totalDebt, totalPaid: c.totalPaid,
     notes: c.notes, createdAt: c.createdAt?.toISOString(),
     updatedAt: c.updatedAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapCustomer) }
+  }
+  return Array.from(results).map(mapCustomer)
 }
 
 function saveCustomer(realm, data) {

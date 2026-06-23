@@ -2,7 +2,18 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const Realm = require('realm')
 const { app, dialog } = require('electron')
-const { getRealmPath, closeRealm, openRealm } = require('../database')
+const { getRealmPath, closeRealm, openRealm, lockForBackup, unlockAfterBackup } = require('../database')
+
+async function safeBackup(backupFn) {
+  lockForBackup()
+  await closeRealm()
+  try {
+    return await backupFn()
+  } finally {
+    await openRealm()
+    unlockAfterBackup()
+  }
+}
 
 async function exportBackup() {
   const { filePath, canceled } = await dialog.showSaveDialog({
@@ -12,10 +23,10 @@ async function exportBackup() {
   })
   if (canceled || !filePath) return null
 
-  await closeRealm()
-  await fs.copyFile(getRealmPath(), filePath)
-  await openRealm()
-  return filePath
+  return safeBackup(async () => {
+    await fs.copyFile(getRealmPath(), filePath)
+    return filePath
+  })
 }
 
 async function restoreBackup() {
@@ -26,10 +37,10 @@ async function restoreBackup() {
   })
   if (canceled || filePaths.length === 0) return false
 
-  await closeRealm()
-  await fs.copyFile(filePaths[0], getRealmPath())
-  await openRealm()
-  return true
+  return safeBackup(async () => {
+    await fs.copyFile(filePaths[0], getRealmPath())
+    return true
+  })
 }
 
 async function autoBackup(backupDir) {
@@ -40,10 +51,11 @@ async function autoBackup(backupDir) {
   const dateStr = new Date().toISOString().slice(0, 10)
   const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-')
   const filePath = path.join(backupDir, `auto-backup-${dateStr}_${timeStr}.realm`)
-  await closeRealm()
-  await fs.copyFile(getRealmPath(), filePath)
-  await openRealm()
-  return filePath
+
+  return safeBackup(async () => {
+    await fs.copyFile(getRealmPath(), filePath)
+    return filePath
+  })
 }
 
 async function resetDatabase() {
@@ -76,6 +88,11 @@ async function resetDatabase() {
       r.delete(r.objects('BusinessSettings'))
       r.delete(r.objects('Counter'))
       r.delete(r.objects('License'))
+      r.delete(r.objects('Employee'))
+      r.delete(r.objects('Advance'))
+      r.delete(r.objects('AttendanceLog'))
+      r.delete(r.objects('SalaryPayment'))
+      r.delete(r.objects('Notification'))
       r.delete(r.objects('User').filtered('username != "admin"'))
       const admin = r.objects('User').filtered('username == "admin"')[0]
       if (admin) admin.passwordHash = require('bcryptjs').hashSync('admin', 12)

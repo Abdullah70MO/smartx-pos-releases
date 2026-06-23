@@ -1,6 +1,7 @@
 import { Fragment } from 'preact'
-import { useState, useEffect, useMemo } from 'preact/hooks'
+import { useState, useEffect } from 'preact/hooks'
 import api from '../api'
+import Pagination from '../components/Pagination'
 import { useToast } from '../components/Toast'
 import Modal from '../components/Modal'
 import { formatDate, formatDateTime } from '../utils/date'
@@ -10,6 +11,7 @@ import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
 import { printA4, printThermal } from '../utils/print'
+import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalDangerBtn, PrintIcon, DeleteIcon, AddIcon, CheckIcon, SearchIcon, PaymentIcon } from '../components/ActionIcons'
 
 export default function SalesPage() {
   const { user } = useStore()
@@ -23,14 +25,21 @@ export default function SalesPage() {
   const [settings, setSettings] = useState(null)
   const [customers, setCustomers] = useState([])
   const [search, setSearch] = useState({ q: '', dateFrom: '', dateTo: '' })
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
+  const pageSize = 20
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, search.q, search.dateFrom, search.dateTo])
 
   async function load() {
     const token = localStorage.getItem('token')
     try {
-      const data = await api.listSales(token)
-      setSales(data)
+      const filter = { query: search.q, from: search.dateFrom, to: search.dateTo }
+      const result = await api.listSales(token, filter, page, pageSize)
+      setSales(result.data)
+      setTotal(result.total)
+      setTotalPages(result.totalPages)
       setError(null)
       const s = await api.getSettings(token)
       setSettings(s)
@@ -49,27 +58,24 @@ export default function SalesPage() {
     } catch (err) { toast(err.message, 'error') }
   }
 
-  const filtered = useMemo(() => sales.filter(s => {
-    const q = search.q
-    const matchQ = !q || String(s.invoiceNo).includes(q) || s.customerName?.includes(q) || s.cashierName?.includes(q) || s.customerPhone?.includes(q)
-    const matchDate = (!search.dateFrom || new Date(s.createdAt) >= new Date(search.dateFrom)) &&
-      (!search.dateTo || new Date(s.createdAt) <= new Date(search.dateTo + 'T23:59:59'))
-    return matchQ && matchDate
-  }), [sales, search])
+  function handleSearch(key, value) {
+    setSearch(s => ({ ...s, [key]: value }))
+    setPage(0)
+  }
 
   return (
     <div style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '20px' }}>المبيعات</h1>
+        <h1 style={{ fontSize: '20px' }}>المبيعات ({total})</h1>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <input placeholder="بحث برقم الفاتورة أو اسم العميل أو الكاشير أو رقم الهاتف..." value={search.q}
-          onInput={e => setSearch(s => ({ ...s, q: e.target.value }))}
+        <input placeholder="بحث برقم الفاتورة أو اسم العميل أو الكاشير..." value={search.q}
+          onInput={e => handleSearch('q', e.target.value)}
           style={{ flex: 1, minWidth: '200px' }} />
-        <input type="date" value={search.dateFrom} onInput={e => setSearch(s => ({ ...s, dateFrom: e.target.value }))}
+        <input type="date" value={search.dateFrom} onInput={e => handleSearch('dateFrom', e.target.value)}
           style={{ width: '140px' }} />
-        <input type="date" value={search.dateTo} onInput={e => setSearch(s => ({ ...s, dateTo: e.target.value }))}
+        <input type="date" value={search.dateTo} onInput={e => handleSearch('dateTo', e.target.value)}
           style={{ width: '140px' }} />
       </div>
 
@@ -81,7 +87,7 @@ export default function SalesPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
+            {sales.map(s => (
               <Fragment key={s._id}>
                 <tr onClick={() => setExpanded(expanded === s._id ? null : s._id)} style={{ cursor: 'pointer' }}>
                   <td style={{ fontWeight: 'bold', color: 'var(--accent)' }}>#{s.invoiceNo}</td>
@@ -91,8 +97,8 @@ export default function SalesPage() {
                   <td style={{ color: 'var(--text2)' }}>{s.paymentMethod === 'card' ? 'بطاقة' : s.paymentMethod === 'credit' ? 'آجل' : 'نقداً'}</td>
                   <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{s.cashierName}</td>
                   <td style={{ display: 'flex', gap: '4px' }}>
-                    <button onClick={e => { e.stopPropagation(); setViewInvoice(s) }} style={{ background: 'var(--bg3)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>عرض</button>
-                    {canDelete && <button onClick={e => { e.stopPropagation(); handleRemove(s._id) }} style={{ background: 'var(--bg3)', color: 'var(--danger)', padding: '4px 10px', borderRadius: '4px', fontSize: '11px' }}>حذف</button>}
+                    <button onClick={e => { e.stopPropagation(); setViewInvoice(s) }} title="عرض" style={iconBtn('accent')}><SearchIcon size={14} /></button>
+                    {canDelete && <button onClick={e => { e.stopPropagation(); handleRemove(s._id) }} title="حذف" style={iconBtn('danger')}><DeleteIcon size={14} /></button>}
                   </td>
                 </tr>
                 {expanded === s._id && (
@@ -120,12 +126,13 @@ export default function SalesPage() {
               </Fragment>
             ))}
             {error && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--danger)', textAlign: 'center' }}>خطأ: {error}</td></tr>}
-            {filtered.length === 0 && !error && (
+            {sales.length === 0 && !error && (
               <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مبيعات</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
       <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة #${viewInvoice?.invoiceNo}`} width="380px">
         {viewInvoice && (
@@ -186,15 +193,19 @@ export default function SalesPage() {
             {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)' }}>ملاحظة: {viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>}
             {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
-            <button onClick={() => {
-              if (settings?.printDefaultSize === 'a4') {
-                printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
-              } else {
-                printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+            <button onClick={async () => {
+              try {
+                if (settings?.printDefaultSize === 'a4') {
+                  await printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
+                } else {
+                  await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                }
+              } catch (err) {
+                toast('فشلت الطباعة: ' + err.message, 'error')
               }
             }}
-              style={{ marginTop: '16px', background: 'var(--accent)', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', width: '100%' }}>
-              {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+              style={modalPrimaryBtn}>
+              <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
             </button>
             </>)}
           </div>

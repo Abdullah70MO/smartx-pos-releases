@@ -3,6 +3,8 @@ import { useStore } from '../store'
 import api from '../api'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
+import { BackIcon, PrintIcon, DownloadIcon, PaymentIcon, WithdrawIcon, ReturnIcon, SalaryIcon, AdvanceIcon, DiscountIcon, HistoryIcon, ViewIcon, CheckIcon, AddIcon, BarcodeIcon, MoneyIcon, ShiftIcon, iconBtn } from '../components/ActionIcons'
+import Pagination from '../components/Pagination'
 
 const PERIODS = [
   { id: 'today', label: 'اليوم' },
@@ -24,7 +26,7 @@ function getPeriodRange(p) {
 }
 
 export default function ReportsPage() {
-  const { reportTab, reportDateFrom, reportDateTo, clearReportNav } = useStore()
+  const { reportTab, reportDateFrom, reportDateTo, clearReportNav, user } = useStore()
   useEffect(() => { clearReportNav() }, [])
   const [summary, setSummary] = useState(null)
   const [sales, setSales] = useState([])
@@ -57,8 +59,14 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState(null)
   const [customerFilter, setCustomerFilter] = useState('all')
   const [supplierFilter, setSupplierFilter] = useState('all')
+  const [returnFilter, setReturnFilter] = useState('all')
   const [treasuryFilter, setTreasuryFilter] = useState('')
   const [employeeFilter, setEmployeeFilter] = useState('')
+  const [shiftsData, setShiftsData] = useState([])
+  const [allShiftsData, setAllShiftsData] = useState([])
+  const [shiftsPage, setShiftsPage] = useState(0)
+  const [shiftsTotal, setShiftsTotal] = useState(0)
+  const [shiftsFilter, setShiftsFilter] = useState({ q: '', dateFrom: '', dateTo: '' })
 
   const reportCards = [
     { id: 'overview', title: 'نظرة عامة', description: 'إجمالي المبيعات، المصروفات، الأرباح، إحصائيات عامة' },
@@ -70,10 +78,11 @@ export default function ReportsPage() {
     { id: 'customers', title: 'العملاء', description: 'أرصدة وديون العملاء' },
     { id: 'suppliers', title: 'الموردين', description: 'أرصدة وديون الموردين' },
     { id: 'treasury', title: 'الخزينة', description: 'حركات الخزينة' },
-    { id: 'employees', title: 'الموظفين', description: 'السلف والخصومات وإحصائيات الموظفين' }
+    { id: 'employees', title: 'الموظفين', description: 'السلف والخصومات وإحصائيات الموظفين' },
+    { id: 'shifts', title: 'الورديات', description: 'تقارير الورديات وإغلاق الكاشير' }
   ]
 
-  const reportColors = { overview: 'var(--accent)', sales: 'var(--success)', expenses: 'var(--danger)', withdrawals: 'var(--warning)', returns: 'var(--warning)', inventory: 'var(--secondary)', customers: 'var(--special)', suppliers: 'var(--teal)', treasury: 'var(--accent)', employees: '#8B5CF6' }
+  const reportColors = { overview: 'var(--accent)', sales: 'var(--success)', expenses: 'var(--danger)', withdrawals: 'var(--warning)', returns: 'var(--warning)', inventory: 'var(--secondary)', customers: 'var(--special)', suppliers: 'var(--teal)', treasury: 'var(--accent)', employees: '#8B5CF6', shifts: '#6366F1' }
   const reportIcons = {
     overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,
     sales: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
@@ -84,7 +93,8 @@ export default function ReportsPage() {
     customers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
     suppliers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
     treasury: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>,
-    employees: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    employees: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+    shifts: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M12 6v6l4 2"/></svg>
   }
 
   useEffect(() => {
@@ -123,6 +133,13 @@ export default function ReportsPage() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (selectedReport === 'shifts') {
+      loadShifts(0, shiftsFilter)
+      loadAllShifts(shiftsFilter).then(all => setAllShiftsData(all))
+    }
+  }, [selectedReport, shiftsFilter])
+
   function setPeriodFilter(p) {
     setPeriod(p)
     const range = getPeriodRange(p)
@@ -137,6 +154,98 @@ export default function ReportsPage() {
     if (filterDateFrom && d < filterDateFrom) return false
     if (filterDateTo && d > filterDateTo) return false
     return true
+  }
+
+  async function loadShifts(page = 0, filter = {}) {
+    const token = localStorage.getItem('token')
+    const f = { ...shiftsFilter, ...filter }
+    const result = await api.listShifts(token, f, page, 20)
+    setShiftsData(result.data || [])
+    setShiftsTotal(result.total || 0)
+  }
+
+  async function loadAllShifts(filter = {}) {
+    const token = localStorage.getItem('token')
+    const f = { ...shiftsFilter, ...filter }
+    const result = await api.listShifts(token, f, 0, 1000)
+    return result.data || []
+  }
+
+  async function handlePrintShiftReport(shift) {
+    const { printA4 } = await import('../utils/print')
+    const { default: PrintTemplateShift } = await import('../components/PrintTemplateShift')
+    const { formatMoney } = await import('../utils/money')
+    const formatDT = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : ''
+    const shiftData = {
+      cashierName: shift.cashierName || '',
+      startedAt: shift.startedAt ? formatDT(shift.startedAt) : '',
+      endedAt: shift.endedAt ? formatDT(shift.endedAt) : 'نشطة',
+      startingBalance: formatMoney(shift.startingBalance || 0),
+      cashTotal: formatMoney(shift.cashTotal || 0),
+      cardTotal: formatMoney(shift.cardTotal || 0),
+      creditTotal: formatMoney(shift.creditPaidTotal || 0),
+      expensesTotal: formatMoney(shift.expensesTotal || 0),
+      withdrawalsTotal: formatMoney(shift.withdrawalsTotal || 0),
+      cardWithdrawalsTotal: formatMoney(shift.cardWithdrawalsTotal || 0),
+      returnsTotal: formatMoney(0),
+      invoiceCount: shift.invoiceCount || 0,
+      expectedCash: formatMoney((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0)),
+      actualCash: formatMoney(shift.endingBalance || 0),
+      cashDiff: formatMoney((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))),
+      cashDiffLabel: Math.abs((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
+      expectedCard: formatMoney((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)),
+      actualCard: formatMoney(shift.cardEndingBalance || 0),
+      cardDiff: formatMoney((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))),
+      cardDiffLabel: Math.abs((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
+    }
+    const element = (
+      <PrintTemplateShift
+        data={shiftData}
+        businessName={user?.businessName || 'SMART X POS'}
+        businessPhone={user?.businessPhone || ''}
+        businessAddress={user?.businessAddress || ''}
+      />
+    )
+    await printA4(element)
+  }
+
+  async function handlePrintShiftReportThermal(shift) {
+    const { printThermal } = await import('../utils/print')
+    const { default: PrintTemplateShiftThermal } = await import('../components/PrintTemplateShiftThermal')
+    const { formatMoney } = await import('../utils/money')
+    const formatDT = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : ''
+    const shiftData = {
+      cashierName: shift.cashierName || '',
+      startedAt: shift.startedAt ? formatDT(shift.startedAt) : '',
+      endedAt: shift.endedAt ? formatDT(shift.endedAt) : 'نشطة',
+      startingBalance: formatMoney(shift.startingBalance || 0),
+      cashTotal: formatMoney(shift.cashTotal || 0),
+      cardTotal: formatMoney(shift.cardTotal || 0),
+      creditTotal: formatMoney(shift.creditPaidTotal || 0),
+      expensesTotal: formatMoney(shift.expensesTotal || 0),
+      withdrawalsTotal: formatMoney(shift.withdrawalsTotal || 0),
+      cardWithdrawalsTotal: formatMoney(shift.cardWithdrawalsTotal || 0),
+      returnsTotal: formatMoney(0),
+      invoiceCount: shift.invoiceCount || 0,
+      expectedCash: formatMoney((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0)),
+      actualCash: formatMoney(shift.endingBalance || 0),
+      cashDiff: formatMoney((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))),
+      cashDiffLabel: Math.abs((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
+      expectedCard: formatMoney((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)),
+      actualCard: formatMoney(shift.cardEndingBalance || 0),
+      cardDiff: formatMoney((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))),
+      cardDiffLabel: Math.abs((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
+    }
+    const element = (
+      <PrintTemplateShiftThermal
+        data={shiftData}
+        businessName={user?.businessName || 'SMART X POS'}
+        businessPhone={user?.businessPhone || ''}
+        businessAddress={user?.businessAddress || ''}
+        paperWidth={Number(localStorage.getItem('thermalPaperSize')?.replace('mm', '') || '80')}
+      />
+    )
+    await printThermal(element)
   }
 
   const filteredByDate = (arr, dateField) => arr.filter(x => inRange(x[dateField] || x.createdAt))
@@ -191,6 +300,13 @@ export default function ReportsPage() {
     return true
   }), [returns, searchReturns])
 
+  const filteredPurchaseReturns = useMemo(() => purchaseReturns.filter(r => {
+    if (searchReturns.q && !String(r.invoiceNo).includes(searchReturns.q) && !r.supplierName?.includes(searchReturns.q)) return false
+    if (searchReturns.dateFrom && r.createdAt && r.createdAt.slice(0, 10) < searchReturns.dateFrom) return false
+    if (searchReturns.dateTo && r.createdAt && r.createdAt.slice(0, 10) > searchReturns.dateTo) return false
+    return true
+  }), [purchaseReturns, searchReturns])
+
   const filteredWithdrawals = useMemo(() => withdrawals.filter(w => {
     if (searchWithdrawals.q && !w.personName?.includes(searchWithdrawals.q) && !w.note?.includes(searchWithdrawals.q)) return false
     if (searchWithdrawals.dateFrom && w.createdAt && w.createdAt.slice(0, 10) < searchWithdrawals.dateFrom) return false
@@ -198,13 +314,9 @@ export default function ReportsPage() {
     return true
   }), [withdrawals, searchWithdrawals])
 
-  const filteredCustomers = useMemo(() => customers.filter(c =>
-    !searchCustomers || c.name?.includes(searchCustomers) || c.phone?.includes(searchCustomers)
-  ), [customers, searchCustomers])
+  const filteredCustomers = useMemo(() => customers, [customers])
 
-  const filteredSuppliers = useMemo(() => suppliers.filter(s =>
-    !searchSuppliers || s.name?.includes(searchSuppliers) || s.phone?.includes(searchSuppliers)
-  ), [suppliers, searchSuppliers])
+  const filteredSuppliers = useMemo(() => suppliers, [suppliers])
 
   const filteredTreasury = useMemo(() => treasuryTxns.filter(t => {
     if (searchTreasury.q && !(t.createdBy || '').includes(searchTreasury.q) && !(t.personName || '').includes(searchTreasury.q) && !(t.note || '').includes(searchTreasury.q)) return false
@@ -257,7 +369,7 @@ export default function ReportsPage() {
             background: 'var(--bg3)', color: 'var(--text)', padding: '8px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
             display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', border: 'none'
           }}>
-            ← رجوع
+            <BackIcon size={16} /> رجوع
           </button>
         )}
         <h1 style={{ fontSize: '20px' }}>
@@ -310,20 +422,20 @@ export default function ReportsPage() {
           {/* Summary cards - grouped */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-              <SummaryCard label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} large />
-              <SummaryCard label="إجمالي المبيعات" value={formatMoney(totalSales)} color="var(--success)" />
-              <SummaryCard label="عدد الفواتير" value={totalInvoiceCount} color="var(--accent)" />
-              <SummaryCard label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="var(--danger)" />
-              <SummaryCard label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="var(--warning)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="إجمالي المبيعات" value={formatMoney(totalSales)} color="var(--success)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>} label="عدد الفواتير" value={totalInvoiceCount} color="var(--accent)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="var(--danger)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="var(--warning)" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-              <SummaryCard label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="var(--warning)" />
-              <SummaryCard label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="var(--warning)" />
-              <SummaryCard label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="var(--secondary)" />
-              <SummaryCard label="عدد المنتجات" value={summary?.totalProducts || 0} color="var(--secondary)" />
-              <SummaryCard label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="var(--special)" />
-              <SummaryCard label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="var(--teal)" />
-              <SummaryCard label="رصيد البنك" value={formatMoney(bankBalance)} color="var(--accent)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>} label="إجمالي مرتجعات البيع" value={formatMoney(totalReturns)} color="var(--warning)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><line x1="23" y1="20" x2="17" y2="20"/></svg>} label="إجمالي مرتجعات الشراء" value={formatMoney(totalPurchaseReturns)} color="var(--warning)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>} label="إجمالي تكلفة المخزون" value={formatMoney(summary?.totalInventoryValue || 0)} color="var(--secondary)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>} label="عدد المنتجات" value={summary?.totalProducts || 0} color="var(--secondary)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>} label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="var(--special)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>} label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="var(--teal)" />
+              <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/></svg>} label="رصيد البنك" value={formatMoney(bankBalance)} color="var(--accent)" />
             </div>
           </div>
 
@@ -361,9 +473,9 @@ export default function ReportsPage() {
       {selectedReport === 'sales' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي المبيعات" value={formatMoney(filteredSales.reduce((s, x) => s + x.total, 0))} color="var(--success)" />
-            <SummaryCard label="عدد الفواتير" value={filteredSales.length} color="var(--accent)" />
-            <SummaryCard label="إجمالي الضرائب" value={formatMoney(filteredSales.reduce((s, x) => s + (x.tax || 0), 0))} color="var(--secondary)" />
+            <SummaryCard icon={<PaymentIcon size={22} />} label="إجمالي المبيعات" value={formatMoney(filteredSales.reduce((s, x) => s + x.total, 0))} color="var(--success)" />
+            <SummaryCard icon={<HistoryIcon size={22} />} label="عدد الفواتير" value={filteredSales.length} color="var(--accent)" />
+            <SummaryCard icon={<DiscountIcon size={22} />} label="إجمالي الضرائب" value={formatMoney(filteredSales.reduce((s, x) => s + (x.tax || 0), 0))} color="var(--secondary)" />
           </div>
           <div style={{ marginBottom: '12px' }}>
             <PeriodPresets current={salesPeriod} onChange={setSalesPeriod}
@@ -427,8 +539,8 @@ export default function ReportsPage() {
       {selectedReport === 'expenses' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي المصروفات" value={formatMoney(filteredExpenses.reduce((s, x) => s + x.amount, 0))} color="var(--danger)" />
-            <SummaryCard label="عدد المصروفات" value={filteredExpenses.length} color="var(--accent)" />
+            <SummaryCard icon={<WithdrawIcon size={22} />} label="إجمالي المصروفات" value={formatMoney(filteredExpenses.reduce((s, x) => s + x.amount, 0))} color="var(--danger)" />
+            <SummaryCard icon={<HistoryIcon size={22} />} label="عدد المصروفات" value={filteredExpenses.length} color="var(--accent)" />
           </div>
           <div style={{ marginBottom: '12px' }}>
             <PeriodPresets current={expensesPeriod} onChange={setExpensesPeriod}
@@ -479,8 +591,8 @@ export default function ReportsPage() {
       {selectedReport === 'withdrawals' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي المسحوبات" value={formatMoney(filteredWithdrawals.reduce((s, x) => s + Math.abs(x.amount), 0))} color="var(--warning)" />
-            <SummaryCard label="عدد المسحوبات" value={filteredWithdrawals.length} color="var(--accent)" />
+            <SummaryCard icon={<WithdrawIcon size={22} />} label="إجمالي المسحوبات" value={formatMoney(filteredWithdrawals.reduce((s, x) => s + Math.abs(x.amount), 0))} color="var(--warning)" />
+            <SummaryCard icon={<HistoryIcon size={22} />} label="عدد المسحوبات" value={filteredWithdrawals.length} color="var(--accent)" />
           </div>
           <div style={{ marginBottom: '12px' }}>
             <PeriodPresets current={withdrawalsPeriod} onChange={setWithdrawalsPeriod}
@@ -516,10 +628,10 @@ export default function ReportsPage() {
       {selectedReport === 'customers' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي العملاء" value={filteredCustomers.length} color="var(--special)" />
-            <SummaryCard label="إجمالي الديون" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0) - (c.totalPaid || 0), 0))} color="var(--danger)" />
-            <SummaryCard label="إجمالي المشتريات" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0), 0))} color="var(--accent)" />
-            <SummaryCard label="إجمالي المدفوع" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalPaid || 0), 0))} color="var(--success)" />
+            <SummaryCard icon={<ViewIcon size={22} />} label="إجمالي العملاء" value={filteredCustomers.length} color="var(--special)" />
+            <SummaryCard icon={<PaymentIcon size={22} />} label="إجمالي الديون" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0) - (c.totalPaid || 0), 0))} color="var(--danger)" />
+            <SummaryCard icon={<MoneyIcon size={22} />} label="إجمالي المشتريات" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalDebt || 0), 0))} color="var(--accent)" />
+            <SummaryCard icon={<CheckIcon size={22} />} label="إجمالي المدفوع" value={formatMoney(filteredCustomers.reduce((s, c) => s + (c.totalPaid || 0), 0))} color="var(--success)" />
           </div>
           {/* Debt grouping */}
           {(() => {
@@ -533,15 +645,7 @@ export default function ReportsPage() {
                   transition: 'outline 0.2s'
                 }} onClick={() => setCustomerFilter(customerFilter === 'debtors' ? 'all' : 'debtors')}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '8px' }}>عليهم ديون ({debtors.length})</div>
-                  {debtors.slice(0, 5).map(c => {
-                    const rem = (c.totalDebt || 0) - (c.totalPaid || 0)
-                    return (
-                      <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
-                        <span>{c.name}</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{formatMoney(rem)}</span>
-                      </div>
-                    )
-                  })}
-                  {debtors.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--danger)', textAlign: 'center' }}>{debtors.length}</div>
                 </div>
                 <div className="card" style={{
                   padding: '12px', cursor: 'pointer',
@@ -549,12 +653,7 @@ export default function ReportsPage() {
                   transition: 'outline 0.2s'
                 }} onClick={() => setCustomerFilter(customerFilter === 'clean' ? 'all' : 'clean')}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--success)', marginBottom: '8px' }}>بدون ديون ({clean.length})</div>
-                  {clean.slice(0, 5).map(c => (
-                    <div key={c._id} style={{ fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
-                      {c.name}
-                    </div>
-                  ))}
-                  {clean.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)', textAlign: 'center' }}>{clean.length}</div>
                 </div>
               </div>
             )
@@ -567,11 +666,6 @@ export default function ReportsPage() {
               <button type="button" onClick={() => setCustomerFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
             </div>
           )}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <input placeholder="بحث باسم العميل أو رقم الهاتف..." value={searchCustomers}
-              onInput={e => setSearchCustomers(e.target.value)}
-              style={{ flex: 1, minWidth: '150px' }} />
-          </div>
           <div className="table-card">
             <table>
               <thead><tr><th>العميل</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
@@ -602,9 +696,9 @@ export default function ReportsPage() {
       {selectedReport === 'suppliers' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي الموردين" value={filteredSuppliers.length} color="var(--special)" />
-            <SummaryCard label="إجمالي المشتريات" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + (sp.totalPurchases || 0), 0))} color="var(--accent)" />
-            <SummaryCard label="إجمالي الديون" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + Math.max(0, (sp.totalPurchases || 0) - (sp.totalPaid || 0)), 0))} color="var(--danger)" />
+            <SummaryCard icon={<ViewIcon size={22} />} label="إجمالي الموردين" value={filteredSuppliers.length} color="var(--special)" />
+            <SummaryCard icon={<PaymentIcon size={22} />} label="إجمالي المشتريات" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + (sp.totalPurchases || 0), 0))} color="var(--accent)" />
+            <SummaryCard icon={<MoneyIcon size={22} />} label="إجمالي الديون" value={formatMoney(filteredSuppliers.reduce((s, sp) => s + Math.max(0, (sp.totalPurchases || 0) - (sp.totalPaid || 0)), 0))} color="var(--danger)" />
           </div>
           {/* Debt grouping */}
           {(() => {
@@ -618,15 +712,7 @@ export default function ReportsPage() {
                   transition: 'outline 0.2s'
                 }} onClick={() => setSupplierFilter(supplierFilter === 'debtors' ? 'all' : 'debtors')}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '8px' }}>موردين مدين لهم ({debtors.length})</div>
-                  {debtors.slice(0, 5).map(s => {
-                    const rem = (s.totalPurchases || 0) - (s.totalPaid || 0)
-                    return (
-                      <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
-                        <span>{s.name}</span><span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>{formatMoney(rem)}</span>
-                      </div>
-                    )
-                  })}
-                  {debtors.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--danger)', textAlign: 'center' }}>{debtors.length}</div>
                 </div>
                 <div className="card" style={{
                   padding: '12px', cursor: 'pointer',
@@ -634,12 +720,7 @@ export default function ReportsPage() {
                   transition: 'outline 0.2s'
                 }} onClick={() => setSupplierFilter(supplierFilter === 'clean' ? 'all' : 'clean')}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--success)', marginBottom: '8px' }}>مسدد ({clean.length})</div>
-                  {clean.slice(0, 5).map(s => (
-                    <div key={s._id} style={{ fontSize: '12px', padding: '3px 0', borderBottom: '1px solid var(--bg3)' }}>
-                      {s.name}
-                    </div>
-                  ))}
-                  {clean.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text2)' }}>لا يوجد</div>}
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)', textAlign: 'center' }}>{clean.length}</div>
                 </div>
               </div>
             )
@@ -652,11 +733,6 @@ export default function ReportsPage() {
               <button type="button" onClick={() => setSupplierFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
             </div>
           )}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <input placeholder="بحث باسم المورد..." value={searchSuppliers}
-              onInput={e => setSearchSuppliers(e.target.value)}
-              style={{ flex: 1, minWidth: '150px' }} />
-          </div>
           <div className="table-card">
             <table>
               <thead><tr><th>المورد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
@@ -686,27 +762,51 @@ export default function ReportsPage() {
 
       {selectedReport === 'returns' && (
         <div>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="إجمالي المرتجعات" value={formatMoney(filteredReturns.reduce((s, x) => s + (x.returnAmount || x.total || 0), 0))} color="var(--warning)" />
-            <SummaryCard label="عدد المرتجعات" value={filteredReturns.length} color="var(--accent)" />
-          </div>
+          {(() => {
+            const saleTotal = filteredReturns.reduce((s, x) => s + (x.subtotal || 0), 0)
+            const purchaseTotal = filteredPurchaseReturns.reduce((s, x) => s + (x.subtotal || 0), 0)
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: returnFilter === 'sale' ? '2px solid var(--success)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setReturnFilter(returnFilter === 'sale' ? 'all' : 'sale')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--success)', marginBottom: '8px' }}>مرتجعات البيع ({filteredReturns.length})</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--success)', textAlign: 'center' }}>{formatMoney(saleTotal)}</div>
+                </div>
+                <div className="card" style={{
+                  padding: '12px', cursor: 'pointer',
+                  outline: returnFilter === 'purchase' ? '2px solid var(--danger)' : 'none',
+                  transition: 'outline 0.2s'
+                }} onClick={() => setReturnFilter(returnFilter === 'purchase' ? 'all' : 'purchase')}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '8px' }}>مرتجعات الشراء ({filteredPurchaseReturns.length})</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--danger)', textAlign: 'center' }}>{formatMoney(purchaseTotal)}</div>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ marginBottom: '12px' }}>
             <PeriodPresets current={returnsPeriod} onChange={setReturnsPeriod}
               dateFrom={searchReturns.dateFrom} dateTo={searchReturns.dateTo}
               onDateFrom={v => setSearchReturns(s => ({ ...s, dateFrom: v }))}
               onDateTo={v => setSearchReturns(s => ({ ...s, dateTo: v }))} />
           </div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <input placeholder="بحث برقم الفاتورة أو اسم المنتج..." value={searchReturns.q}
-              onInput={e => setSearchReturns(s => ({ ...s, q: e.target.value }))}
-              style={{ flex: 1, minWidth: '150px' }} />
-          </div>
+          {returnFilter !== 'all' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: returnFilter === 'sale' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: returnFilter === 'sale' ? 'var(--success)' : 'var(--danger)', fontWeight: 'bold' }}>
+                {returnFilter === 'sale' ? 'مرتجعات البيع' : 'مرتجعات الشراء'}
+              </span>
+              <button type="button" onClick={() => setReturnFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>إزالة الفلتر</button>
+            </div>
+          )}
           <div className="table-card">
             <table>
-              <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>نوع الإرجاع</th></tr></thead>
+              <thead><tr><th>النوع</th><th>الفاتورة</th><th>التاريخ</th><th>{returnFilter === 'purchase' ? 'المورد' : 'العميل'}</th><th>المبلغ</th><th>{returnFilter === 'purchase' ? 'طريقة الدفع' : 'نوع الإرجاع'}</th></tr></thead>
               <tbody>
-                {filteredReturns.map(r => (
+                {(returnFilter === 'all' || returnFilter === 'sale') && filteredReturns.map(r => (
                   <tr key={r._id}>
+                    <td><span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600', background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>بيع</span></td>
                     <td style={{ color: 'var(--accent)' }}>#{r.invoiceNo}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(r.createdAt)}</td>
                     <td>{r.customerName || '-'}</td>
@@ -714,7 +814,21 @@ export default function ReportsPage() {
                     <td>{r.isFullReturn ? 'كامل' : 'جزئي'}</td>
                   </tr>
                 ))}
-                {filteredReturns.length === 0 && <tr><td colSpan="5" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مرتجعات</td></tr>}
+                {(returnFilter === 'all' || returnFilter === 'purchase') && filteredPurchaseReturns.map(r => (
+                  <tr key={r._id}>
+                    <td><span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600', background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>شراء</span></td>
+                    <td style={{ color: 'var(--accent)' }}>#{r.invoiceNo}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(r.createdAt)}</td>
+                    <td>{r.supplierName || '-'}</td>
+                    <td>{formatMoney(r.subtotal)}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{r.paymentMethod === 'card' ? 'بطاقة' : r.paymentMethod === 'credit' ? 'آجل' : 'نقداً'}</td>
+                  </tr>
+                ))}
+                {((returnFilter === 'all' && filteredReturns.length === 0 && filteredPurchaseReturns.length === 0) ||
+                  (returnFilter === 'sale' && filteredReturns.length === 0) ||
+                  (returnFilter === 'purchase' && filteredPurchaseReturns.length === 0)) && (
+                  <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد مرتجعات</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -724,9 +838,9 @@ export default function ReportsPage() {
       {selectedReport === 'inventory' && (
         <div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            <SummaryCard label="قيمة المخزون" value={formatMoney(batchTotalValue)} color="var(--accent)" />
-            <SummaryCard label="عدد الأصناف" value={batchData.length} color="var(--secondary)" />
-            <SummaryCard label="إجمالي الكميات" value={batchData.reduce((s, p) => s + (p.stock || p.batches?.reduce((ss, b) => ss + (b.quantity || 0), 0) || 0), 0)} color="var(--success)" />
+            <SummaryCard icon={<BarcodeIcon size={22} />} label="قيمة المخزون" value={formatMoney(batchTotalValue)} color="var(--accent)" />
+            <SummaryCard icon={<ViewIcon size={22} />} label="عدد الأصناف" value={batchData.length} color="var(--secondary)" />
+            <SummaryCard icon={<MoneyIcon size={22} />} label="إجمالي الكميات" value={batchData.reduce((s, p) => s + (p.stock || p.batches?.reduce((ss, b) => ss + (b.quantity || 0), 0) || 0), 0)} color="var(--success)" />
           </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input placeholder="بحث باسم المنتج أو SKU أو الباركود..." value={batchSearch}
@@ -790,9 +904,9 @@ export default function ReportsPage() {
             const displayTreasury = treasuryFilter ? filteredTreasury.filter(x => x.treasuryName === treasuryFilter) : filteredTreasury
             return (
               <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <SummaryCard label="إجمالي الحركات" value={displayTreasury.length} color="var(--accent)" />
-                <SummaryCard label="إجمالي الوارد" value={formatMoney(displayTreasury.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0))} color="var(--success)" />
-                <SummaryCard label="إجمالي المنصرف" value={formatMoney(displayTreasury.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0))} color="var(--danger)" />
+                <SummaryCard icon={<HistoryIcon size={22} />} label="إجمالي الحركات" value={displayTreasury.length} color="var(--accent)" />
+                <SummaryCard icon={<PaymentIcon size={22} />} label="إجمالي الوارد" value={formatMoney(displayTreasury.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0))} color="var(--success)" />
+                <SummaryCard icon={<WithdrawIcon size={22} />} label="إجمالي المنصرف" value={formatMoney(displayTreasury.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0))} color="var(--danger)" />
               </div>
             )
           })()}
@@ -840,12 +954,12 @@ export default function ReportsPage() {
                     <td>
                       <span style={{
                         fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
-                        background: t.type === 'deposit' || t.type === 'transfer_in' ? 'rgba(34,197,94,0.15)' :
-                          t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: t.type === 'deposit' || t.type === 'transfer_in' ? 'var(--success)' :
-                          t.type === 'personal_withdraw' ? 'var(--warning)' : 'var(--danger)'
+                        background: t.type === 'personal_withdraw' ? 'rgba(234,179,8,0.15)' :
+                          t.amount > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                        color: t.type === 'personal_withdraw' ? 'var(--warning)' :
+                          t.amount > 0 ? 'var(--success)' : 'var(--danger)'
                       }}>
-                        {t.type === 'deposit' ? 'إيداع' : t.type === 'withdraw' ? 'سحب' : t.type === 'personal_withdraw' ? 'سحب شخصي' : t.type === 'transfer_in' ? 'تحويل وارد' : t.type === 'transfer_out' ? 'تحويل صادر' : t.type}
+                        {({deposit:'إيداع',expense:'مصروف',personal_withdraw:'سحب شخصي',operational_withdraw:'سحب تشغيلي',sale:'مبيعات',settlement:'تسوية',customerPayment:'تسديد عميل',supplierPayment:'تسديد مورد',purchase:'مشتريات',purchaseReturn:'مرتجع مشتريات',return:'مرتجع بيع',advance:'سلفة',salary:'راتب',transfer_in:'تحويل وارد',transfer_out:'تحويل صادر'})[t.type] || t.type}
                       </span>
                     </td>
                     <td style={{ fontWeight: 'bold', color: t.amount > 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(t.amount)}</td>
@@ -875,17 +989,17 @@ export default function ReportsPage() {
             return (
               <>
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-                  <SummaryCard label="إجمالي الموظفين" value={employees.length} color="#8B5CF6" />
-                  <SummaryCard label="إجمالي الرواتب" value={formatMoney(totalSalaries)} color="var(--accent)" />
-                  <SummaryCard label="إجمالي السلف" value={formatMoney(totalAdvances)} color="var(--warning)" />
-                  <SummaryCard label="إجمالي الخصومات" value={formatMoney(totalDeductions)} color="var(--danger)" />
-                  <SummaryCard label="السلف المعلقة" value={formatMoney(totalPending)} color="var(--danger)" />
-                  <SummaryCard label="إجمالي الإضافات" value={formatMoney(totalAdditions)} color="var(--success)" />
+                  <SummaryCard icon={<ViewIcon size={22} />} label="إجمالي الموظفين" value={employees.length} color="#8B5CF6" />
+                  <SummaryCard icon={<SalaryIcon size={22} />} label="إجمالي الرواتب" value={formatMoney(totalSalaries)} color="var(--accent)" />
+                  <SummaryCard icon={<AdvanceIcon size={22} />} label="إجمالي السلف" value={formatMoney(totalAdvances)} color="var(--warning)" />
+                  <SummaryCard icon={<DiscountIcon size={22} />} label="إجمالي الخصومات" value={formatMoney(totalDeductions)} color="var(--danger)" />
+                  <SummaryCard icon={<HistoryIcon size={22} />} label="السلف المعلقة" value={formatMoney(totalPending)} color="var(--danger)" />
+                  <SummaryCard icon={<AddIcon size={22} />} label="إجمالي الإضافات" value={formatMoney(totalAdditions)} color="var(--success)" />
                 </div>
                 {employees.length > 0 && (
                   <div className="card" style={{ padding: '12px', marginBottom: '14px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text2)', marginBottom: '8px' }}>الموظفون ورواتبهم</div>
-                    {employees.slice(0, 10).map(e => {
+                    {(employeeFilter ? employees.filter(e => e.name?.includes(employeeFilter)) : employees).slice(0, 10).map(e => {
                       const empAdvances = employeeAdvances.filter(a => a.employeeId === e._id && a.type !== 'deduction')
                       const empPending = empAdvances.filter(a => !a.deducted)
                       const empTotal = empAdvances.reduce((s, a) => s + a.amount, 0)
@@ -904,25 +1018,30 @@ export default function ReportsPage() {
                     {employees.length > 10 && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px' }}>و {employees.length - 10} موظفين آخرين</div>}
                   </div>
                 )}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <input placeholder="بحث باسم الموظف..." value={employeeFilter}
+                    onInput={e => setEmployeeFilter(e.target.value)}
+                    style={{ flex: 1, minWidth: '150px' }} />
+                  {employeeFilter && <button onClick={() => setEmployeeFilter('')} style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: '600', background: 'var(--bg3)', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>إزالة التصفية</button>}
+                </div>
                 {employeeAdvances.length > 0 && (
                   <div className="table-card">
-                    {employeeFilter && <div style={{ fontSize: '11px', color: 'var(--text2)', padding: '6px 10px', background: 'var(--accent-container)', borderRadius: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>التصفية: <strong>{employeeFilter}</strong> <button onClick={() => setEmployeeFilter('')} style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>إزالة التصفية</button></div>}
                     <table>
                       <thead><tr><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th>البيان</th></tr></thead>
                       <tbody>
-                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).slice(0, 50).map(a => (
+                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : employeeAdvances).slice(0, 50).map(a => (
                           <tr key={a._id}>
                             <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(a.date || a.createdAt)}</td>
                             <td style={{ fontWeight: 'bold' }}>{a.employeeName}</td>
                             <td>
                               <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
-                                background: a.type === 'deduction' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
-                                color: a.type === 'deduction' ? 'var(--success)' : 'var(--warning)'
+                                background: a.type === 'deduction' ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)',
+                                color: a.type === 'deduction' ? 'var(--danger)' : 'var(--warning)'
                               }}>
                                 {a.type === 'deduction' ? 'خصم' : 'سلفة'}
                               </span>
                             </td>
-                            <td style={{ fontWeight: 'bold', color: a.type === 'deduction' ? 'var(--success)' : 'var(--warning)' }}>{formatMoney(a.amount)}</td>
+                            <td style={{ fontWeight: 'bold', color: a.type === 'deduction' ? 'var(--danger)' : 'var(--warning)' }}>{formatMoney(a.amount)}</td>
                             <td>
                               <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600',
                                 background: a.deducted ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
@@ -934,7 +1053,7 @@ export default function ReportsPage() {
                             <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{a.note || '-'}</td>
                           </tr>
                         ))}
-                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length > 50 && <tr><td colSpan="6" style={{ padding: '8px', color: 'var(--text2)', textAlign: 'center', fontSize: '11px' }}>و {((employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length - 50)} حركة أخرى</td></tr>}
+                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : employeeAdvances).length > 50 && <tr><td colSpan="6" style={{ padding: '8px', color: 'var(--text2)', textAlign: 'center', fontSize: '11px' }}>و {((employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length - 50)} حركة أخرى</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -945,15 +1064,89 @@ export default function ReportsPage() {
           })()}
         </div>
       )}
+
+      {selectedReport === 'shifts' && (
+        <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <SummaryCard icon={<ShiftIcon size={22} />} label="إجمالي الورديات" value={shiftsTotal} color="#6366F1" />
+            <SummaryCard icon={<MoneyIcon size={22} />} label="إجمالي المبيعات" value={formatMoney(allShiftsData.reduce((s, e) => s + (e.totalSales || 0), 0))} color="var(--success)" />
+            <SummaryCard icon={<PaymentIcon size={22} />} label="إجمالي الكاش" value={formatMoney(allShiftsData.reduce((s, e) => s + (e.cashTotal || 0), 0))} color="var(--accent)" />
+            <SummaryCard icon={<MoneyIcon size={22} />} label="إجمالي البطاقة" value={formatMoney(allShiftsData.reduce((s, e) => s + (e.cardTotal || 0), 0))} color="var(--special)" />
+            <SummaryCard icon={<WithdrawIcon size={22} />} label="إجمالي السحوبات" value={formatMoney(allShiftsData.reduce((s, e) => s + (e.withdrawalsTotal || 0) + (e.cardWithdrawalsTotal || 0), 0))} color="var(--warning)" />
+            <SummaryCard icon={<CheckIcon size={22} />} label="إجمالي الفواتير" value={allShiftsData.reduce((s, e) => s + (e.invoiceCount || 0), 0)} color="var(--secondary)" />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <input placeholder="بحث بالكاشير..." value={shiftsFilter.q}
+              onInput={e => setShiftsFilter(f => ({ ...f, q: e.target.value }))}
+              style={{ flex: 1, minWidth: '150px' }} />
+            <input type="date" value={shiftsFilter.dateFrom} onInput={e => setShiftsFilter(f => ({ ...f, dateFrom: e.target.value }))} style={{ width: '150px' }} />
+            <input type="date" value={shiftsFilter.dateTo} onInput={e => setShiftsFilter(f => ({ ...f, dateTo: e.target.value }))} style={{ width: '150px' }} />
+            {shiftsFilter.q && <button onClick={() => setShiftsFilter(f => ({ ...f, q: '' }))} style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: '600', background: 'var(--bg3)', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>إزالة التصفية</button>}
+          </div>
+          <div className="table-card">
+            <table>
+              <thead><tr><th>التاريخ</th><th>الكاشير</th><th>البداية</th><th>النهاية</th><th>المبيعات</th><th>الكاش</th><th>البطاقة</th><th>السحوبات</th><th>الفواتير</th><th></th></tr></thead>
+              <tbody>
+                {shiftsData.map(s => (
+                  <tr key={s._id}>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(s.startedAt)}</td>
+                    <td style={{ fontWeight: 'bold' }}>{s.cashierName}</td>
+                    <td style={{ fontSize: '12px' }}>{s.startedAt ? new Date(s.startedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td style={{ fontSize: '12px' }}>{s.endedAt ? new Date(s.endedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : 'نشطة'}</td>
+                    <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>{formatMoney(s.totalSales || 0)}</td>
+                    <td style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{formatMoney(s.cashTotal || 0)}</td>
+                    <td style={{ color: 'var(--special)', fontWeight: 'bold' }}>{formatMoney(s.cardTotal || 0)}</td>
+                    <td style={{ color: 'var(--warning)', fontWeight: 'bold' }}>{formatMoney((s.withdrawalsTotal || 0) + (s.cardWithdrawalsTotal || 0))}</td>
+                    <td>{s.invoiceCount || 0}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {s.endedAt && (
+                        <>
+                          <button onClick={() => handlePrintShiftReport(s)} style={iconBtn('accent')} title="طباعة A4"><PrintIcon size={14} /></button>
+                          <button onClick={() => handlePrintShiftReportThermal(s)} style={iconBtn('success')} title="طباعة حرارية (58/80mm)"><PrintIcon size={14} /></button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {shiftsData.length === 0 && <tr><td colSpan="10" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد ورديات</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={shiftsPage} totalPages={Math.ceil(shiftsTotal / 20)} total={shiftsTotal} pageSize={20} onChange={setShiftsPage} />
+        </div>
+      )}
     </div>
   )
 }
 
-function SummaryCard({ label, value, color, large }) {
+function OverviewCard({ icon, label, value, color }) {
   return (
-    <div style={{ background: 'var(--bg2)', padding: large ? '18px' : '14px', borderRadius: '10px', borderRight: `3px solid ${color}`, gridColumn: large ? 'span 2' : undefined }}>
-      <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>{label}</div>
-      <div style={{ fontSize: large ? '24px' : '18px', fontWeight: 'bold', color }}>{value}</div>
+    <div style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '14px', border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '2px' }}>{label}</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text)' }}>{value}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SummaryCard({ icon, label, value, color }) {
+  return (
+    <div style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '14px', border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '2px' }}>{label}</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text)' }}>{value}</div>
+        </div>
+      </div>
     </div>
   )
 }

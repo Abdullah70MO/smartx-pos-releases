@@ -205,6 +205,24 @@ export default function LoginPage() {
     }
   }
 
+  async function handleVerifyAnswer() {
+    setForgotMsg('')
+    if (!securityAnswer.trim()) {
+      setForgotMsg('يرجى إدخال الإجابة')
+      return
+    }
+    try {
+      const valid = await api.verifySecurityAnswer(forgotUsername, securityAnswer)
+      if (!valid) {
+        setForgotMsg('الإجابة غير صحيحة')
+        return
+      }
+      setForgotStep(3)
+    } catch (err) {
+      setForgotMsg((err && err.message) || String(err || ''))
+    }
+  }
+
   async function handleResetPassword() {
     setForgotMsg('')
     if (newPassword.length < 4) {
@@ -353,7 +371,7 @@ export default function LoginPage() {
                 </div>
               )}
               {forgotMsg && !forgotMsg.includes('\u2705') && <div style={S.errorBox}>{forgotMsg}</div>}
-              <button onClick={() => setForgotStep(3)} style={S.btnPrimary}>&#x2190; التالي</button>
+              <button onClick={handleVerifyAnswer} style={S.btnPrimary}>&#x2190; التالي</button>
             </>
           )}
 

@@ -76,7 +76,7 @@ export default function EmployeeReportsPage() {
                 <select value={month} onChange={e => { setMonth(Number(e.target.value)); loadReport(selectedEmp._id) }} style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '6px' }}>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <input type="number" value={year} onInput={e => { setYear(Number(e.target.value)); loadReport(selectedEmp._id) }} style={{ width: '80px' }} />
+                <input type="number" step="any" value={year} onInput={e => { setYear(Number(e.target.value)); loadReport(selectedEmp._id) }} style={{ width: '80px' }} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>

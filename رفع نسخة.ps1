@@ -45,14 +45,6 @@ if (-not $check) {
   Write-Host "Source files restored from git" -ForegroundColor Green
 }
 
-# Rename exe to use hyphens so it matches latest.yml (GitHub web converts spaces to dots)
-$exeSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
-$exeDst = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART-X-POS-Setup-$n.exe"
-if (Test-Path $exeSrc) {
-  Move-Item $exeSrc $exeDst -Force
-  Write-Host "Renamed exe for upload: SMART-X-POS-Setup-$n.exe" -ForegroundColor Green
-}
-
 # Extract GH_TOKEN from git remote
 $remoteUrl = git remote get-url origin
 $token = ($remoteUrl -split '@')[0] -replace 'https://', ''
@@ -71,11 +63,11 @@ $release = Invoke-RestMethod -Uri "https://api.github.com/repos/Abdullah70MO/sma
 $releaseId = $release.id
 Write-Host "Release created: v$n (ID: $releaseId)" -ForegroundColor Green
 
-# Upload blockmap (exe excluded - user uploads manually)
+# Upload blockmap
 $blockmapSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe.blockmap"
 if (Test-Path $blockmapSrc) {
-  $blockmapName = "SMART-X-POS-Setup-$n.exe.blockmap"
-  $uploadUrl = "https://uploads.github.com/repos/Abdullah70MO/smartx-pos-releases/releases/$releaseId/assets?name=$blockmapName"
+  $blockmapName = "SMART X POS Setup $n.exe.blockmap"
+  $uploadUrl = "https://uploads.github.com/repos/Abdullah70MO/smartx-pos-releases/releases/$releaseId/assets?name=$([System.Uri]::EscapeDataString($blockmapName))"
   $bytes = [System.IO.File]::ReadAllBytes($blockmapSrc)
   Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $headers -ContentType "application/octet-stream" -Body $bytes | Out-Null
   Write-Host "  Uploaded: $blockmapName" -ForegroundColor Green
@@ -106,7 +98,7 @@ if ($?) { git push public master }
 # Done
 Write-Host ("=" * 50) -ForegroundColor Green
 Write-Host "  DONE: v$n" -ForegroundColor Green
-$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART-X-POS-Setup-$n.exe"
+$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
 Write-Host "  Build: $exePath" -ForegroundColor Cyan
 Write-Host "  Release: https://github.com/Abdullah70MO/smartx-pos-releases/releases/tag/v$n" -ForegroundColor Cyan
 Write-Host "  " -NoNewline

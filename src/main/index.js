@@ -91,14 +91,59 @@ function registerIpc() {
   handle('print:a4', async ({ token, html, silent, deviceName, pageSize }) => {
     if (!html) return
     requireUser(token, 'sales.view')
-    const printWin = new BrowserWindow({ show: false, width: 800, height: 600, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false } })
-    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-    const opts = { silent: !!silent }
+    const printWin = new BrowserWindow({
+      show: false,
+      width: 1200,
+      height: 900,
+      webPreferences: {
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        offscreen: true
+      }
+    })
+    const opts = { silent: !!silent, margins: { marginType: 'default' } }
     if (deviceName) opts.deviceName = deviceName
-    if (pageSize) opts.pageSize = pageSize
-    setTimeout(() => {
-      printWin.webContents.print(opts, () => printWin.destroy())
-    }, 300)
+    if (pageSize && typeof pageSize === 'string' && pageSize.includes('mm')) {
+      const [w, h] = pageSize.split(' ').map(s => s.replace('mm', ''))
+      if (w && h) opts.pageSize = { width: parseInt(w) * 1000, height: parseInt(h) * 1000 }
+    } else if (pageSize && typeof pageSize === 'string') {
+      opts.pageSize = pageSize
+    }
+    return new Promise((resolve, reject) => {
+      let destroyed = false
+      printWin.webContents.on('did-finish-load', () => {
+        if (destroyed) return
+        printWin.webContents.on('did-finish-print', () => {
+          if (destroyed) return
+          destroyed = true
+          resolve()
+          setTimeout(() => { try { printWin.destroy() } catch {} }, 500)
+        })
+        printWin.webContents.print(opts, (success, reason) => {
+          if (!success) {
+            if (destroyed) return
+            reject(new Error(reason || 'فشلت الطباعة'))
+            setTimeout(() => {
+              destroyed = true
+              try { printWin.destroy() } catch {}
+            }, 500)
+          }
+        })
+      })
+      printWin.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
+        if (destroyed) return
+        destroyed = true
+        reject(new Error(errorDescription || 'فشل تحميل صفحة الطباعة'))
+        try { printWin.destroy() } catch {}
+      })
+      printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(err => {
+        if (destroyed) return
+        destroyed = true
+        reject(err)
+        try { printWin.destroy() } catch {}
+      })
+    })
   })
   handle('printers:list', async () => {
     const wins = BrowserWindow.getAllWindows()
@@ -109,7 +154,7 @@ function registerIpc() {
   })
 
   // Products
-  handle('products:list', async ({ token, query, limit }) => (requireUser(token, ['products.view', 'cashier.access']), listProducts(await openRealm(), query, limit)))
+  handle('products:list', async ({ token, query, limit, page, pageSize }) => (requireUser(token, ['products.view', 'cashier.access']), listProducts(await openRealm(), query, limit, page, pageSize)))
   handle('products:meta', async ({ token }) => (requireUser(token, 'products.view'), listProductMeta(await openRealm())))
   handle('products:save', async ({ token, product }) => {
     const r = await openRealm(); const session = requireUser(token, 'products.manage', r)
@@ -125,7 +170,7 @@ function registerIpc() {
   })
 
   // Sales
-  handle('sales:list', async ({ token, filter }) => (requireUser(token, ['sales.view', 'cashier.access']), listSales(await openRealm(), filter)))
+  handle('sales:list', async ({ token, filter, page, pageSize }) => (requireUser(token, ['sales.view', 'cashier.access']), listSales(await openRealm(), filter, page, pageSize)))
   handle('sales:create', async ({ token, sale }) => {
     const r = await openRealm(); const session = requireUser(token, ['sales.create', 'cashier.access'], r)
     const result = createSale(r, session, sale)
@@ -141,7 +186,7 @@ function registerIpc() {
   handle('sales:paidForSale', async ({ token, saleId }) => (requireUser(token, ['sales.view', 'cashier.access']), getSalePaidAmount(await openRealm(), saleId)))
 
   // Expenses
-  handle('expenses:list', async ({ token }) => (requireUser(token, 'expenses.view'), listExpenses(await openRealm())))
+  handle('expenses:list', async ({ token, filter, page, pageSize }) => (requireUser(token, 'expenses.view'), listExpenses(await openRealm(), filter, page, pageSize)))
   handle('expenses:save', async ({ token, expense }) => {
     const r = await openRealm(); const session = requireUser(token, ['expenses.manage', 'cashier.access'], r)
     const result = saveExpense(r, session, expense)
@@ -187,8 +232,8 @@ function registerIpc() {
   handle('notifications:clearAll', async ({ token }) => (requireUser(token, 'dashboard.view'), clearAllNotifications(await openRealm())))
 
   // Returns
-  handle('returns:list', async ({ token, saleId }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturns(await openRealm(), saleId)))
-handle('returns:listByCustomer', async ({ token, customerName }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturnsByCustomer(await openRealm(), customerName)))
+  handle('returns:list', async ({ token, filter, page, pageSize }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturns(await openRealm(), filter, page, pageSize)))
+  handle('returns:listByCustomer', async ({ token, customerName, page, pageSize }) => (requireUser(token, ['returns.view', 'cashier.access']), listReturnsByCustomer(await openRealm(), customerName, page, pageSize)))
   handle('returns:create', async ({ token, ret }) => {
     const r = await openRealm(); const session = requireUser(token, ['returns.create', 'cashier.access'], r)
     const result = createReturn(r, session, ret)
@@ -203,8 +248,8 @@ handle('returns:listByCustomer', async ({ token, customerName }) => (requireUser
   })
 
   // Purchase Returns
-  handle('purchaseReturns:list', async ({ token }) => (requireUser(token, 'returns.view'), listPurchaseReturns(await openRealm())))
-handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (requireUser(token, 'returns.view'), listPurchaseReturnsBySupplier(await openRealm(), supplierName)))
+  handle('purchaseReturns:list', async ({ token, filter, page, pageSize }) => (requireUser(token, 'returns.view'), listPurchaseReturns(await openRealm(), filter, page, pageSize)))
+  handle('purchaseReturns:listBySupplier', async ({ token, supplierName, page, pageSize }) => (requireUser(token, 'returns.view'), listPurchaseReturnsBySupplier(await openRealm(), supplierName, page, pageSize)))
   handle('purchaseReturns:create', async ({ token, ret }) => {
     const r = await openRealm(); const session = requireUser(token, 'returns.create', r)
     const result = createPurchaseReturn(r, session, ret)
@@ -220,15 +265,15 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
     const result = endShift(r, session, endingCashBalance, endingCardBalance)
     return result
   })
-  handle('shifts:list', async ({ token }) => (requireUser(token, ['shifts.view', 'cashier.access']), listShifts(await openRealm())))
+  handle('shifts:list', async ({ token, filter, page, pageSize }) => (requireUser(token, ['shifts.view', 'cashier.access']), listShifts(await openRealm(), filter, page, pageSize)))
   handle('shifts:sales', async ({ token }) => { const session = requireUser(token, ['shifts.view', 'cashier.access']); return getShiftSales(await openRealm(), session.userId) })
 
   // Activity
-  handle('activity:list', async ({ token }) => (requireUser(token, 'activity.view'), listActivity(await openRealm())))
+  handle('activity:list', async ({ token, filter, page, pageSize }) => (requireUser(token, 'activity.view'), listActivity(await openRealm(), filter, page, pageSize)))
   handle('activity:log', async ({ token, action, details }) => { const session = requireUser(token, 'activity.view'); logActivity(await openRealm(), session, { action, details }) })
 
   // Customers
-  handle('customers:list', async ({ token }) => (requireUser(token, ['customers.view', 'cashier.access']), listCustomers(await openRealm())))
+  handle('customers:list', async ({ token, query, page, pageSize }) => (requireUser(token, ['customers.view', 'cashier.access']), listCustomers(await openRealm(), query, page, pageSize)))
   handle('customers:save', async ({ token, customer }) => {
     const r = await openRealm(); const session = requireUser(token, 'customers.manage', r)
     const result = saveCustomer(r, customer)
@@ -243,7 +288,7 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
   })
 
   // Suppliers
-  handle('suppliers:list', async ({ token }) => (requireUser(token, 'suppliers.view'), listSuppliers(await openRealm())))
+  handle('suppliers:list', async ({ token, query, page, pageSize }) => (requireUser(token, 'suppliers.view'), listSuppliers(await openRealm(), query, page, pageSize)))
   handle('suppliers:save', async ({ token, supplier }) => {
     const r = await openRealm(); const session = requireUser(token, 'suppliers.manage', r)
     const result = saveSupplier(r, supplier)
@@ -278,7 +323,7 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
   handle('customerPayments:remove', async ({ token, id }) => (requireUser(token, 'customers.payments'), removeCustomerPayment(await openRealm(), id)))
 
   // Employees
-  handle('employees:list', async ({ token }) => (requireUser(token, 'employees.view'), listEmployees(await openRealm())))
+  handle('employees:list', async ({ token, query, page, pageSize }) => (requireUser(token, 'employees.view'), listEmployees(await openRealm(), query, page, pageSize)))
   handle('employees:get', async ({ token, id }) => (requireUser(token, 'employees.view'), getEmployee(await openRealm(), id)))
   handle('employees:save', async ({ token, employee }) => {
     const r = await openRealm(); const session = requireUser(token, 'employees.manage', r)
@@ -307,7 +352,7 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
   handle('employees:salaryPayments', async ({ token, employeeId }) => (requireUser(token, 'employees.view'), listSalaryPayments(await openRealm(), employeeId)))
 
   // Purchases
-  handle('purchases:list', async ({ token }) => (requireUser(token, 'purchases.view'), listPurchases(await openRealm())))
+  handle('purchases:list', async ({ token, filter, page, pageSize }) => (requireUser(token, 'purchases.view'), listPurchases(await openRealm(), filter, page, pageSize)))
   handle('purchases:create', async ({ token, purchase }) => {
     const r = await openRealm(); const session = requireUser(token, 'purchases.create', r)
     const result = createPurchase(r, session, purchase)
@@ -328,7 +373,7 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
   })
 
   // Inventory Adjustments
-  handle('inventory:adjustments', async ({ token }) => (requireUser(token, 'inventory.view'), listAdjustments(await openRealm())))
+  handle('inventory:adjustments', async ({ token, filter, page, pageSize }) => (requireUser(token, 'inventory.view'), listAdjustments(await openRealm(), filter, page, pageSize)))
   handle('inventory:createAdjustment', async ({ token, adjustment }) => createAdjustment(await openRealm(), requireUser(token, 'inventory.adjust'), adjustment))
   handle('inventory:saveAdjustment', async ({ token, adjustment }) => saveAdjustment(await openRealm(), requireUser(token, 'inventory.adjust'), adjustment))
   handle('inventory:removeAdjustment', async ({ token, id }) => (requireUser(token, 'inventory.adjust'), removeAdjustment(await openRealm(), id)))
@@ -394,12 +439,13 @@ handle('purchaseReturns:listBySupplier', async ({ token, supplierName }) => (req
 function createWindow() {
   const win = new BrowserWindow({
     fullscreen: true,
+    show: false,
     width: 1440, height: 900,
     minWidth: 1024, minHeight: 760,
     title: 'SMART X',
     icon: path.join(__dirname, '..', '..', 'resources', 'icon.ico'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f172a' : '#f8fafc',
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'index.js'),
       sandbox: false,
@@ -413,14 +459,28 @@ function createWindow() {
     return { action: 'deny' }
   })
 
+  win.webContents.on('did-fail-load', (_e, code, desc) => {
+    console.error('Page load failed:', code, desc)
+  })
+
+  win.on('ready-to-show', () => {
+    win.show()
+    console.log('Window shown')
+  })
+
   // Open DevTools in dev mode only
-  if (process.env.ELECTRON_RENDERER_URL) win.webContents.openDevTools()
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.webContents.openDevTools()
+    console.log('Dev mode - loading from:', process.env.ELECTRON_RENDERER_URL)
+  }
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     win.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'))
   }
+
+  console.log('createWindow done')
 }
 
 async function seedDatabase() {
@@ -492,7 +552,7 @@ app.whenReady().then(async () => {
   registerIpc()
   await seedDatabase()
   createWindow()
-  startPeriodicCheck(await openRealm())
+  startPeriodicCheck()
   // Auto check for updates on startup (after 5s delay) - event listener handles the response
   setTimeout(async () => { try { await autoUpdater.checkForUpdates() } catch {} }, 5000)
   app.on('activate', () => {

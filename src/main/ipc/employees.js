@@ -1,8 +1,13 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
+const { paginate } = require('../database')
 
-function listEmployees(realm) {
-  return Array.from(realm.objects('Employee').filtered('active == true').sorted('name')).map(e => ({
+function listEmployees(realm, query, page, pageSize) {
+  let results = realm.objects('Employee').filtered('active == true').sorted('name')
+  if (query) {
+    results = results.filtered('name CONTAINS[c] $0 OR phone CONTAINS[c] $0 OR jobTitle CONTAINS[c] $0', query)
+  }
+  const mapEmployee = e => ({
     _id: e._id, name: e.name, phone: e.phone, email: e.email,
     address: e.address, photo: e.photo, idPhoto: e.idPhoto,
     idNumber: e.idNumber, idExpiryDate: e.idExpiryDate?.toISOString(),
@@ -12,7 +17,12 @@ function listEmployees(realm) {
     emergencyContact: e.emergencyContact, emergencyPhone: e.emergencyPhone,
     notes: e.notes, workHours: e.workHours, active: e.active,
     createdAt: e.createdAt?.toISOString(), updatedAt: e.updatedAt?.toISOString()
-  }))
+  })
+  if (page != null) {
+    const result = paginate(results, page, pageSize || 20)
+    return { ...result, data: result.data.map(mapEmployee) }
+  }
+  return Array.from(results).map(mapEmployee)
 }
 
 function getEmployee(realm, id) {
@@ -107,32 +117,31 @@ function saveAdvance(realm, data, session) {
     })
     if (isAdvance) {
       const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
+      const pm = data.paymentMethod || 'cash'
       if (activeShift) {
-        if (data.paymentMethod === 'card') {
+        if (pm === 'card') {
           const cardAvailable = (activeShift.cardTotal || 0) - (activeShift.cardWithdrawalsTotal || 0)
           if (cardAvailable < amount) throw new Error('الرصيد غير كافٍ في الوردية')
           activeShift.cardWithdrawalsTotal += amount
         } else {
-          const available = (activeShift.startingBalance || 0) + (activeShift.totalSales || 0) - (activeShift.expensesTotal || 0) - (activeShift.withdrawalsTotal || 0)
+          const available = (activeShift.startingBalance || 0) + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - (activeShift.expensesTotal || 0) - (activeShift.withdrawalsTotal || 0)
           if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
           activeShift.withdrawalsTotal += amount
         }
       }
-    } else {
-      const pm = data.paymentMethod || 'cash'
       const treasuryType = pm === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
       if (treasury) {
-        if (treasury.balance < amount) throw new Error('الرصيد غير كافٍ في الخزينة')
+        if (!activeShift && treasury.balance < amount) throw new Error('الرصيد غير كافٍ في الخزينة')
         treasury.balance -= amount
         treasury.updatedAt = new Date()
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
-          type: 'withdraw', amount: -amount,
+          type: 'advance', amount: -amount,
           note: 'سلفة ' + (data.employeeName || 'موظف'),
           refType: 'advance', refId: adv._id,
-          paymentMethod: 'cash',
+          paymentMethod: pm,
           createdBy: session.name || 'system', createdAt: new Date()
         })
       }
@@ -221,7 +230,7 @@ function paySalary(realm, data, session) {
       realm.create('TreasuryTransaction', {
         _id: crypto.randomUUID(),
         treasuryId: treasury._id, treasuryName: treasury.name,
-        type: 'withdraw', amount: -amount,
+        type: 'salary', amount: -amount,
         note: 'راتب ' + data.employeeName + ' - ' + (data.note || ''),
         refType: 'salary', refId: data.employeeId,
         paymentMethod: data.paymentMethod || 'cash',

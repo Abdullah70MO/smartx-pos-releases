@@ -82,6 +82,12 @@ export function StoreProvider({ children }) {
       if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
       if (settings?.theme) localStorage.setItem('theme', settings.theme)
       localStorage.setItem('printDirectly', settings?.printDirectly ? 'true' : 'false')
+      if (settings?.defaultPrinter) localStorage.setItem('defaultPrinter', settings.defaultPrinter)
+      if (settings?.thermalPaperSize) localStorage.setItem('thermalPaperSize', settings.thermalPaperSize)
+      if (settings?.barcodePrinter) localStorage.setItem('barcodePrinter', settings.barcodePrinter)
+      if (settings?.barcodeLabelSize) localStorage.setItem('barcodeLabelSize', settings.barcodeLabelSize)
+      if (settings?.customPaperWidth) localStorage.setItem('customPaperWidth', settings.customPaperWidth)
+      if (settings?.customPaperHeight) localStorage.setItem('customPaperHeight', settings.customPaperHeight)
     } catch (e) {}
     const license = await api.serverCheckLicense()
     const targetPage = (!license?.activated && !license?.trialUsed) || license?.expired ? 'license' : 'dashboard'
@@ -113,6 +119,12 @@ export function StoreProvider({ children }) {
       if (updated?.timeFormat) localStorage.setItem('timeFormat', updated.timeFormat)
       if (updated?.theme) localStorage.setItem('theme', updated.theme)
       localStorage.setItem('printDirectly', updated?.printDirectly ? 'true' : 'false')
+      if (updated?.defaultPrinter) localStorage.setItem('defaultPrinter', updated.defaultPrinter)
+      if (updated?.thermalPaperSize) localStorage.setItem('thermalPaperSize', updated.thermalPaperSize)
+      if (updated?.barcodePrinter) localStorage.setItem('barcodePrinter', updated.barcodePrinter)
+      if (updated?.barcodeLabelSize) localStorage.setItem('barcodeLabelSize', updated.barcodeLabelSize)
+      if (updated?.customPaperWidth) localStorage.setItem('customPaperWidth', updated.customPaperWidth)
+      if (updated?.customPaperHeight) localStorage.setItem('customPaperHeight', updated.customPaperHeight)
     setState(s => ({ ...s, settings: updated }))
     return updated
   }
@@ -148,6 +160,12 @@ export function StoreProvider({ children }) {
                 if (settings?.timeFormat) localStorage.setItem('timeFormat', settings.timeFormat)
                 if (settings?.theme) localStorage.setItem('theme', settings.theme)
                 localStorage.setItem('printDirectly', settings?.printDirectly ? 'true' : 'false')
+                if (settings?.defaultPrinter) localStorage.setItem('defaultPrinter', settings.defaultPrinter)
+                if (settings?.thermalPaperSize) localStorage.setItem('thermalPaperSize', settings.thermalPaperSize)
+                if (settings?.barcodePrinter) localStorage.setItem('barcodePrinter', settings.barcodePrinter)
+                if (settings?.barcodeLabelSize) localStorage.setItem('barcodeLabelSize', settings.barcodeLabelSize)
+                if (settings?.customPaperWidth) localStorage.setItem('customPaperWidth', settings.customPaperWidth)
+                if (settings?.customPaperHeight) localStorage.setItem('customPaperHeight', settings.customPaperHeight)
               } catch (e) {}
               setState(s => ({ ...s, token: savedToken, user: session, settings, license, page: 'dashboard' }))
               return
