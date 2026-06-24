@@ -30,7 +30,7 @@ function listSupplierPayments(realm, supplierId) {
   }))
 }
 
-function createSupplierPayment(realm, user, { supplierId, supplierName, amount, note, paymentMethod }) {
+function createSupplierPayment(realm, user, { supplierId, supplierName, amount, note, paymentMethod, source }) {
   let payment
   realm.write(() => {
     payment = realm.create('SupplierPayment', {
@@ -44,7 +44,20 @@ function createSupplierPayment(realm, user, { supplierId, supplierName, amount, 
       supplier.totalPaid = (supplier.totalPaid || 0) + Number(amount)
       supplier.updatedAt = new Date()
     }
-    updateTreasury(realm, -Number(amount), 'تسديد لمورد - ' + (supplierName || ''), user.name, payment._id, paymentMethod)
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', user.userId)[0]
+    if (activeShift && source === 'shift') {
+      if (paymentMethod === 'card') {
+        const cardAvailable = (activeShift.cardTotal || 0) - (activeShift.cardWithdrawalsTotal || 0)
+        if (cardAvailable < amount) throw new Error('الرصيد غير كافٍ في رصيد البطاقة')
+        activeShift.cardWithdrawalsTotal = (activeShift.cardWithdrawalsTotal || 0) + Number(amount)
+      } else {
+        const available = (activeShift.startingBalance || 0) + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - (activeShift.expensesTotal || 0) - (activeShift.withdrawalsTotal || 0)
+        if (available < amount) throw new Error('الرصيد غير كافٍ في الوردية')
+        activeShift.withdrawalsTotal = (activeShift.withdrawalsTotal || 0) + Number(amount)
+      }
+    } else {
+      updateTreasury(realm, -Number(amount), 'تسديد لمورد - ' + (supplierName || ''), user.name, payment._id, paymentMethod)
+    }
   })
   const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
   if (settings && settings.notificationPayments !== false) {
@@ -68,7 +81,18 @@ function removeSupplierPayment(realm, id) {
         supplier.totalPaid = Math.max(0, (supplier.totalPaid || 0) - payment.amount)
         supplier.updatedAt = new Date()
       }
-      updateTreasury(realm, payment.amount, 'إلغاء تسديد مورد - ' + (payment.supplierName || ''), 'system', payment._id, payment.paymentMethod || 'cash')
+      const activeShift = realm.objects('Shift').filtered('isActive == true').length > 0
+        ? realm.objects('Shift').filtered('isActive == true').sorted('startedAt', true)[0]
+        : null
+      if (activeShift) {
+        if (payment.paymentMethod === 'card') {
+          activeShift.cardWithdrawalsTotal = Math.max(0, (activeShift.cardWithdrawalsTotal || 0) - payment.amount)
+        } else {
+          activeShift.withdrawalsTotal = Math.max(0, (activeShift.withdrawalsTotal || 0) - payment.amount)
+        }
+      } else {
+        updateTreasury(realm, payment.amount, 'إلغاء تسديد مورد - ' + (payment.supplierName || ''), 'system', payment._id, payment.paymentMethod || 'cash')
+      }
       realm.delete(payment)
     }
   })

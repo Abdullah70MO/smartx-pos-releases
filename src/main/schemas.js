@@ -393,6 +393,41 @@ const StockBatchSchema = {
   }
 }
 
+const InventoryItemSchema = {
+  name: 'InventoryItem',
+  embedded: true,
+  properties: {
+    productId:      'string',
+    productName:    'string',
+    unit:           { type: 'string', default: '' },
+    category:       { type: 'string', default: '' },
+    systemQuantity: 'double',
+    actualQuantity: 'double',
+    difference:     'double',
+    cost:           { type: 'double', default: 0 },
+    lossAmount:     { type: 'double', default: 0 },
+    adjustmentId:   { type: 'string', default: '' },
+    expenseId:      { type: 'string', default: '' }
+  }
+}
+
+const InventorySchema = {
+  name: 'Inventory',
+  primaryKey: '_id',
+  properties: {
+    _id:                    'string',
+    type:                   'string',
+    status:                 { type: 'string', default: 'completed' },
+    notes:                  { type: 'string', default: '' },
+    filterCategory:         { type: 'string', default: '' },
+    items:                  { type: 'list', objectType: 'InventoryItem' },
+    totalQuantityDifference:{ type: 'double', default: 0 },
+    totalFinancialLoss:     { type: 'double', default: 0 },
+    createdBy:              'string',
+    createdAt:              'date'
+  }
+}
+
 const InventoryAdjustmentSchema = {
   name: 'InventoryAdjustment',
   primaryKey: '_id',
@@ -543,6 +578,8 @@ const SCHEMAS = [
   UserSchema,
   ProductSchema,
   StockBatchSchema,
+  InventoryItemSchema,
+  InventorySchema,
   SaleItemSchema,
   SaleSchema,
   PurchaseItemSchema,
@@ -595,9 +632,10 @@ const SCHEMAS = [
 //   40    Added Notification schema
 //   41    Added notification settings to BusinessSettings (low_stock, sales, payments, returns, shifts)
 //   42    Added Shift.cardEndingBalance
+//   43    Added Inventory + InventoryItem schemas
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 42
+const SCHEMA_VERSION = 43
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

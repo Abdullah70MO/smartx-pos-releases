@@ -6,7 +6,7 @@ const { login, getSession, logout, requireUser, getSecurityQuestion, verifySecur
 const bcrypt = require('bcryptjs')
 const { listProducts, listProductMeta, saveProduct, removeProduct } = require('./ipc/products')
 const { listPurchases, createPurchase, savePurchase, removePurchase } = require('./ipc/purchases')
-const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches } = require('./ipc/inventory')
+const { listAdjustments, createAdjustment, saveAdjustment, removeAdjustment, getLowStockProducts, getInventoryBatchReport, getProductBatches, createInventory, listInventories, getInventory } = require('./ipc/inventory')
 const { listSales, createSale, removeSale } = require('./ipc/sales')
 const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
 const { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
@@ -17,7 +17,7 @@ const { listNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNoti
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, listReturnsByCustomer, createReturn, removeReturn } = require('./ipc/returns')
 const { listPurchaseReturns, listPurchaseReturnsBySupplier, createPurchaseReturn } = require('./ipc/purchaseReturns')
-const { getActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
+const { getActiveShift, hasAnyActiveShift, startShift, endShift, listShifts, getShiftSales } = require('./ipc/shifts')
 const { logActivity, listActivity } = require('./ipc/activity')
 const { listCustomers, saveCustomer, removeCustomer } = require('./ipc/customers')
 const { listSuppliers, saveSupplier, removeSupplier } = require('./ipc/suppliers')
@@ -105,37 +105,33 @@ function registerIpc() {
     const opts = { silent: !!silent, margins: { marginType: 'default' } }
     if (deviceName) opts.deviceName = deviceName
     if (pageSize && typeof pageSize === 'string' && pageSize.includes('mm')) {
-      const [w, h] = pageSize.split(' ').map(s => s.replace('mm', ''))
-      if (w && h) opts.pageSize = { width: parseInt(w) * 1000, height: parseInt(h) * 1000 }
+      const parts = pageSize.replace('mm', '').trim().split(/\s+/)
+      const w = parseInt(parts[0])
+      const h = parts[1] ? parseInt(parts[1]) : w * 1.5
+      if (w > 0) opts.pageSize = { width: w * 1000, height: (h > 0 ? h : w * 1.5) * 1000 }
     } else if (pageSize && typeof pageSize === 'string') {
       opts.pageSize = pageSize
     }
     return new Promise((resolve, reject) => {
-      let destroyed = false
+      let done = false
+      function cleanup(err) {
+        if (done) return
+        done = true
+        if (err) reject(err)
+        else resolve()
+        setTimeout(() => { try { if (!printWin.isDestroyed()) printWin.destroy() } catch {} }, 300)
+      }
+      const timeout = setTimeout(() => cleanup(new Error('انتهت مهلة الطباعة')), 30000)
       printWin.webContents.on('did-finish-load', () => {
-        if (destroyed) return
-        printWin.webContents.on('did-finish-print', () => {
-          if (destroyed) return
-          destroyed = true
-          resolve()
-          setTimeout(() => { try { printWin.destroy() } catch {} }, 500)
-        })
+        if (done) return
         printWin.webContents.print(opts, (success, reason) => {
-          if (!success) {
-            if (destroyed) return
-            reject(new Error(reason || 'فشلت الطباعة'))
-            setTimeout(() => {
-              destroyed = true
-              try { printWin.destroy() } catch {}
-            }, 500)
-          }
+          clearTimeout(timeout)
+          cleanup(success ? null : new Error(reason || 'فشلت الطباعة'))
         })
       })
       printWin.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
-        if (destroyed) return
-        destroyed = true
-        reject(new Error(errorDescription || 'فشل تحميل صفحة الطباعة'))
-        try { printWin.destroy() } catch {}
+        clearTimeout(timeout)
+        cleanup(new Error(errorDescription || 'فشل تحميل صفحة الطباعة'))
       })
       printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(err => {
         if (destroyed) return
@@ -259,6 +255,7 @@ function registerIpc() {
 
   // Shifts
   handle('shifts:getActive', async ({ token }) => { const session = requireUser(token, ['shifts.view', 'cashier.access']); return getActiveShift(await openRealm(), session.userId) })
+  handle('shifts:hasActive', async ({ token }) => (requireUser(token, ['shifts.view', 'inventory.view']), hasAnyActiveShift(await openRealm())))
   handle('shifts:start', async ({ token, startingBalance }) => startShift(await openRealm(), requireUser(token, ['shifts.manage', 'cashier.access']), startingBalance))
   handle('shifts:end', async ({ token, endingCashBalance, endingCardBalance }) => {
     const r = await openRealm(); const session = requireUser(token, ['shifts.manage', 'cashier.access'], r)
@@ -380,6 +377,9 @@ function registerIpc() {
   handle('inventory:lowStock', async ({ token }) => (requireUser(token, 'inventory.view'), getLowStockProducts(await openRealm())))
   handle('inventory:batchReport', async ({ token, query }) => (requireUser(token, 'inventory.view'), getInventoryBatchReport(await openRealm(), query)))
   handle('inventory:productBatches', async ({ token, productId }) => (requireUser(token, 'inventory.view'), getProductBatches(await openRealm(), productId)))
+  handle('inventory:createInventory', async ({ token, data }) => createInventory(await openRealm(), requireUser(token, 'inventory.adjust'), data))
+  handle('inventory:listInventories', async ({ token, filter, page, pageSize }) => (requireUser(token, 'inventory.view'), listInventories(await openRealm(), filter, page, pageSize)))
+  handle('inventory:getInventory', async ({ token, id }) => (requireUser(token, 'inventory.view'), getInventory(await openRealm(), id)))
 
   // Treasury
   handle('treasury:list', async ({ token }) => (requireUser(token, 'treasury.view'), listTreasuries(await openRealm())))
@@ -513,8 +513,7 @@ async function seedDatabase() {
         r.create('Treasury', { _id: 'main', name: 'الخزينة الرئيسية', type: 'main', balance: 0, createdAt: new Date(), updatedAt: new Date() })
       }
 
-      const existingAdmin = r.objects('User').filtered('username == "admin"')[0]
-      if (!existingAdmin) {
+      if (r.objects('User').length === 0) {
         r.create('User', {
           _id: require('node:crypto').randomUUID(),
           name: 'مدير النظام',
@@ -525,8 +524,6 @@ async function seedDatabase() {
           active: true,
           createdAt: new Date()
         })
-      } else if (existingAdmin.role === 'admin') {
-        existingAdmin.permissions = [...ALL_ADMIN_PERMISSIONS]
       }
       // FIFO migration: create StockBatch for existing products
       const existingBatches = r.objects('StockBatch')

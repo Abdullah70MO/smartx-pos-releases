@@ -3,9 +3,10 @@ import api from '../api'
 import { useStore } from '../store'
 import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
+import { PrintIcon, iconBtn } from '../components/ActionIcons'
 
 export default function EmployeeReportsPage() {
-  const { user } = useStore()
+  const { user, settings } = useStore()
   const canView = user?.permissions?.includes('employees.view')
   const [employees, setEmployees] = useState([])
   const [selectedEmp, setSelectedEmp] = useState(null)
@@ -42,6 +43,25 @@ export default function EmployeeReportsPage() {
   function selectEmployee(emp) {
     setSelectedEmp(emp)
     loadReport(emp._id)
+  }
+
+  async function handlePrintSalary(payment) {
+    const { printA4 } = await import('../utils/print')
+    const { default: PrintTemplateSalary } = await import('../components/PrintTemplateSalary')
+    const element = (
+      <PrintTemplateSalary
+        employee={selectedEmp}
+        payment={payment}
+        advances={advances}
+        attendance={attendance}
+        businessName={user?.businessName || 'SMART X POS'}
+        businessPhone={user?.businessPhone || ''}
+        businessAddress={user?.businessAddress || ''}
+        logoDataUrl={settings?.logoDataUrl}
+        showLogo={settings?.showLogo}
+      />
+    )
+    await printA4(element)
   }
 
   if (!canView) return <div style={{ padding: '20px', color: 'var(--text2)' }}>ليس لديك صلاحية</div>
@@ -122,7 +142,7 @@ export default function EmployeeReportsPage() {
             </div>}
             {tab === 'salary' && <div>
               <table style={{ fontSize: '13px' }}>
-                <thead><tr><th>الشهر</th><th>الأساسي</th><th>الخصومات</th><th>الإضافات</th><th>الصافي</th><th>التاريخ</th></tr></thead>
+                <thead><tr><th>الشهر</th><th>الأساسي</th><th>الخصومات</th><th>الإضافات</th><th>الصافي</th><th>التاريخ</th><th></th></tr></thead>
                 <tbody>
                   {salaryPayments.map(p => (
                     <tr key={p._id}>
@@ -131,9 +151,10 @@ export default function EmployeeReportsPage() {
                       <td style={{ color: 'var(--success)' }}>{formatMoney(p.totalAdditions)}</td>
                       <td style={{ fontWeight: 'bold' }}>{formatMoney(p.netAmount)}</td>
                       <td>{formatDate(p.paymentDate)}</td>
+                      <td><button onClick={() => handlePrintSalary(p)} style={iconBtn('accent')} title="طباعة سند راتب"><PrintIcon size={13} /></button></td>
                     </tr>
                   ))}
-                  {salaryPayments.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text2)' }}>لا توجد رواتب</td></tr>}
+                  {salaryPayments.length === 0 && <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text2)' }}>لا توجد رواتب</td></tr>}
                 </tbody>
               </table>
             </div>}

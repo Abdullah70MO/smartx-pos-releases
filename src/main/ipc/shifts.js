@@ -18,6 +18,10 @@ function getActiveShift(realm, cashierId) {
   }
 }
 
+function hasAnyActiveShift(realm) {
+  return realm.objects('Shift').filtered('isActive == true').length > 0
+}
+
 function startShift(realm, session, startingBalance) {
   const existing = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
   if (existing) throw new Error('يوجد وردية نشطة حالياً')
@@ -102,24 +106,29 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
 
 function listShifts(realm, filter, page, pageSize) {
   let results = realm.objects('Shift').sorted('startedAt', true)
-  if (filter?.query) {
-    results = results.filtered('cashierName CONTAINS[c] $0', filter.query)
+  const q = filter?.q || filter?.query
+  const dateFrom = filter?.dateFrom || filter?.from
+  const dateTo = filter?.dateTo || filter?.to
+  if (q) {
+    results = results.filtered('cashierName CONTAINS[c] $0', q)
   }
-  if (filter?.from) {
-    const from = new Date(filter.from)
+  if (dateFrom) {
+    const from = new Date(dateFrom)
     if (!isNaN(from)) results = results.filtered('startedAt >= $0', from)
   }
-  if (filter?.to) {
-    const to = new Date(filter.to + 'T23:59:59')
+  if (dateTo) {
+    const to = new Date(dateTo + 'T23:59:59')
     if (!isNaN(to)) results = results.filtered('startedAt <= $0', to)
   }
   const mapShift = s => ({
     _id: s._id, cashierId: s.cashierId, cashierName: s.cashierName,
     startedAt: s.startedAt?.toISOString(), endedAt: s.endedAt?.toISOString(),
     startingBalance: s.startingBalance, endingBalance: s.endingBalance,
-    totalSales: s.totalSales, expensesTotal: s.expensesTotal,
+    totalSales: s.totalSales, cashTotal: s.cashTotal, cardTotal: s.cardTotal,
+    creditPaidTotal: s.creditPaidTotal, expensesTotal: s.expensesTotal,
     withdrawalsTotal: s.withdrawalsTotal, cardWithdrawalsTotal: s.cardWithdrawalsTotal,
-    invoiceCount: s.invoiceCount, isActive: s.isActive
+    invoiceCount: s.invoiceCount, isActive: s.isActive,
+    cardEndingBalance: s.cardEndingBalance
   })
   if (page != null) {
     const result = paginate(results, page, pageSize || 20)
@@ -173,4 +182,4 @@ function updateTreasuryBalance(realm, treasuryType, amount, note) {
   })
 }
 
-module.exports = { getActiveShift, startShift, endShift, listShifts, getShiftSales }
+module.exports = { getActiveShift, hasAnyActiveShift, startShift, endShift, listShifts, getShiftSales }

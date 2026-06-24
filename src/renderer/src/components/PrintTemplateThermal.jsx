@@ -3,7 +3,8 @@ import { formatDateTime } from '../utils/date'
 
 export default function PrintTemplateThermal({ data, settings }) {
   return (
-    <div style={{ width: '100%', fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '12px', color: '#000', direction: 'rtl' }}>
+    <div style={{ width: '100%', fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif", fontSize: '12px', color: '#000', direction: 'rtl' }}>
+      {settings?.showLogo !== false && settings?.logoDataUrl && <div className="center"><img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '40px', marginBottom: '4px' }} /></div>}
       {settings?.showBusinessName !== false && <div className="center bold" style={{ fontSize: '14px', marginBottom: '2px' }}>{settings?.businessName || 'SMART X'}</div>}
       {settings?.showPhone !== false && settings?.phone && <div className="center" style={{ fontSize: '10px' }}>هاتف: {settings.phone}</div>}
       {settings?.showAddress !== false && settings?.address && <div className="center" style={{ fontSize: '10px' }}>{settings.address}</div>}

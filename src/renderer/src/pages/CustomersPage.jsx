@@ -156,6 +156,7 @@ export default function CustomersPage() {
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: hasDebt ? 'var(--danger)' : 'var(--success)' }}>{formatMoney(remaining)}</div>
                 </div>
               </div>
+              {c.notes && <div style={{ fontSize: '12px', color: 'var(--text2)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', lineHeight: 1.5 }}>ملاحظات: {c.notes}</div>}
               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                 {canPay && <button onClick={() => openPay(c)} title="تسديد" style={iconBtn('success')}><PaymentIcon size={13} /></button>}
                 <button onClick={() => openTransactions(c)} title="كشف حساب" style={iconBtn('accent')}><ViewIcon size={13} /></button>

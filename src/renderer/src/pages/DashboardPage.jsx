@@ -78,12 +78,12 @@ export default function DashboardPage() {
 
       <div className="card" style={{ padding: '16px', marginTop: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ color: 'var(--warning)', fontWeight: 'bold', fontSize: '13px' }}>تنبيهات المخزون المنخفض</span>
+          <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '13px' }}>تنبيهات المخزون المنخفض</span>
           {summary?.lowStock > 0 && <span style={{ background: 'var(--danger)', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' }}>{summary.lowStock}</span>}
         </div>
         {summary?.lowStockProducts?.length > 0 ? (
           summary.lowStockProducts.map(p => (
-            <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#fdba74', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
+            <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: 'var(--danger)', padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
               <span>{p.name}</span>
               <span>المتبقي: {p.stock} / الحد: {p.reorderPoint}</span>
             </div>

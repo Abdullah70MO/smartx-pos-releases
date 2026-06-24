@@ -24,11 +24,14 @@ export default function CashierPage() {
   const { user } = useStore()
   const { confirm, ConfirmDialog } = useConfirm()
   const [products, setProducts] = useState([])
+  const [productPage, setProductPage] = useState(0)
+  const [productTotal, setProductTotal] = useState(0)
   const [customers, setCustomers] = useState([])
   const [activeShift, setActiveShift] = useState(undefined)
   const [shiftLoaded, setShiftLoaded] = useState(false)
   const [shiftSales, setShiftSales] = useState({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, cardWithdrawalsTotal: 0, returnsTotal: 0 })
   const [search, setSearch] = useState('')
+  const [allCategories, setAllCategories] = useState([])
   const [cart, setCart] = useState([])
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paid, setPaid] = useState('')
@@ -101,14 +104,14 @@ const [taxRate, setTaxRate] = useState(14)
   function debouncedReload() {
     clearTimeout(reloadTimer.current)
     reloadTimer.current = setTimeout(() => {
-      loadProducts('', 200); loadCustomers(); loadShiftData()
+      loadProducts('', 0); loadCustomers(); loadShiftData()
     }, 300)
   }
 
   useEffect(() => {
     let mounted = true
     Promise.all([
-      loadProducts('', 200), loadCustomers(), loadEmployees(), loadShiftData(), loadSettings()
+      loadProducts('', 0), loadCustomers(), loadEmployees(), loadShiftData(), loadSettings(), loadProductMeta()
     ]).then(() => { if (mounted) searchRef.current?.focus() }).catch(() => {})
     return () => {
       mounted = false
@@ -131,6 +134,11 @@ const [taxRate, setTaxRate] = useState(14)
   }, [activeShift, shiftLoaded])
 
   useEffect(() => {
+    if (selectedCategory && !search) loadProducts(selectedCategory, 0)
+    else if (!selectedCategory && !search) loadProducts('', 0)
+  }, [selectedCategory])
+
+  useEffect(() => {
     const handler = e => {
       if (e.key === 'Escape' && e.target.tagName === 'INPUT') { setSearch(''); searchRef.current?.focus() }
     }
@@ -146,6 +154,10 @@ const [taxRate, setTaxRate] = useState(14)
         barcodeBuffer.current = ''
         const product = productMapRef.current.byBarcode[code]
         if (product) { addToCartRef.current?.(product, true); e.preventDefault(); return }
+        api.listProducts(localStorage.getItem('token'), code, 1).then(res => {
+          const found = Array.isArray(res) ? res[0] : res.data?.[0]
+          if (found) addToCartRef.current?.(found, true)
+        })
       }
       if (e.key.length === 1 && /^\d$/.test(e.key)) {
         barcodeBuffer.current += e.key
@@ -159,10 +171,32 @@ const [taxRate, setTaxRate] = useState(14)
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  async function loadProducts(q, limit) {
+  const PRODUCT_PAGE_SIZE = 50
+
+  async function loadProducts(q, page = 0, append = false) {
     const token = localStorage.getItem('token')
-    const data = await api.listProducts(token, q, limit)
-    setProducts(data)
+    const result = await api.listProducts(token, q, PRODUCT_PAGE_SIZE, page, PRODUCT_PAGE_SIZE)
+    setProductPage(page)
+    setProductTotal(result.total)
+    if (append) {
+      setProducts(prev => [...prev, ...result.data])
+    } else {
+      setProducts(result.data)
+    }
+  }
+
+  async function loadMoreProducts() {
+    const nextPage = productPage + 1
+    if (nextPage * PRODUCT_PAGE_SIZE >= productTotal) return
+    await loadProducts(search, nextPage, true)
+  }
+
+  async function loadProductMeta() {
+    const token = localStorage.getItem('token')
+    try {
+      const meta = await api.listProductMeta(token)
+      setAllCategories(meta.categories || [])
+    } catch {}
   }
 
   async function loadCustomers() {
@@ -245,7 +279,7 @@ const [taxRate, setTaxRate] = useState(14)
           businessName={user?.businessName || 'SMART X POS'}
           businessPhone={user?.businessPhone || ''}
           businessAddress={user?.businessAddress || ''}
-          paperWidth={Number(localStorage.getItem('thermalPaperSize')?.replace('mm', '') || '80')}
+          paperWidth={Number((localStorage.getItem('thermalPaperSize') || '80mm') === 'custom' ? (localStorage.getItem('customPaperWidth') || '80') : (localStorage.getItem('thermalPaperSize') || '80mm').replace('mm', ''))}
         />
       )
       await printThermal(element)
@@ -288,7 +322,7 @@ const [taxRate, setTaxRate] = useState(14)
   function handleSearch(v) {
     setSearch(v)
     if (v.length > 0 && v.length < 2) { setProducts([]); return }
-    loadProducts(v, 100)
+    loadProducts(v, 0)
   }
 
   function getProductPrice(p) {
@@ -642,7 +676,7 @@ const [taxRate, setTaxRate] = useState(14)
           />
           <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px', fontSize: '12px', width: '120px' }}>
             <option value="">الكل</option>
-            {[...new Set(products.map(p => p.category).filter(Boolean))].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
           {PRICE_MODES.map(mode => (
             <button key={mode.id} onClick={() => setPriceMode(mode.id)}
@@ -663,7 +697,7 @@ const [taxRate, setTaxRate] = useState(14)
               <span style={{ fontSize: '12px' }}>{search ? 'جرب بحث آخر' : 'أضف منتجات من صفحة المنتجات أولاً'}</span>
             </div>
           )}
-          {(selectedCategory ? products.filter(p => p.category === selectedCategory) : products).map(p => (
+          {products.map(p => (
             <button key={p._id} onClick={() => addToCart(p)} disabled={p.stock <= 0} style={{
               background: p.stock <= 0 ? 'var(--bg)' : 'var(--bg2)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '13px',
               border: '1px solid var(--bg3)', transition: '0.15s', opacity: p.stock <= 0 ? 0.5 : 1, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer'
@@ -676,6 +710,16 @@ const [taxRate, setTaxRate] = useState(14)
               </div>
             </button>
           ))}
+          {products.length > 0 && products.length < productTotal && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '8px' }}>
+              <button onClick={loadMoreProducts} style={{
+                background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
+                padding: '8px 24px', fontSize: '13px', cursor: 'pointer'
+              }}>
+                عرض المزيد ({productTotal - products.length} متبقي)
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

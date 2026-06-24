@@ -1,13 +1,14 @@
 import { formatMoney } from '../utils/money'
 
-export default function PrintTemplateShift({ data, businessName, businessPhone, businessAddress }) {
+export default function PrintTemplateShift({ data, businessName, businessPhone, businessAddress, logoDataUrl, showLogo }) {
   return (
     <div id="a4-print-content" style={{
       width: '210mm', minHeight: '297mm', padding: '15mm 20mm',
-      fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '12px', color: '#000', background: '#fff',
+      fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif", fontSize: '12px', color: '#000', background: '#fff',
       direction: 'rtl', boxSizing: 'border-box', position: 'relative'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+        {showLogo !== false && logoDataUrl && <div><img src={logoDataUrl} alt="logo" style={{ maxHeight: '50px', marginBottom: '6px' }} /></div>}
         <div style={{ fontWeight: 'bold', fontSize: '20px' }}>{businessName || 'SMART X POS'}</div>
         {businessPhone && <div style={{ fontSize: '11px' }}>هاتف: {businessPhone}</div>}
         {businessAddress && <div style={{ fontSize: '11px' }}>العنوان: {businessAddress}</div>}

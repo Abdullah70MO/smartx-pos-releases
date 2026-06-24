@@ -1,10 +1,11 @@
-export default function PrintTemplateShiftThermal({ data, businessName, businessPhone, businessAddress, paperWidth = 80 }) {
+export default function PrintTemplateShiftThermal({ data, businessName, businessPhone, businessAddress, logoDataUrl, showLogo, paperWidth = 80 }) {
   const w = paperWidth
   const col1 = Math.floor(w * 0.55)
   const col2 = w - col1
   return (
-    <div style={{ width: `${w}mm`, fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '11px', color: '#000', background: '#fff', direction: 'rtl', padding: '4mm' }}>
+    <div style={{ width: `${w}mm`, fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif", fontSize: '11px', color: '#000', background: '#fff', direction: 'rtl', padding: '4mm' }}>
       <div style={{ textAlign: 'center', marginBottom: '3mm', borderBottom: '1px dashed #000', paddingBottom: '2mm' }}>
+        {showLogo !== false && logoDataUrl && <div><img src={logoDataUrl} alt="logo" style={{ maxHeight: '30px', marginBottom: '2mm' }} /></div>}
         <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{businessName || 'SMART X POS'}</div>
         {businessPhone && <div style={{ fontSize: '9px' }}>هاتف: {businessPhone}</div>}
         {businessAddress && <div style={{ fontSize: '9px' }}>العنوان: {businessAddress}</div>}

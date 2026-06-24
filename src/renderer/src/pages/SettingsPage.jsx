@@ -77,6 +77,20 @@ export default function SettingsPage() {
     markSettingsDirty(JSON.stringify(form) !== JSON.stringify(initialForm))
   }, [form, initialForm])
 
+  // Load font dynamically for preview
+  useEffect(() => {
+    const font = form.fontFamily
+    if (!font) return
+    const id = '__gf-preview-' + font.replace(/\s+/g, '-')
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700;800&display=swap`
+      document.head.appendChild(link)
+    }
+  }, [form.fontFamily])
+
   async function load() {
     const token = localStorage.getItem('token')
     try {
@@ -496,7 +510,39 @@ export default function SettingsPage() {
                         <option value="Almarai">Almarai</option>
                         <option value="El Messiri">El Messiri</option>
                         <option value="Rubik">Rubik</option>
+                        <option value="Noto Naskh Arabic">Noto Naskh Arabic</option>
+                        <option value="Alexandria">Alexandria</option>
+                        <option value="Readex Pro">Readex Pro</option>
+                        <option value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</option>
+                        <option value="Amiri">Amiri</option>
+                        <option value="Scheherazade New">Scheherazade New</option>
+                        <option value="Lateef">Lateef</option>
+                        <option value="Reem Kufi">Reem Kufi</option>
+                        <option value="Noto Sans Arabic">Noto Sans Arabic</option>
+                        <option value="Changa">Changa</option>
+                        <option value="Mada">Mada</option>
+                        <option value="Markazi Text">Markazi Text</option>
+                        <option value="Mirza">Mirza</option>
+                        <option value="Kufam">Kufam</option>
+                        <option value="Vazirmatn">Vazirmatn</option>
+                        <option value="Gulzar">Gulzar</option>
+                        <option value="Baloo Bhaijaan 2">Baloo Bhaijaan 2</option>
+                        <option value="Jomhuria">Jomhuria</option>
+                        <option value="Rakkas">Rakkas</option>
+                        <option value="Katibeh">Katibeh</option>
+                        <option value="Ruwudu">Ruwudu</option>
                       </select>
+                      <div style={{
+                        marginTop: '8px', padding: '12px', borderRadius: '8px',
+                        background: 'var(--bg1)', border: '1px solid var(--bg3)',
+                        fontFamily: form.fontFamily ? `"${form.fontFamily}", Tahoma, Arial, sans-serif` : 'Tahoma, Arial, sans-serif',
+                        fontSize: '16px', color: 'var(--text)', textAlign: 'center',
+                        transition: 'font-family 0.3s'
+                      }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>{form.fontFamily}</div>
+                        <div style={{ fontSize: '14px' }}>نص تجريبي — Smart X Point of Sale</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>الأرقام: 0123456789</div>
+                      </div>
                     </div>
                     <div>
                       <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العملة</label>

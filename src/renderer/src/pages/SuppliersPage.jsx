@@ -26,6 +26,8 @@ export default function SuppliersPage() {
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [payMethod, setPayMethod] = useState('cash')
+  const [paySource, setPaySource] = useState('treasury')
+  const [activeShift, setActiveShift] = useState(null)
   const [transModal, setTransModal] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [search, setSearch] = useState('')
@@ -40,8 +42,14 @@ export default function SuppliersPage() {
   async function load() {
     try {
       const token = localStorage.getItem('token')
-      const [sup, pur, sett] = await Promise.all([api.listSuppliers(token, search, page, pageSize), api.listPurchases(token), api.getSettings(token)])
+      const [sup, pur, sett, shift] = await Promise.all([
+        api.listSuppliers(token, search, page, pageSize),
+        api.listPurchases(token),
+        api.getSettings(token),
+        api.getActiveShift(token).catch(() => null)
+      ])
       setSuppliers(sup.data); setTotal(sup.total); setTotalPages(sup.totalPages); setPurchases(pur); setSettings(sett)
+      setActiveShift(shift)
     } catch (err) { console.error(err) }
   }
 
@@ -69,14 +77,18 @@ export default function SuppliersPage() {
   }
 
   async function openPay(s) {
-    setPayModal(s); setPayAmount(''); setPayNote('')
+    setPayModal(s); setPayAmount(''); setPayNote(''); setPaySource('treasury')
   }
 
   async function handlePay(e) {
     e.preventDefault()
     const token = localStorage.getItem('token')
     try {
-      await api.createSupplierPayment(token, { supplierId: payModal._id, supplierName: payModal.name, amount: Number(payAmount), note: payNote, paymentMethod: payMethod })
+      await api.createSupplierPayment(token, {
+        supplierId: payModal._id, supplierName: payModal.name,
+        amount: Number(payAmount), note: payNote, paymentMethod: payMethod,
+        source: activeShift ? paySource : 'treasury'
+      })
       toast('تمت إضافة الدفعة', 'success')
       setPayModal(null); load(); window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
@@ -157,6 +169,7 @@ export default function SuppliersPage() {
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: hasDebt ? 'var(--danger)' : 'var(--success)' }}>{formatMoney(balance)}</div>
                 </div>
               </div>
+              {s.notes && <div style={{ fontSize: '12px', color: 'var(--text2)', background: 'var(--bg)', borderRadius: '8px', padding: '8px', lineHeight: 1.5 }}>ملاحظات: {s.notes}</div>}
               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                 {canPay && <button onClick={() => openPay(s)} title="تسديد" style={iconBtn('success')}><PaymentIcon size={13} /></button>}
                 <button onClick={() => openTransactions(s)} title="كشف حساب" style={iconBtn('accent')}><ViewIcon size={13} /></button>
@@ -211,6 +224,20 @@ export default function SuppliersPage() {
               color: payMethod === 'card' ? '#fff' : 'var(--text)', fontWeight: payMethod === 'card' ? '700' : '500'
             }}>بطاقة</button>
           </div>
+          {activeShift && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" onClick={() => setPaySource('treasury')} style={{
+                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px',
+                background: paySource === 'treasury' ? 'var(--accent)' : 'var(--bg3)',
+                color: paySource === 'treasury' ? '#fff' : 'var(--text)', fontWeight: paySource === 'treasury' ? '700' : '500'
+              }}>من الخزنة</button>
+              <button type="button" onClick={() => setPaySource('shift')} style={{
+                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px',
+                background: paySource === 'shift' ? 'var(--warning)' : 'var(--bg3)',
+                color: paySource === 'shift' ? '#fff' : 'var(--text)', fontWeight: paySource === 'shift' ? '700' : '500'
+              }}>من الوردية</button>
+            </div>
+          )}
           <input type="number" step="any" placeholder="المبلغ" value={payAmount} onInput={e => setPayAmount(e.target.value)} required
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }} />
           <textarea placeholder="ملاحظات (اختياري)" value={payNote} onInput={e => setPayNote(e.target.value)} rows="2"

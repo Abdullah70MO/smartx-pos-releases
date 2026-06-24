@@ -72,6 +72,7 @@ listPurchaseReturnsBySupplier: (token, supplierName, page, pageSize) => ipcRende
 
   // Shifts
   getActiveShift: (token) => ipcRenderer.invoke('shifts:getActive', { token }),
+  hasAnyActiveShift: (token) => ipcRenderer.invoke('shifts:hasActive', { token }),
   startShift: (token, startingBalance) => ipcRenderer.invoke('shifts:start', { token, startingBalance }),
   endShift: (token, endingCashBalance, endingCardBalance) => ipcRenderer.invoke('shifts:end', { token, endingCashBalance, endingCardBalance }),
   listShifts: (token, filter, page, pageSize) => ipcRenderer.invoke('shifts:list', { token, filter, page, pageSize }),
@@ -128,6 +129,9 @@ listPurchaseReturnsBySupplier: (token, supplierName, page, pageSize) => ipcRende
   getLowStockProducts: (token) => ipcRenderer.invoke('inventory:lowStock', { token }),
   getInventoryBatchReport: (token, query) => ipcRenderer.invoke('inventory:batchReport', { token, query }),
   getProductBatches: (token, productId) => ipcRenderer.invoke('inventory:productBatches', { token, productId }),
+  createInventory: (token, data) => ipcRenderer.invoke('inventory:createInventory', { token, data }),
+  listInventories: (token, filter, page, pageSize) => ipcRenderer.invoke('inventory:listInventories', { token, filter, page, pageSize }),
+  getInventory: (token, id) => ipcRenderer.invoke('inventory:getInventory', { token, id }),
 
   // Treasury
   listTreasuries: (token) => ipcRenderer.invoke('treasury:list', { token }),

@@ -94,6 +94,8 @@ export default function PurchasesPage() {
   const categoryRef = useRef(null)
   const productSearchTimer = useRef(null)
   const imgRef = useRef(null)
+  const nameRef = useRef(null)
+  const barcodeRef = useRef(null)
 
   useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers(); loadSettings(); loadPurchaseReturns(); loadProductMeta() }, [page, search.q, search.dateFrom, search.dateTo])
   useEffect(() => {
@@ -105,6 +107,7 @@ export default function PurchasesPage() {
     window.addEventListener('dataChanged', handler)
     return () => { window.removeEventListener('dataChanged', handler); clearTimeout(timer) }
   }, [])
+  useEffect(() => { if (showProductModal) setTimeout(() => nameRef.current?.focus(), 100) }, [showProductModal])
 
   async function loadPurchases() {
     const token = localStorage.getItem('token')
@@ -352,6 +355,8 @@ export default function PurchasesPage() {
 
   async function handleSaveProduct(e) {
     e.preventDefault()
+    if (!productForm.name.trim()) { toast('الرجاء إدخال اسم المنتج', 'error'); return }
+    if (!productForm.priceRetail || Number(productForm.priceRetail) <= 0) { toast('الرجاء إدخال سعر التجزئة', 'error'); return }
     const token = localStorage.getItem('token')
     const data = { ...productForm, cost: Number(productForm.cost) || 0, priceRetail: Number(productForm.priceRetail) || 0, priceHalfWholesale: Number(productForm.priceHalfWholesale) || 0, priceWholesale: Number(productForm.priceWholesale) || 0, stock: Number(productForm.stock) || 0, reorderPoint: Number(productForm.reorderPoint) || 0 }
     try {
@@ -714,11 +719,11 @@ export default function PurchasesPage() {
               <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => setProductForm(x => ({ ...x, image: r.result })); r.readAsDataURL(f) }} />
             </div>
             <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-            <Input label="الاسم" value={productForm.name} onInput={v => setProductForm(f => ({ ...f, name: v }))} required />
+            <Input label="الاسم *" inputRef={nameRef} value={productForm.name} onInput={v => setProductForm(f => ({ ...f, name: v }))} required />
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الباركود</label>
               <div style={{ display: 'flex', gap: '4px' }}>
-                <input value={productForm.barcode} onInput={e => setProductForm(f => ({ ...f, barcode: e.target.value }))} onKeyDown={handleBarcodeKeyDown} style={{ flex: 1 }} />
+                <input ref={barcodeRef} value={productForm.barcode} onInput={e => setProductForm(f => ({ ...f, barcode: e.target.value }))} onKeyDown={handleBarcodeKeyDown} style={{ flex: 1 }} />
                 <button type="button" onClick={handleGenerateBarcode} title="إنشاء" style={iconBtn('accent')}><BarcodeIcon size={14} /></button>
               </div>
               {showPrintBarcode && productForm.barcode && (
@@ -747,46 +752,46 @@ export default function PurchasesPage() {
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>الوحدة</label>
               <select value={productForm.unit} onChange={e => setProductForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '8px' }}>
                 <option value="">-- اختر الوحدة --</option>
-                <option value="قطعة">قطعة</option>
-                <option value="حبة">حبة</option>
-                <option value="دسته">دسته</option>
-                <option value="دزينة">دزينة</option>
-                <option value="درزن">درزن</option>
-                <option value="زوج">زوج</option>
-                <option value="كيلو">كيلو</option>
-                <option value="كجم">كجم</option>
-                <option value="جرام">جرام</option>
-                <option value="جم">جم</option>
-                <option value="طن">طن</option>
-                <option value="لتر">لتر</option>
-                <option value="مل">مل</option>
-                <option value="جالون">جالون</option>
-                <option value="متر">متر</option>
-                <option value="سم">سم</option>
-                <option value="قدم">قدم</option>
-                <option value="ياردة">ياردة</option>
-                <option value="علبة">علبة</option>
-                <option value="زجاجة">زجاجة</option>
-                <option value="قارورة">قارورة</option>
-                <option value="عبوة">عبوة</option>
-                <option value="صفيحة">صفيحة</option>
-                <option value="كرتونة">كرتونة</option>
-                <option value="صندوق">صندوق</option>
-                <option value="كيس">كيس</option>
-                <option value="شريط">شريط</option>
-                <option value="لفة">لفة</option>
-                <option value="رزمة">رزمة</option>
-                <option value="حزمة">حزمة</option>
-                <option value="بالة">بالة</option>
-                <option value="طبق">طبق</option>
-                <option value="برميل">برميل</option>
+                <option value="قطعة">قطعة (صحيحة)</option>
+                <option value="حبة">حبة (صحيحة)</option>
+                <option value="دسته">دسته (صحيحة)</option>
+                <option value="دزينة">دزينة (صحيحة)</option>
+                <option value="درزن">درزن (صحيحة)</option>
+                <option value="زوج">زوج (صحيحة)</option>
+                <option value="كيلو">كيلو (عشرية)</option>
+                <option value="كجم">كجم (عشرية)</option>
+                <option value="جرام">جرام (عشرية)</option>
+                <option value="جم">جم (عشرية)</option>
+                <option value="طن">طن (عشرية)</option>
+                <option value="لتر">لتر (عشرية)</option>
+                <option value="مل">مل (عشرية)</option>
+                <option value="جالون">جالون (عشرية)</option>
+                <option value="متر">متر (عشرية)</option>
+                <option value="سم">سم (عشرية)</option>
+                <option value="قدم">قدم (عشرية)</option>
+                <option value="ياردة">ياردة (عشرية)</option>
+                <option value="علبة">علبة (صحيحة)</option>
+                <option value="زجاجة">زجاجة (صحيحة)</option>
+                <option value="قارورة">قارورة (صحيحة)</option>
+                <option value="عبوة">عبوة (صحيحة)</option>
+                <option value="صفيحة">صفيحة (صحيحة)</option>
+                <option value="كرتونة">كرتونة (صحيحة)</option>
+                <option value="صندوق">صندوق (صحيحة)</option>
+                <option value="كيس">كيس (صحيحة)</option>
+                <option value="شريط">شريط (صحيحة)</option>
+                <option value="لفة">لفة (صحيحة)</option>
+                <option value="رزمة">رزمة (صحيحة)</option>
+                <option value="حزمة">حزمة (صحيحة)</option>
+                <option value="بالة">بالة (صحيحة)</option>
+                <option value="طبق">طبق (صحيحة)</option>
+                <option value="برميل">برميل (صحيحة)</option>
               </select>
             </div>
             <div>
               <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>التكلفة {productForm.stock > 0 && <span style={{ color: 'var(--warning)', fontSize: '10px' }}>(محسوبة من المشتريات)</span>}</label>
               <input type="number" step="any" value={productForm.cost} onInput={e => setProductForm(f => ({ ...f, cost: e.target.value }))} placeholder="التكلفة" disabled={productForm.stock > 0} style={{ width: '100%', opacity: productForm.stock > 0 ? 0.6 : 1 }} />
             </div>
-            <Input label="سعر التجزئة" type="number" step="any" value={productForm.priceRetail} onInput={v => setProductForm(f => ({ ...f, priceRetail: v }))} placeholder="سعر التجزئة" />
+            <Input label="سعر التجزئة *" type="number" step="any" value={productForm.priceRetail} onInput={v => setProductForm(f => ({ ...f, priceRetail: v }))} placeholder="سعر التجزئة" />
             <Input label="سعر نصف الجملة" type="number" step="any" value={productForm.priceHalfWholesale} onInput={v => setProductForm(f => ({ ...f, priceHalfWholesale: v }))} placeholder="سعر نصف الجملة" />
             <Input label="سعر الجملة" type="number" step="any" value={productForm.priceWholesale} onInput={v => setProductForm(f => ({ ...f, priceWholesale: v }))} placeholder="سعر الجملة" />
             <Input label="المخزون" type="number" step="any" value={productForm.stock} onInput={v => setProductForm(f => ({ ...f, stock: v }))} placeholder="المخزون" />
@@ -801,11 +806,11 @@ export default function PurchasesPage() {
   )
 }
 
-function Input({ label, type = 'text', value, onInput, required, placeholder }) {
+function Input({ label, type = 'text', value, onInput, required, placeholder, inputRef, step }) {
   return (
     <div>
       <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>{label}</label>
-      <input type={type} value={value} onInput={e => onInput(e.target.value)} required={required} placeholder={placeholder} style={{ width: '100%' }} />
+      <input ref={inputRef} type={type} value={value} onInput={e => onInput(e.target.value)} required={required} placeholder={placeholder} step={step} style={{ width: '100%' }} />
     </div>
   )
 }

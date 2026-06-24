@@ -64,9 +64,10 @@ $releaseId = $release.id
 Write-Host "Release created: v$n (ID: $releaseId)" -ForegroundColor Green
 
 # Upload blockmap
-$blockmapSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe.blockmap"
+$exeName = "SMART X POS Setup $n.exe"
+$blockmapName = "$exeName.blockmap"
+$blockmapSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath $blockmapName
 if (Test-Path $blockmapSrc) {
-  $blockmapName = "SMART X POS Setup $n.exe.blockmap"
   $uploadUrl = "https://uploads.github.com/repos/Abdullah70MO/smartx-pos-releases/releases/$releaseId/assets?name=$([System.Uri]::EscapeDataString($blockmapName))"
   $bytes = [System.IO.File]::ReadAllBytes($blockmapSrc)
   Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $headers -ContentType "application/octet-stream" -Body $bytes | Out-Null
@@ -98,7 +99,7 @@ if ($?) { git push public master }
 # Done
 Write-Host ("=" * 50) -ForegroundColor Green
 Write-Host "  DONE: v$n" -ForegroundColor Green
-$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath "SMART X POS Setup $n.exe"
+$exePath = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath $exeName
 Write-Host "  Build: $exePath" -ForegroundColor Cyan
 Write-Host "  Release: https://github.com/Abdullah70MO/smartx-pos-releases/releases/tag/v$n" -ForegroundColor Cyan
 Write-Host "  " -NoNewline

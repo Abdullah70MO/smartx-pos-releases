@@ -50,7 +50,16 @@ function createCustomerPayment(realm, user, { customerId, customerName, amount, 
       customer.totalPaid = (customer.totalPaid || 0) + Number(amount)
       customer.updatedAt = new Date()
     }
-    updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
+    const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', user.userId)[0]
+    if (activeShift) {
+      if (paymentMethod === 'card') {
+        activeShift.cardTotal = (activeShift.cardTotal || 0) + Number(amount)
+      } else {
+        activeShift.cashTotal = (activeShift.cashTotal || 0) + Number(amount)
+      }
+    } else {
+      updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
+    }
   })
   const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
   if (settings && settings.notificationPayments !== false) {
@@ -74,7 +83,16 @@ function removeCustomerPayment(realm, id) {
         customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - payment.amount)
         customer.updatedAt = new Date()
       }
-      updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, payment.paymentMethod || 'cash')
+      const activeShift = realm.objects('Shift').filtered('isActive == true').length > 0
+        ? realm.objects('Shift').filtered('isActive == true').sorted('startedAt', true)[0]
+        : null
+      if (activeShift && payment.paymentMethod === 'card' && (activeShift.cardTotal || 0) >= payment.amount) {
+        activeShift.cardTotal = (activeShift.cardTotal || 0) - payment.amount
+      } else if (activeShift && payment.paymentMethod !== 'card' && (activeShift.cashTotal || 0) >= payment.amount) {
+        activeShift.cashTotal = (activeShift.cashTotal || 0) - payment.amount
+      } else {
+        updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, payment.paymentMethod || 'cash')
+      }
       realm.delete(payment)
     }
   })

@@ -26,7 +26,7 @@ function getPeriodRange(p) {
 }
 
 export default function ReportsPage() {
-  const { reportTab, reportDateFrom, reportDateTo, clearReportNav, user } = useStore()
+  const { reportTab, reportDateFrom, reportDateTo, clearReportNav, user, settings } = useStore()
   useEffect(() => { clearReportNav() }, [])
   const [summary, setSummary] = useState(null)
   const [sales, setSales] = useState([])
@@ -135,10 +135,10 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (selectedReport === 'shifts') {
-      loadShifts(0, shiftsFilter)
+      loadShifts(shiftsPage, shiftsFilter)
       loadAllShifts(shiftsFilter).then(all => setAllShiftsData(all))
     }
-  }, [selectedReport, shiftsFilter])
+  }, [selectedReport, shiftsFilter, shiftsPage])
 
   function setPeriodFilter(p) {
     setPeriod(p)
@@ -172,10 +172,9 @@ export default function ReportsPage() {
   }
 
   async function handlePrintShiftReport(shift) {
-    const { printA4 } = await import('../utils/print')
-    const { default: PrintTemplateShift } = await import('../components/PrintTemplateShift')
+    const { printA4, printThermal } = await import('../utils/print')
     const { formatMoney } = await import('../utils/money')
-    const formatDT = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : ''
+    const formatDT = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ''
     const shiftData = {
       cashierName: shift.cashierName || '',
       startedAt: shift.startedAt ? formatDT(shift.startedAt) : '',
@@ -198,54 +197,34 @@ export default function ReportsPage() {
       cardDiff: formatMoney((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))),
       cardDiffLabel: Math.abs((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
     }
-    const element = (
-      <PrintTemplateShift
-        data={shiftData}
-        businessName={user?.businessName || 'SMART X POS'}
-        businessPhone={user?.businessPhone || ''}
-        businessAddress={user?.businessAddress || ''}
-      />
-    )
-    await printA4(element)
-  }
-
-  async function handlePrintShiftReportThermal(shift) {
-    const { printThermal } = await import('../utils/print')
-    const { default: PrintTemplateShiftThermal } = await import('../components/PrintTemplateShiftThermal')
-    const { formatMoney } = await import('../utils/money')
-    const formatDT = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : ''
-    const shiftData = {
-      cashierName: shift.cashierName || '',
-      startedAt: shift.startedAt ? formatDT(shift.startedAt) : '',
-      endedAt: shift.endedAt ? formatDT(shift.endedAt) : 'نشطة',
-      startingBalance: formatMoney(shift.startingBalance || 0),
-      cashTotal: formatMoney(shift.cashTotal || 0),
-      cardTotal: formatMoney(shift.cardTotal || 0),
-      creditTotal: formatMoney(shift.creditPaidTotal || 0),
-      expensesTotal: formatMoney(shift.expensesTotal || 0),
-      withdrawalsTotal: formatMoney(shift.withdrawalsTotal || 0),
-      cardWithdrawalsTotal: formatMoney(shift.cardWithdrawalsTotal || 0),
-      returnsTotal: formatMoney(0),
-      invoiceCount: shift.invoiceCount || 0,
-      expectedCash: formatMoney((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0)),
-      actualCash: formatMoney(shift.endingBalance || 0),
-      cashDiff: formatMoney((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))),
-      cashDiffLabel: Math.abs((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.endingBalance || 0) - ((shift.startingBalance || 0) + (shift.cashTotal || 0) + (shift.creditPaidTotal || 0) - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
-      expectedCard: formatMoney((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)),
-      actualCard: formatMoney(shift.cardEndingBalance || 0),
-      cardDiff: formatMoney((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))),
-      cardDiffLabel: Math.abs((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0.005 ? 'مطابق' : ((shift.cardEndingBalance || 0) - ((shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0))) < 0 ? 'عجز' : 'زيادة',
+    if (settings?.printDefaultSize === 'a4') {
+      const { default: PrintTemplateShift } = await import('../components/PrintTemplateShift')
+      const element = (
+        <PrintTemplateShift
+          data={shiftData}
+          businessName={user?.businessName || 'SMART X POS'}
+          businessPhone={user?.businessPhone || ''}
+          businessAddress={user?.businessAddress || ''}
+          logoDataUrl={settings?.logoDataUrl}
+          showLogo={settings?.showLogo}
+        />
+      )
+      await printA4(element)
+    } else {
+      const { default: PrintTemplateShiftThermal } = await import('../components/PrintTemplateShiftThermal')
+      const element = (
+        <PrintTemplateShiftThermal
+          data={shiftData}
+          businessName={user?.businessName || 'SMART X POS'}
+          businessPhone={user?.businessPhone || ''}
+          businessAddress={user?.businessAddress || ''}
+          logoDataUrl={settings?.logoDataUrl}
+          showLogo={settings?.showLogo}
+          paperWidth={Number((localStorage.getItem('thermalPaperSize') || '80mm') === 'custom' ? (localStorage.getItem('customPaperWidth') || '80') : (localStorage.getItem('thermalPaperSize') || '80mm').replace('mm', ''))}
+        />
+      )
+      await printThermal(element)
     }
-    const element = (
-      <PrintTemplateShiftThermal
-        data={shiftData}
-        businessName={user?.businessName || 'SMART X POS'}
-        businessPhone={user?.businessPhone || ''}
-        businessAddress={user?.businessAddress || ''}
-        paperWidth={Number(localStorage.getItem('thermalPaperSize')?.replace('mm', '') || '80')}
-      />
-    )
-    await printThermal(element)
   }
 
   const filteredByDate = (arr, dateField) => arr.filter(x => inRange(x[dateField] || x.createdAt))
@@ -263,16 +242,21 @@ export default function ReportsPage() {
     const tw = fwa.reduce((sum, w) => sum + Math.abs(w.amount), 0)
     const tcogs = fsa.reduce((sum, s) => sum + s.items.reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
     const trc = fra.reduce((sum, r) => sum + (r.items || []).reduce((c, item) => c + (item.cost * item.quantity), 0), 0)
+    const expensesByCat = fea.reduce((map, e) => {
+      map[e.category] = (map[e.category] || 0) + e.amount
+      return map
+    }, {})
     return {
       totalSales: ts, totalTax: tt, totalExpenses: te, totalReturns: tr,
       totalPurchaseReturns: tpr, totalWithdrawals: tw,
       totalCOGS: tcogs, totalReturnCost: trc,
       netProfit: (ts - tt - tcogs) + (trc - tr) - te - tw,
-      filteredSalesAll: fsa, totalInvoiceCount: fsa.length
+      filteredSalesAll: fsa, totalInvoiceCount: fsa.length,
+      expensesByCat
     }
   }, [sales, expenses, returns, withdrawals, purchaseReturns, filterDateFrom, filterDateTo])
 
-  const { totalSales, totalTax, totalExpenses, totalReturns, totalPurchaseReturns, totalWithdrawals, totalCOGS, totalReturnCost, netProfit, totalInvoiceCount } = overviewData
+  const { totalSales, totalTax, totalExpenses, totalReturns, totalPurchaseReturns, totalWithdrawals, totalCOGS, totalReturnCost, netProfit, totalInvoiceCount, expensesByCat } = overviewData
 
   const totalTreasuryBalance = useMemo(() => treasuries.reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
   const mainBalance = useMemo(() => treasuries.filter(t => t.type === 'main').reduce((sum, t) => sum + (t.balance || 0), 0), [treasuries])
@@ -436,6 +420,32 @@ export default function ReportsPage() {
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>} label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="var(--special)" />
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>} label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="var(--teal)" />
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/></svg>} label="رصيد البنك" value={formatMoney(bankBalance)} color="var(--accent)" />
+            </div>
+          </div>
+
+          {/* Profit breakdown detail */}
+          <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              تفاصيل صافي الربح
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <ProfitRow label="إجمالي المبيعات" value={totalSales} color="var(--success)" />
+              <ProfitRow label="الضريبة" value={-totalTax} color="var(--danger)" indent />
+              <ProfitRow label="تكلفة البضاعة (COGS)" value={-totalCOGS} color="var(--danger)" indent />
+              <ProfitRow label="ربح إجمالي" value={totalSales - totalTax - totalCOGS} color="var(--accent)" bold total />
+              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
+              <ProfitRow label="مرتجعات البيع" value={-totalReturns} color="var(--warning)" indent />
+              <ProfitRow label="تكلفة المرتجعات المستردة" value={totalReturnCost} color="var(--success)" indent />
+              <ProfitRow label="صافي المرتجعات" value={totalReturnCost - totalReturns} color="var(--warning)" bold />
+              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
+              <ProfitRow label="المصروفات" value={-totalExpenses} color="var(--danger)" indent />
+              {Object.entries(expensesByCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+                <ProfitRow key={cat} label={`  • ${cat}`} value={-amt} color={cat === 'فروقات الجرد' ? '#f97316' : 'var(--text2)'} indent2 />
+              ))}
+              <ProfitRow label="المسحوبات الشخصية" value={-totalWithdrawals} color="var(--warning)" indent />
+              <div style={{ borderTop: '2px solid var(--accent)', margin: '8px 0 4px' }} />
+              <ProfitRow label="صافي الربح" value={netProfit} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} bold total large />
             </div>
           </div>
 
@@ -978,14 +988,16 @@ export default function ReportsPage() {
       {selectedReport === 'employees' && (
         <div>
           {(() => {
+            const filteredAdvances = employeeAdvances.filter(a => inRange(a.date || a.createdAt))
+            const filteredSalaryPmts = salaryPayments.filter(p => inRange(p.date || p.createdAt))
             const totalSalaries = employees.reduce((s, e) => s + (e.salary || 0), 0)
-            const advances = employeeAdvances.filter(a => a.type !== 'deduction')
-            const deductions = employeeAdvances.filter(a => a.type === 'deduction')
+            const advances = filteredAdvances.filter(a => a.type !== 'deduction')
+            const deductions = filteredAdvances.filter(a => a.type === 'deduction')
             const pendingAdvances = advances.filter(a => !a.deducted)
             const totalAdvances = advances.reduce((s, a) => s + a.amount, 0)
             const totalDeductions = deductions.reduce((s, a) => s + a.amount, 0)
             const totalPending = pendingAdvances.reduce((s, a) => s + a.amount, 0)
-            const totalAdditions = salaryPayments.reduce((s, p) => s + (p.totalAdditions || 0), 0)
+            const totalAdditions = filteredSalaryPmts.reduce((s, p) => s + (p.totalAdditions || 0), 0)
             return (
               <>
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
@@ -1024,12 +1036,12 @@ export default function ReportsPage() {
                     style={{ flex: 1, minWidth: '150px' }} />
                   {employeeFilter && <button onClick={() => setEmployeeFilter('')} style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: '600', background: 'var(--bg3)', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>إزالة التصفية</button>}
                 </div>
-                {employeeAdvances.length > 0 && (
+                {filteredAdvances.length > 0 && (
                   <div className="table-card">
                     <table>
                       <thead><tr><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th>البيان</th></tr></thead>
                       <tbody>
-                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : employeeAdvances).slice(0, 50).map(a => (
+                        {(employeeFilter ? filteredAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : filteredAdvances).slice(0, 50).map(a => (
                           <tr key={a._id}>
                             <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(a.date || a.createdAt)}</td>
                             <td style={{ fontWeight: 'bold' }}>{a.employeeName}</td>
@@ -1053,11 +1065,12 @@ export default function ReportsPage() {
                             <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{a.note || '-'}</td>
                           </tr>
                         ))}
-                        {(employeeFilter ? employeeAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : employeeAdvances).length > 50 && <tr><td colSpan="6" style={{ padding: '8px', color: 'var(--text2)', textAlign: 'center', fontSize: '11px' }}>و {((employeeFilter ? employeeAdvances.filter(a => a.employeeName === employeeFilter) : employeeAdvances).length - 50)} حركة أخرى</td></tr>}
+                        {(employeeFilter ? filteredAdvances.filter(a => a.employeeName?.includes(employeeFilter)) : filteredAdvances).length > 50 && <tr><td colSpan="6" style={{ padding: '8px', color: 'var(--text2)', textAlign: 'center', fontSize: '11px' }}>و {((employeeFilter ? filteredAdvances.filter(a => a.employeeName === employeeFilter) : filteredAdvances).length - 50)} حركة أخرى</td></tr>}
                       </tbody>
                     </table>
                   </div>
                 )}
+                {filteredAdvances.length === 0 && employees.length > 0 && <div style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد سلف أو خصومات في هذه الفترة</div>}
                 {employees.length === 0 && <div style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد بيانات موظفين</div>}
               </>
             )
@@ -1100,10 +1113,9 @@ export default function ReportsPage() {
                     <td>{s.invoiceCount || 0}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {s.endedAt && (
-                        <>
-                          <button onClick={() => handlePrintShiftReport(s)} style={iconBtn('accent')} title="طباعة A4"><PrintIcon size={14} /></button>
-                          <button onClick={() => handlePrintShiftReportThermal(s)} style={iconBtn('success')} title="طباعة حرارية (58/80mm)"><PrintIcon size={14} /></button>
-                        </>
+                        <button onClick={() => handlePrintShiftReport(s)} style={iconBtn('accent')} title={settings?.printDefaultSize === 'a4' ? 'طباعة A4' : 'طباعة حرارية'}>
+                          <PrintIcon size={14} />
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -1147,6 +1159,21 @@ function SummaryCard({ icon, label, value, color }) {
           <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text)' }}>{value}</div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ProfitRow({ label, value, color, bold, total, large, indent, indent2 }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '3px 0', fontSize: large ? '16px' : '13px', fontWeight: bold ? '700' : '400',
+      marginRight: indent2 ? '32px' : indent ? '16px' : '0'
+    }}>
+      <span style={{ color: 'var(--text2)', fontSize: large ? '14px' : total ? '13px' : '12px' }}>{label}</span>
+      <span style={{ color, fontSize: large ? '18px' : total ? '14px' : '13px', fontWeight: bold ? '700' : '500', direction: 'ltr' }}>
+        {formatMoney(value)}
+      </span>
     </div>
   )
 }

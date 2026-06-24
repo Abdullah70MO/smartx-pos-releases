@@ -245,11 +245,20 @@ export function StoreProvider({ children }) {
     }
   }, [state.settings?.timeFormat])
 
-  // Sync fontFamily (Google Fonts) with CSS variable
+  // Sync fontFamily with CSS variable + load font dynamically
   useEffect(() => {
     let font = state.settings?.fontFamily || 'Cairo'
-    if (font === 'dark' || font === 'light') font = 'Cairo' // sanitization
+    if (font === 'dark' || font === 'light') font = 'Cairo'
     document.documentElement.style.setProperty('--font-family', font)
+
+    const id = '__gf-' + font.replace(/\s+/g, '-')
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700;800&display=swap`
+      document.head.appendChild(link)
+    }
   }, [state.settings?.fontFamily])
 
   return (
