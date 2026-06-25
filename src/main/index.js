@@ -13,7 +13,7 @@ const { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS } = requir
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
-const { listNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, checkAndCreateLowStockNotifications } = require('./ipc/notifications')
+const { listNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications } = require('./ipc/notifications')
 const { dashboardSummary } = require('./ipc/dashboard')
 const { listReturns, listReturnsByCustomer, createReturn, removeReturn } = require('./ipc/returns')
 const { listPurchaseReturns, listPurchaseReturnsBySupplier, createPurchaseReturn } = require('./ipc/purchaseReturns')
@@ -134,8 +134,8 @@ function registerIpc() {
         cleanup(new Error(errorDescription || 'فشل تحميل صفحة الطباعة'))
       })
       printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(err => {
-        if (destroyed) return
-        destroyed = true
+        if (done) return
+        done = true
         reject(err)
         try { printWin.destroy() } catch {}
       })

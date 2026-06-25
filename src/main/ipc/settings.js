@@ -54,6 +54,7 @@ function getSettings(realm) {
     notificationPayments: settings.notificationPayments !== false,
     notificationReturns: settings.notificationReturns !== false,
     notificationShifts: settings.notificationShifts !== false,
+    notificationExpiry: settings.notificationExpiry !== false,
     seeded: settings.seeded
   }
 }
@@ -111,6 +112,7 @@ function saveSettings(realm, data) {
     notificationPayments: data.notificationPayments !== false,
     notificationReturns: data.notificationReturns !== false,
     notificationShifts: data.notificationShifts !== false,
+    notificationExpiry: data.notificationExpiry !== false,
     seeded: true
     }, Realm.UpdateMode.Modified)
   })

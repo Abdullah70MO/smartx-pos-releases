@@ -1,7 +1,7 @@
 const Realm = require('realm')
 const crypto = require('node:crypto')
 const { deductFromFifo, addBatch } = require('./inventoryHelpers')
-const { checkAndCreateLowStockNotifications, createNotification } = require('./notifications')
+const { checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications, createNotification } = require('./notifications')
 const { paginate } = require('../database')
 
 function updateTreasury(realm, amount, note, session, refId, refType, paymentMethod) {
@@ -167,6 +167,7 @@ function createSale(realm, session, data) {
     }
   })
   checkAndCreateLowStockNotifications(realm)
+  checkAndCreateExpiryNotifications(realm)
   const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
   if (settings && settings.notificationSales !== false) {
     createNotification(realm, {

@@ -1,5 +1,7 @@
-export default function Modal({ open, onClose, title, children, width = '500px', closable = true }) {
+export default function Modal({ open, onClose, title, children, width = '500px', closable = true, large = false }) {
   if (!open) return null
+
+  const modalWidth = large ? 'min(980px, 98vw)' : width
 
   return (
     <div style={{
@@ -8,8 +10,8 @@ export default function Modal({ open, onClose, title, children, width = '500px',
       background: 'rgba(0,0,0,0.6)'
     }} onClick={closable ? onClose : undefined}>
       <div style={{
-        background: 'var(--bg2)', borderRadius: '24px', width, maxWidth: '92vw',
-        maxHeight: '88vh', overflow: 'auto', padding: '24px',
+        background: 'var(--bg2)', borderRadius: '24px', width: modalWidth, maxWidth: '98vw',
+        maxHeight: '88vh', overflow: 'hidden', padding: '24px',
         border: '1px solid var(--outline)',
         boxShadow: 'var(--elevation-3)',
         display: 'flex', flexDirection: 'column', gap: '16px'
@@ -29,7 +31,7 @@ export default function Modal({ open, onClose, title, children, width = '500px',
             lineHeight: '1'
           }}>✕</button>}
         </div>
-        <div style={{ overflow: 'auto', flex: 1 }}>
+        <div style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
           {children}
         </div>
       </div>

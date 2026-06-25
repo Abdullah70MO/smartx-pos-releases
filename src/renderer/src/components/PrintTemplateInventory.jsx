@@ -24,16 +24,6 @@ export default function PrintTemplateInventory({ inventory, settings }) {
           <div style={{ fontSize: '11px', color: '#555' }}>إجمالي المنتجات</div>
           <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{inventory.items.length}</div>
         </div>
-        <div style={{ flex: 1, background: '#e8f5e9', borderRadius: '4px', padding: '8px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#555' }}>فروقات إجمالية</div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: inventory.totalQuantityDifference > 0 ? '#2e7d32' : '#c62828' }}>
-            {inventory.totalQuantityDifference > 0 ? '+' : ''}{inventory.totalQuantityDifference}
-          </div>
-        </div>
-        <div style={{ flex: 1, background: '#ffebee', borderRadius: '4px', padding: '8px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#555' }}>خسائر الجرد</div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#c62828' }}>{formatMoney(inventory.totalFinancialLoss)}</div>
-        </div>
       </div>
 
       <table>
@@ -42,11 +32,7 @@ export default function PrintTemplateInventory({ inventory, settings }) {
             <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>#</th>
             <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>المنتج</th>
             <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>الوحدة</th>
-            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>النظام</th>
-            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>الفعلي</th>
-            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>الفرق</th>
-            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>التكلفة</th>
-            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>الخسارة</th>
+            <th style={{ borderBottom: '2px solid #000', padding: '6px 4px', fontSize: '11px', textAlign: 'center' }}>المخزون</th>
           </tr>
         </thead>
         <tbody>
@@ -56,13 +42,6 @@ export default function PrintTemplateInventory({ inventory, settings }) {
               <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'right' }}>{item.productName}</td>
               <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center' }}>{item.unit}</td>
               <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center' }}>{item.systemQuantity}</td>
-              <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center' }}>{item.actualQuantity}</td>
-              <td style={{
-                borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center', fontWeight: 'bold',
-                color: item.difference > 0 ? '#2e7d32' : item.difference < 0 ? '#c62828' : 'inherit'
-              }}>{item.difference > 0 ? '+' : ''}{item.difference}</td>
-              <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center' }}>{formatMoney(item.cost)}</td>
-              <td style={{ borderBottom: '1px solid #ddd', padding: '4px', fontSize: '11px', textAlign: 'center', color: '#c62828' }}>{item.lossAmount > 0 ? formatMoney(item.lossAmount) : '-'}</td>
             </tr>
           ))}
         </tbody>

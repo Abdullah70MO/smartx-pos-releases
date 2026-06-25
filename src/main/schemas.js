@@ -37,6 +37,7 @@ const ProductSchema = {
     reorderPoint:   { type: 'double', default: 0 },
     active:         { type: 'bool', default: true },
     image:          { type: 'string', default: '' },
+    expiryDate:     { type: 'string', default: '' },
     updatedAt:      'date'
   }
 }
@@ -87,9 +88,10 @@ const ExpenseSchema = {
     category:      'string',
     note:          { type: 'string', default: '' },
     date:          'date',
-    paymentMethod: { type: 'string', default: 'cash' },
-    shiftId:       { type: 'string', default: '' },
-    createdAt:     'date'
+    paymentMethod:   { type: 'string', default: 'cash' },
+    shiftId:         { type: 'string', default: '' },
+    isInventoryLoss: { type: 'bool', default: false },
+    createdAt:       'date'
   }
 }
 
@@ -147,6 +149,7 @@ const BusinessSettingsSchema = {
     notificationPayments:    { type: 'bool', default: true },
     notificationReturns:     { type: 'bool', default: true },
     notificationShifts:      { type: 'bool', default: true },
+    notificationExpiry:      { type: 'bool', default: true },
     seeded:                  { type: 'bool', default: false }
   }
 }
@@ -441,7 +444,8 @@ const InventoryAdjustmentSchema = {
     newStock:   'double',
     reason:     { type: 'string', default: '' },
     createdBy:   'string',
-    createdAt:   'date'
+    createdAt:   'date',
+    expenseId:  { type: 'string', default: '' }
   }
 }
 
@@ -633,9 +637,10 @@ const SCHEMAS = [
 //   41    Added notification settings to BusinessSettings (low_stock, sales, payments, returns, shifts)
 //   42    Added Shift.cardEndingBalance
 //   43    Added Inventory + InventoryItem schemas
+//   44    Added Product.expiryDate, BusinessSettings.notificationExpiry, expiry notification type
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 43
+const SCHEMA_VERSION = 45
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

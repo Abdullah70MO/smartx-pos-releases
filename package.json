@@ -77,7 +77,11 @@
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "unicode": true
+    },
+    "electronDownload": {
+      "cache": "./.electron-cache"
     },
     "publish": {
       "provider": "github",

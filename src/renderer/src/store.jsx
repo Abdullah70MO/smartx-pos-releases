@@ -121,6 +121,7 @@ export function StoreProvider({ children }) {
       localStorage.setItem('printDirectly', updated?.printDirectly ? 'true' : 'false')
       if (updated?.defaultPrinter) localStorage.setItem('defaultPrinter', updated.defaultPrinter)
       if (updated?.thermalPaperSize) localStorage.setItem('thermalPaperSize', updated.thermalPaperSize)
+      if (updated?.printDefaultSize) localStorage.setItem('printDefaultSize', updated.printDefaultSize)
       if (updated?.barcodePrinter) localStorage.setItem('barcodePrinter', updated.barcodePrinter)
       if (updated?.barcodeLabelSize) localStorage.setItem('barcodeLabelSize', updated.barcodeLabelSize)
       if (updated?.customPaperWidth) localStorage.setItem('customPaperWidth', updated.customPaperWidth)

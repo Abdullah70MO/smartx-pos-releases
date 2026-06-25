@@ -31,6 +31,7 @@ export default function DashboardPage() {
         <StatCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="مصروفات اليوم" value={summary ? formatMoney(summary.expensesToday) : '...'} color={'var(--danger)'} onClick={() => { const d = new Date().toISOString().slice(0,10); goToReports('expenses', d, d) }} />
         <StatCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>} label="المنتجات" value={summary?.totalProducts ?? '...'} color={'var(--secondary)'} onClick={() => setPage('products')} />
         <StatCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="منخفضة" value={summary?.lowStock ?? '...'} color={'var(--warning)'} />
+        <StatCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} label="صلاحية" value={summary?.nearExpiryCount ?? '...'} color={'#f59e0b'} />
       </div>
 
       <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: '1fr 1fr' }}>
@@ -90,6 +91,27 @@ export default function DashboardPage() {
           ))
         ) : (
           <div style={{ color: 'var(--success)', fontSize: '12px' }}>جميع المنتجات متوفرة بكميات كافية</div>
+        )}
+      </div>
+
+      <div className="card" style={{ padding: '16px', marginTop: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '13px' }}>تنبيهات انتهاء الصلاحية</span>
+          {summary?.nearExpiryCount > 0 && <span style={{ background: '#f59e0b', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' }}>{summary.nearExpiryCount}</span>}
+        </div>
+        {summary?.nearExpiry?.length > 0 ? (
+          summary.nearExpiry.map(p => {
+            const daysLeft = Math.ceil((new Date(p.expiryDate + 'T23:59:59') - new Date()) / (1000 * 60 * 60 * 24))
+            const color = daysLeft <= 7 ? 'var(--danger)' : daysLeft <= 14 ? '#f59e0b' : 'var(--warning)'
+            return (
+              <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color, padding: '4px 0', borderBottom: '1px solid var(--bg3)' }}>
+                <span>{p.name}</span>
+                <span>ينتهي: {p.expiryDate} ({daysLeft > 0 ? `${daysLeft} يوم` : 'منتهية'})</span>
+              </div>
+            )
+          })
+        ) : (
+          <div style={{ color: 'var(--success)', fontSize: '12px' }}>لا توجد منتجات قريبة من انتهاء الصلاحية</div>
         )}
       </div>
     </div>

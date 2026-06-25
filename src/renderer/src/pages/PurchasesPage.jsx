@@ -83,7 +83,7 @@ export default function PurchasesPage() {
   const [productForm, setProductForm] = useState({
     name: '', category: '', unit: '', barcode: '',
     cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '',
-    stock: '', reorderPoint: '', image: ''
+    stock: '', reorderPoint: '', image: '', expiryDate: ''
   })
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
@@ -358,12 +358,12 @@ export default function PurchasesPage() {
     if (!productForm.name.trim()) { toast('الرجاء إدخال اسم المنتج', 'error'); return }
     if (!productForm.priceRetail || Number(productForm.priceRetail) <= 0) { toast('الرجاء إدخال سعر التجزئة', 'error'); return }
     const token = localStorage.getItem('token')
-    const data = { ...productForm, cost: Number(productForm.cost) || 0, priceRetail: Number(productForm.priceRetail) || 0, priceHalfWholesale: Number(productForm.priceHalfWholesale) || 0, priceWholesale: Number(productForm.priceWholesale) || 0, stock: Number(productForm.stock) || 0, reorderPoint: Number(productForm.reorderPoint) || 0 }
+    const data = { ...productForm, cost: Number(productForm.cost) || 0, priceRetail: Number(productForm.priceRetail) || 0, priceHalfWholesale: Number(productForm.priceHalfWholesale) || 0, priceWholesale: Number(productForm.priceWholesale) || 0, stock: Number(productForm.stock) || 0, reorderPoint: Number(productForm.reorderPoint) || 0, expiryDate: productForm.expiryDate || '' }
     try {
       await api.saveProduct(token, data)
       toast('تمت إضافة المنتج', 'success')
       setShowProductModal(false)
-      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '', stock: '', reorderPoint: '', image: '' })
+      setProductForm({ name: '', category: '', unit: '', barcode: '', cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '', stock: '', reorderPoint: '', image: '', expiryDate: '' })
       setGeneratedBarcode(''); setShowPrintBarcode(false)
       window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast(err.message, 'error') }
@@ -796,6 +796,10 @@ export default function PurchasesPage() {
             <Input label="سعر الجملة" type="number" step="any" value={productForm.priceWholesale} onInput={v => setProductForm(f => ({ ...f, priceWholesale: v }))} placeholder="سعر الجملة" />
             <Input label="المخزون" type="number" step="any" value={productForm.stock} onInput={v => setProductForm(f => ({ ...f, stock: v }))} placeholder="المخزون" />
             <Input label="تنبيه انتهاء المخزون" type="number" step="any" value={productForm.reorderPoint} onInput={v => setProductForm(f => ({ ...f, reorderPoint: v }))} placeholder="تنبيه انتهاء المخزون" />
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>تاريخ انتهاء الصلاحية</label>
+              <input type="date" value={productForm.expiryDate} onInput={e => setProductForm(f => ({ ...f, expiryDate: e.target.value }))} style={{ width: '100%' }} />
+            </div>
           </div>
           </div>
           <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> إضافة</button>

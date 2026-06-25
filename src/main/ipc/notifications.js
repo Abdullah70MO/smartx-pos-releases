@@ -3,6 +3,7 @@ const crypto = require('node:crypto')
 
 const TYPE_ICONS = {
   low_stock: '⚠️',
+  expiry: '📅',
   info: 'ℹ️',
   success: '✅',
   warning: '⚠️',
@@ -112,6 +113,31 @@ function checkAndCreateLowStockNotifications(realm) {
   }
 }
 
+function checkAndCreateExpiryNotifications(realm) {
+  const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
+  if (!settings || settings.notificationExpiry === false) return
+  const now = new Date()
+  const thirtyDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
+  const products = realm.objects('Product').filtered('active == true AND expiryDate != ""')
+  for (const p of products) {
+    const d = new Date(p.expiryDate + 'T23:59:59')
+    if (d > now && d <= thirtyDaysFromNow) {
+      const existing = realm.objects('Notification')
+        .filtered('type == "expiry" AND referenceId == $0 AND read == false', p._id)[0]
+      if (!existing) {
+        const daysLeft = Math.ceil((d - now) / (1000 * 60 * 60 * 24))
+        createNotification(realm, {
+          type: 'expiry',
+          title: 'تنبيه انتهاء صلاحية',
+          message: `المنتج "${p.name}" - ستنتهي صلاحيته بعد ${daysLeft} يوم (${p.expiryDate})`,
+          referenceId: p._id,
+          referenceType: 'product'
+        })
+      }
+    }
+  }
+}
+
 module.exports = {
   listNotifications,
   getUnreadCount,
@@ -120,5 +146,6 @@ module.exports = {
   deleteNotification,
   clearAllNotifications,
   createNotification,
-  checkAndCreateLowStockNotifications
+  checkAndCreateLowStockNotifications,
+  checkAndCreateExpiryNotifications
 }

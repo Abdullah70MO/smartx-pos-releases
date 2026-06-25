@@ -8,7 +8,8 @@ import { formatDate } from '../utils/date'
 import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import StatementA4 from '../components/StatementA4'
-import { printA4 } from '../utils/print'
+import StatementThermal from '../components/StatementThermal'
+import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, modalSuccessBtn, modalPrimaryBtn, printBtn, EditIcon, DeleteIcon, ViewIcon, PaymentIcon, AddIcon, PrintIcon, CheckIcon } from '../components/ActionIcons'
 
 export default function SuppliersPage() {
@@ -271,7 +272,7 @@ export default function SuppliersPage() {
             </table>
           </div>
         </div>
-        <button onClick={async () => { try { await printA4(<StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} />) } catch (err) { toast('فشلت الطباعة: ' + err.message, 'error') } }} style={{ ...printBtn, marginTop: '12px' }}><PrintIcon size={16} /> طباعة كشف حساب</button>
+        <button onClick={async () => { try { const isA4 = settings?.printDefaultSize === 'a4'; const template = isA4 ? <StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} /> : <StatementThermal type="supplier" party={transModal} transactions={transactions} settings={settings} />; if (isA4) await printA4(template); else await printThermal(template) } catch (err) { toast('فشلت الطباعة: ' + err.message, 'error') } }} style={{ ...printBtn, marginTop: '12px' }}><PrintIcon size={16} /> طباعة كشف حساب</button>
       </Modal>
       <ConfirmDialog />
     </div>

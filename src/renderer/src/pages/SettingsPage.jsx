@@ -63,6 +63,7 @@ export default function SettingsPage() {
     { key: 'notificationPayments', label: 'إشعار المدفوعات', description: 'سداد عملاء أو موردين', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
     { key: 'notificationReturns', label: 'إشعار المرتجعات', description: 'عند عمل مرتجع منتجات', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> },
     { key: 'notificationShifts', label: 'إشعارات النجاح', description: 'إغلاق وردية، عمليات ناجحة', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> },
+    { key: 'notificationExpiry', label: 'تنبيه انتهاء الصلاحية', description: 'عند اقتراب صلاحية منتج', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   ]
 
   useEffect(() => { load() }, [])
@@ -149,7 +150,8 @@ export default function SettingsPage() {
           notificationSales: s.notificationSales !== false,
           notificationPayments: s.notificationPayments !== false,
           notificationReturns: s.notificationReturns !== false,
-          notificationShifts: s.notificationShifts !== false
+          notificationShifts: s.notificationShifts !== false,
+          notificationExpiry: s.notificationExpiry !== false
         }
         setInitialForm(loadedForm)
         setForm(loadedForm)
@@ -345,10 +347,12 @@ export default function SettingsPage() {
       localStorage.setItem('printDirectly', nextForm.printDirectly ? 'true' : 'false')
       localStorage.setItem('defaultPrinter', nextForm.defaultPrinter || '')
       localStorage.setItem('thermalPaperSize', nextForm.thermalPaperSize || '80mm')
+      localStorage.setItem('printDefaultSize', nextForm.printDefaultSize || 'receipt')
       localStorage.setItem('customPaperWidth', nextForm.customPaperWidth || '')
       localStorage.setItem('customPaperHeight', nextForm.customPaperHeight || '')
       localStorage.setItem('barcodePrinter', nextForm.barcodePrinter || '')
       localStorage.setItem('barcodeLabelSize', nextForm.barcodeLabelSize || '50x30')
+      localStorage.setItem('fontFamily', nextForm.fontFamily || 'Cairo')
       const updated = await updateSettings(nextForm)
       const normalized = updated || nextForm
       setInitialForm(normalized)

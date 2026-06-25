@@ -70,6 +70,7 @@ export default function ReportsPage() {
 
   const reportCards = [
     { id: 'overview', title: 'نظرة عامة', description: 'إجمالي المبيعات، المصروفات، الأرباح، إحصائيات عامة' },
+    { id: 'profit', title: 'صافي الربح', description: 'تفاصيل حساب صافي الربح' },
     { id: 'sales', title: 'المبيعات', description: 'قائمة فواتير المبيعات' },
     { id: 'expenses', title: 'المصروفات', description: 'قائمة المصروفات' },
     { id: 'withdrawals', title: 'المسحوبات الشخصية', description: 'قائمة المسحوبات الشخصية' },
@@ -82,7 +83,7 @@ export default function ReportsPage() {
     { id: 'shifts', title: 'الورديات', description: 'تقارير الورديات وإغلاق الكاشير' }
   ]
 
-  const reportColors = { overview: 'var(--accent)', sales: 'var(--success)', expenses: 'var(--danger)', withdrawals: 'var(--warning)', returns: 'var(--warning)', inventory: 'var(--secondary)', customers: 'var(--special)', suppliers: 'var(--teal)', treasury: 'var(--accent)', employees: '#8B5CF6', shifts: '#6366F1' }
+  const reportColors = { overview: 'var(--accent)', sales: 'var(--success)', expenses: 'var(--danger)', withdrawals: 'var(--warning)', returns: 'var(--warning)', inventory: 'var(--secondary)', customers: 'var(--special)', suppliers: 'var(--teal)', treasury: 'var(--accent)', employees: '#8B5CF6', shifts: '#6366F1', profit: '#f59e0b' }
   const reportIcons = {
     overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,
     sales: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
@@ -94,7 +95,8 @@ export default function ReportsPage() {
     suppliers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
     treasury: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>,
     employees: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
-    shifts: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M12 6v6l4 2"/></svg>
+    shifts: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M12 6v6l4 2"/></svg>,
+    profit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
   }
 
   useEffect(() => {
@@ -403,7 +405,7 @@ export default function ReportsPage() {
             <PeriodPresets current={period} onChange={setPeriodFilter} dateFrom={filterDateFrom} dateTo={filterDateTo} onDateFrom={setFilterDateFrom} onDateTo={setFilterDateTo} />
           </div>
 
-          {/* Summary cards - grouped */}
+          {/* Summary cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
@@ -420,32 +422,6 @@ export default function ReportsPage() {
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M2 8h20"/></svg>} label="اجمالى رصيد الخزائن" value={formatMoney(totalTreasuryBalance)} color="var(--special)" />
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>} label="رصيد الخزينة الرئيسية" value={formatMoney(mainBalance)} color="var(--teal)" />
               <OverviewCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/></svg>} label="رصيد البنك" value={formatMoney(bankBalance)} color="var(--accent)" />
-            </div>
-          </div>
-
-          {/* Profit breakdown detail */}
-          <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              تفاصيل صافي الربح
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
-              <ProfitRow label="إجمالي المبيعات" value={totalSales} color="var(--success)" />
-              <ProfitRow label="الضريبة" value={-totalTax} color="var(--danger)" indent />
-              <ProfitRow label="تكلفة البضاعة (COGS)" value={-totalCOGS} color="var(--danger)" indent />
-              <ProfitRow label="ربح إجمالي" value={totalSales - totalTax - totalCOGS} color="var(--accent)" bold total />
-              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
-              <ProfitRow label="مرتجعات البيع" value={-totalReturns} color="var(--warning)" indent />
-              <ProfitRow label="تكلفة المرتجعات المستردة" value={totalReturnCost} color="var(--success)" indent />
-              <ProfitRow label="صافي المرتجعات" value={totalReturnCost - totalReturns} color="var(--warning)" bold />
-              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
-              <ProfitRow label="المصروفات" value={-totalExpenses} color="var(--danger)" indent />
-              {Object.entries(expensesByCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
-                <ProfitRow key={cat} label={`  • ${cat}`} value={-amt} color={cat === 'فروقات الجرد' ? '#f97316' : 'var(--text2)'} indent2 />
-              ))}
-              <ProfitRow label="المسحوبات الشخصية" value={-totalWithdrawals} color="var(--warning)" indent />
-              <div style={{ borderTop: '2px solid var(--accent)', margin: '8px 0 4px' }} />
-              <ProfitRow label="صافي الربح" value={netProfit} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} bold total large />
             </div>
           </div>
 
@@ -1127,6 +1103,41 @@ export default function ReportsPage() {
           <Pagination page={shiftsPage} totalPages={Math.ceil(shiftsTotal / 20)} total={shiftsTotal} pageSize={20} onChange={setShiftsPage} />
         </div>
       )}
+
+      {selectedReport === 'profit' && (
+        <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
+            <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="إجمالي المبيعات" value={formatMoney(totalSales)} color="var(--success)" />
+            <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="إجمالي المصروفات" value={formatMoney(totalExpenses)} color="var(--danger)" />
+            <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} label="المسحوبات الشخصية" value={formatMoney(totalWithdrawals)} color="var(--warning)" />
+          </div>
+          <div className="card" style={{ padding: '20px' }}>
+            <h3 style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              تفاصيل صافي الربح
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <ProfitRow label="إجمالي المبيعات" value={totalSales} color="var(--success)" />
+              <ProfitRow label="الضريبة" value={-totalTax} color="var(--danger)" indent />
+              <ProfitRow label="تكلفة البضاعة (COGS)" value={-totalCOGS} color="var(--danger)" indent />
+              <ProfitRow label="ربح إجمالي" value={totalSales - totalTax - totalCOGS} color="var(--accent)" bold total />
+              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
+              <ProfitRow label="مرتجعات البيع" value={-totalReturns} color="var(--warning)" indent />
+              <ProfitRow label="تكلفة المرتجعات المستردة" value={totalReturnCost} color="var(--success)" indent />
+              <ProfitRow label="صافي المرتجعات" value={totalReturnCost - totalReturns} color="var(--warning)" bold />
+              <div style={{ borderTop: '1px dashed var(--bg3)', margin: '4px 0' }} />
+              <ProfitRow label="المصروفات" value={-totalExpenses} color="var(--danger)" indent />
+              {Object.entries(expensesByCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+                <ProfitRow key={cat} label={`  • ${cat}`} value={-amt} color={cat === 'تسويات مخزون' ? '#f97316' : 'var(--text2)'} indent2 />
+              ))}
+              <ProfitRow label="المسحوبات الشخصية" value={-totalWithdrawals} color="var(--warning)" indent />
+              <div style={{ borderTop: '2px solid var(--accent)', margin: '8px 0 4px' }} />
+              <ProfitRow label="صافي الربح" value={netProfit} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} bold total large />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1148,6 +1159,22 @@ function OverviewCard({ icon, label, value, color }) {
 }
 
 function SummaryCard({ icon, label, value, color }) {
+  return (
+    <div style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '14px', border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '2px' }}>{label}</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text)' }}>{value}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfitSummaryCard({ icon, label, value, color }) {
   return (
     <div style={{ background: 'var(--bg2)', padding: '16px', borderRadius: '14px', border: '1px solid var(--outline)', boxShadow: 'var(--elevation-1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

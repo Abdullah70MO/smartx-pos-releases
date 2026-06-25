@@ -16,7 +16,7 @@ function listProducts(realm, query, limit, page, pageSize) {
     category: p.category, unit: p.unit, cost: p.cost,
     priceRetail: p.priceRetail, priceHalfWholesale: p.priceHalfWholesale, priceWholesale: p.priceWholesale,
     stock: p.stock, reorderPoint: p.reorderPoint,
-    active: p.active, image: p.image || '', updatedAt: p.updatedAt?.toISOString()
+    active: p.active, image: p.image || '', expiryDate: p.expiryDate || '', updatedAt: p.updatedAt?.toISOString()
   })
   if (page != null) {
     const result = paginate(results, page, pageSize || 50)
@@ -72,6 +72,7 @@ function saveProduct(realm, data) {
       reorderPoint: Number(data.reorderPoint) || 0,
       active: data.active !== false,
       image: data.image || '',
+      expiryDate: data.expiryDate || '',
       updatedAt: new Date()
     }, Realm.UpdateMode.Modified)
   })
@@ -80,7 +81,7 @@ function saveProduct(realm, data) {
     category: product.category, unit: product.unit, cost: product.cost,
     priceRetail: product.priceRetail, priceHalfWholesale: product.priceHalfWholesale, priceWholesale: product.priceWholesale,
     stock: product.stock, reorderPoint: product.reorderPoint,
-    active: product.active, image: product.image || '', updatedAt: product.updatedAt?.toISOString()
+    active: product.active, image: product.image || '', expiryDate: product.expiryDate || '', updatedAt: product.updatedAt?.toISOString()
   }
 }
 

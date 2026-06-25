@@ -1,6 +1,6 @@
 const crypto = require('node:crypto')
 const { addBatch, deductFromFifo, deductFromBatch, syncProductStock, getAvgCost } = require('./inventoryHelpers')
-const { checkAndCreateLowStockNotifications } = require('./notifications')
+const { checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications } = require('./notifications')
 const { paginate } = require('../database')
 
 function listAdjustments(realm, filter, page, pageSize) {
@@ -39,7 +39,7 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
     if (!product) throw new Error('المنتج غير موجود')
     const oldStock = product.stock || 0
     const qty = Number(quantity)
-    let newStock
+    let newStock, expenseId = ''
     if (type === 'add') {
       const avgCost = product.cost || 0
       addBatch(realm, productId, qty, avgCost)
@@ -51,6 +51,22 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
         deductFromFifo(realm, productId, qty)
       }
       newStock = Math.max(0, oldStock - qty)
+      const avgCost = product.cost || 0
+      const lossAmount = qty * avgCost
+      if (lossAmount > 0) {
+        const expense = realm.create('Expense', {
+          _id: crypto.randomUUID(),
+          amount: lossAmount,
+          category: 'تسويات مخزون',
+          note: 'تسوية مخزون - ' + (productName || product.name) + ' (إزالة ' + qty + ')',
+          date: date ? new Date(date) : new Date(),
+          paymentMethod: 'cash',
+          shiftId: '',
+          isInventoryLoss: true,
+          createdAt: new Date()
+        })
+        expenseId = expense._id
+      }
     } else {
       const diff = qty - oldStock
       if (diff > 0) {
@@ -59,16 +75,36 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
         deductFromFifo(realm, productId, -diff)
       }
       newStock = qty
+      if (diff < 0) {
+        const avgCost = product.cost || 0
+        const lossAmount = Math.abs(diff) * avgCost
+        if (lossAmount > 0) {
+          const expense = realm.create('Expense', {
+            _id: crypto.randomUUID(),
+            amount: lossAmount,
+            category: 'تسويات مخزون',
+            note: 'تسوية مخزون - ' + (productName || product.name) + ' (تحديد ' + oldStock + ' → ' + qty + ')',
+            date: date ? new Date(date) : new Date(),
+            paymentMethod: 'cash',
+            shiftId: '',
+            isInventoryLoss: true,
+            createdAt: new Date()
+          })
+          expenseId = expense._id
+        }
+      }
     }
     product.updatedAt = new Date()
     adjustment = realm.create('InventoryAdjustment', {
       _id: crypto.randomUUID(), productId, productName,
       type, quantity: qty, oldStock, newStock,
       reason: reason || '', createdBy: user.name,
-      createdAt: date ? new Date(date) : new Date()
+      createdAt: date ? new Date(date) : new Date(),
+      expenseId
     })
   })
   checkAndCreateLowStockNotifications(realm)
+  checkAndCreateExpiryNotifications(realm)
   return { _id: adjustment._id, productId: adjustment.productId, productName: adjustment.productName, type: adjustment.type, quantity: adjustment.quantity, oldStock: adjustment.oldStock, newStock: adjustment.newStock, reason: adjustment.reason, createdBy: adjustment.createdBy, createdAt: adjustment.createdAt?.toISOString() }
 }
 
@@ -88,6 +124,10 @@ function revertAdjustment(realm, adj) {
         deductFromFifo(realm, adj.productId, -diff)
       }
     }
+  }
+  if (adj.expenseId) {
+    const expense = realm.objectForPrimaryKey('Expense', adj.expenseId)
+    if (expense) realm.delete(expense)
   }
 }
 
@@ -141,6 +181,7 @@ function saveAdjustment(realm, user, data) {
     }
   })
   checkAndCreateLowStockNotifications(realm)
+  checkAndCreateExpiryNotifications(realm)
   return {
     _id: adjustment._id, productId: adjustment.productId,
     productName: adjustment.productName, type: adjustment.type,
@@ -223,11 +264,14 @@ function createInventory(realm, session, data) {
       const product = realm.objectForPrimaryKey('Product', item.productId)
       if (!product) continue
       const sysQty = product.stock || 0
-      const actQty = Number(item.actualQuantity) !== undefined && item.actualQuantity !== '' && item.actualQuantity !== null ? Number(item.actualQuantity) : sysQty
+      const actQty = item.actualQuantity !== undefined && item.actualQuantity !== null && item.actualQuantity !== '' ? Number(item.actualQuantity) : sysQty
       const diff = actQty - sysQty
       totalDiff += diff
+      const avgCost = getAvgCost(realm, item.productId)
+      const lossAmount = diff < 0 ? Math.abs(diff) * avgCost : 0
+      totalLoss += lossAmount
 
-      const invItem = {
+      items.push({
         productId: item.productId,
         productName: item.productName || product.name,
         unit: item.unit || product.unit || '',
@@ -235,56 +279,11 @@ function createInventory(realm, session, data) {
         systemQuantity: sysQty,
         actualQuantity: actQty,
         difference: diff,
-        cost: 0,
-        lossAmount: 0,
+        cost: avgCost,
+        lossAmount,
         adjustmentId: '',
         expenseId: ''
-      }
-
-      if (diff !== 0) {
-        if (diff > 0) {
-          const adjId = crypto.randomUUID()
-          addBatch(realm, item.productId, Math.abs(diff), getAvgCost(realm, item.productId), adjId)
-          syncProductStock(realm, item.productId)
-          realm.create('InventoryAdjustment', {
-            _id: adjId, productId: item.productId, productName: item.productName || product.name,
-            type: 'add', quantity: Math.abs(diff),
-            oldStock: sysQty, newStock: actQty,
-            reason: 'تسوية جرد', createdBy: session.name, createdAt: now
-          })
-          invItem.adjustmentId = adjId
-          invItem.cost = 0
-        } else {
-          const qty = Math.abs(diff)
-          const avgCost = getAvgCost(realm, item.productId)
-          const adjId = crypto.randomUUID()
-          const cost = deductFromFifo(realm, item.productId, qty)
-          syncProductStock(realm, item.productId)
-          realm.create('InventoryAdjustment', {
-            _id: adjId, productId: item.productId, productName: item.productName || product.name,
-            type: 'remove', quantity: qty,
-            oldStock: sysQty, newStock: actQty,
-            reason: 'تسوية جرد', createdBy: session.name, createdAt: now
-          })
-          invItem.adjustmentId = adjId
-          invItem.cost = avgCost
-
-          const lossAmount = qty * avgCost
-          invItem.lossAmount = lossAmount
-          if (lossAmount > 0) {
-            const expId = crypto.randomUUID()
-            realm.create('Expense', {
-              _id: expId, amount: lossAmount, category: 'فروقات الجرد',
-              note: `نقص جرد - ${item.productName || product.name} (${qty} وحدة)`,
-              date: now, paymentMethod: 'cash', shiftId: '',
-              createdAt: now
-            })
-            invItem.expenseId = expId
-            totalLoss += lossAmount
-          }
-        }
-      }
-      items.push(invItem)
+      })
     }
 
     realm.create('Inventory', {
@@ -295,7 +294,9 @@ function createInventory(realm, session, data) {
       createdBy: session.name, createdAt: now
     })
   })
+
   checkAndCreateLowStockNotifications(realm)
+  checkAndCreateExpiryNotifications(realm)
   return { _id: rx, type: data.type, notes: data.notes, totalQuantityDifference: totalDiff, totalFinancialLoss: totalLoss, createdAt: now.toISOString() }
 }
 

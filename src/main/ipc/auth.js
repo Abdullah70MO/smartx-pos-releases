@@ -3,11 +3,21 @@ const crypto = require('node:crypto')
 
 let sessions = new Map()
 
+function comparePassword(inputPassword, storedHash) {
+  if (!storedHash) return false
+  try {
+    return bcrypt.compareSync(String(inputPassword || ''), String(storedHash))
+  } catch (err) {
+    console.warn('Password hash comparison failed:', err?.message || err)
+    return false
+  }
+}
+
 function login(realm, { username, password }) {
   const user = realm.objects('User').filtered('username == $0', username.toLowerCase())[0]
   if (!user) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
   if (!user.active) throw new Error('هذا الحساب غير نشط')
-  if (!bcrypt.compareSync(password, user.passwordHash)) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
+  if (!comparePassword(password, user.passwordHash)) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
 
   if (user.employeeId) {
     const today = new Date()
@@ -78,14 +88,14 @@ function getSecurityQuestion(realm, username) {
 function verifySecurityAnswer(realm, username, answer) {
   const user = realm.objects('User').filtered('username == $0', (username || '').trim().toLowerCase())[0]
   if (!user || !user.securityAnswerHash) return false
-  return bcrypt.compareSync(answer || '', user.securityAnswerHash)
+  return comparePassword(answer || '', user.securityAnswerHash)
 }
 
 function resetPassword(realm, username, newPassword, answer) {
   const user = realm.objects('User').filtered('username == $0', (username || '').trim().toLowerCase())[0]
   if (!user) throw new Error('المستخدم غير موجود')
   if (!user.securityAnswerHash) throw new Error('لم يتم إعداد سؤال الأمان لهذا الحساب')
-  if (!bcrypt.compareSync(answer || '', user.securityAnswerHash)) throw new Error('إجابة سؤال الأمان غير صحيحة')
+  if (!comparePassword(answer || '', user.securityAnswerHash)) throw new Error('إجابة سؤال الأمان غير صحيحة')
   if (!newPassword || newPassword.length < 4) throw new Error('كلمة المرور يجب أن تكون 4 أحرف على الأقل')
   realm.write(() => {
     user.passwordHash = bcrypt.hashSync(newPassword, 12)

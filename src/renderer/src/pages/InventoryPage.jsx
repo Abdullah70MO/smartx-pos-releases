@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
@@ -41,10 +41,14 @@ export default function InventoryPage() {
   const [invCategory, setInvCategory] = useState('')
   const [invNotes, setInvNotes] = useState('')
   const [invAddedProducts, setInvAddedProducts] = useState([])
-  const [countValues, setCountValues] = useState({})
   const [invSearch, setInvSearch] = useState('')
   const [invSearchResults, setInvSearchResults] = useState([])
   const [saving, setSaving] = useState(false)
+  const invSearchInputRef = useRef(null)
+  const invSearchTimerRef = useRef(null)
+  const barcodeBufferRef = useRef('')
+  const barcodeTimerRef = useRef(null)
+  const productMapRef = useRef({ byId: {}, byBarcode: {} })
   const [viewInv, setViewInv] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [inventories, setInventories] = useState([])
@@ -54,6 +58,64 @@ export default function InventoryPage() {
 
   useEffect(() => { load() }, [page, searchProduct, searchType, dateFrom, dateTo])
   useEffect(() => { loadInventories() }, [invPage])
+  useEffect(() => { loadProductMeta() }, [])
+  useEffect(() => {
+    const byId = {}
+    const byBarcode = {}
+    for (const p of products) {
+      byId[p._id] = p
+      if (p.barcode) byBarcode[p.barcode] = p
+    }
+    productMapRef.current = { byId, byBarcode }
+  }, [products])
+  useEffect(() => {
+    if (!showInventoryModal) return
+    invSearchInputRef.current?.focus()
+  }, [showInventoryModal])
+  useEffect(() => {
+    if (!showInventoryModal) return
+    if (invSearchTimerRef.current) clearTimeout(invSearchTimerRef.current)
+    const query = invSearch.trim()
+    if (!query) {
+      setInvSearchResults([])
+      return
+    }
+    invSearchTimerRef.current = setTimeout(async () => {
+      const token = localStorage.getItem('token')
+      try {
+        const result = await api.listProducts(token, query, 8, 0, 8)
+        const data = Array.isArray(result) ? result : result.data || []
+        const filtered = (data || []).filter(p => !invAddedProducts.some(x => x._id === p._id && !x._id.startsWith('__cat__')))
+        setInvSearchResults(filtered)
+      } catch {
+        setInvSearchResults([])
+      }
+    }, 220)
+    return () => clearTimeout(invSearchTimerRef.current)
+  }, [showInventoryModal, invSearch, invAddedProducts])
+  useEffect(() => {
+    if (!showInventoryModal) return
+    const handler = (e) => {
+      if (e.key === 'Enter') {
+        const code = barcodeBufferRef.current.trim()
+        if (code) {
+          barcodeBufferRef.current = ''
+          e.preventDefault()
+          addProductToInventoryByQuery(code, { fromBarcode: true })
+        }
+        return
+      }
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        barcodeBufferRef.current += e.key
+        if (barcodeTimerRef.current) clearTimeout(barcodeTimerRef.current)
+        barcodeTimerRef.current = setTimeout(() => { barcodeBufferRef.current = '' }, 220)
+      } else {
+        barcodeBufferRef.current = ''
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showInventoryModal])
 
   useEffect(() => {
     if (form.productId && form.type === 'remove') {
@@ -80,6 +142,14 @@ export default function InventoryPage() {
     setInventories(result.data || [])
     setInvTotal(result.total || 0)
     setInvTotalPages(result.totalPages || 0)
+  }
+
+  async function loadProductMeta() {
+    const token = localStorage.getItem('token')
+    try {
+      const meta = await api.listProductMeta(token)
+      setAllCategories(meta.categories || [])
+    } catch {}
   }
 
   async function handleSave(e) {
@@ -134,21 +204,43 @@ export default function InventoryPage() {
     setInvCategory('')
     setInvNotes('')
     setInvSearch('')
+    setInvSearchResults([])
     setInvAddedProducts([])
-    setCountValues({})
     setShowInventoryModal(true)
   }
 
-  async function searchAndAddProduct() {
-    if (!invSearch.trim()) { toast('اكتب اسم المنتج للبحث', 'error'); return }
+  async function addProductToInventoryByQuery(query, options = {}) {
+    const normalized = (query || '').trim()
+    if (!normalized) { toast('اكتب اسم المنتج أو الباركود للبحث', 'error'); return }
     const token = localStorage.getItem('token')
     try {
-      const result = await api.listProducts(token, invSearch.trim(), 0, 0, 20)
-      const found = (result.data || []).filter(p => !invAddedProducts.some(x => x._id === p._id && !x._id.startsWith('__cat__')))
-      if (found.length === 0) { toast('لا توجد نتائج جديدة', 'error'); return }
-      setInvAddedProducts(prev => [...prev, ...found.map(p => ({ ...p, _type: 'product' }))])
+      let product = null
+      if (options.fromBarcode) {
+        product = productMapRef.current.byBarcode[normalized]
+      }
+      if (!product) {
+        const result = await api.listProducts(token, normalized, 10, 0, 10)
+        const data = Array.isArray(result) ? result : result.data || []
+        product = (data || []).find(p => p.barcode === normalized || p.sku === normalized || p.name?.toLowerCase() === normalized.toLowerCase()) || (data || [])[0]
+      }
+      if (!product) {
+        toast('لا توجد نتائج جديدة', 'error')
+        return
+      }
+      setInvAddedProducts(prev => {
+        if (prev.some(x => x._id === product._id && !x._id.startsWith('__cat__'))) return prev
+        return [...prev, { ...product, _type: 'product' }]
+      })
       setInvSearch('')
+      setInvSearchResults([])
+      if (options.fromBarcode) {
+        toast(`تم إضافة ${product.name}`, 'success')
+      }
     } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function searchAndAddProduct() {
+    await addProductToInventoryByQuery(invSearch)
   }
 
   function addCategoryToInventory() {
@@ -158,12 +250,7 @@ export default function InventoryPage() {
   }
 
   function removeAddedProduct(pid) {
-    setCountValues(prev => { const c = { ...prev }; delete c[pid]; return c })
     setInvAddedProducts(prev => prev.filter(x => x._id !== pid))
-  }
-
-  function updateCount(pid, val) {
-    setCountValues(prev => ({ ...prev, [pid]: val }))
   }
 
   async function handleSaveInventory() {
@@ -182,8 +269,7 @@ export default function InventoryPage() {
     const items = invAddedProducts.map(p => ({
       productId: p._type === 'category' ? '__cat__' + p.name : p._id,
       productName: p.name,
-      unit: p.unit || '',
-      actualQuantity: p._type === 'category' ? 0 : Number(countValues[p._id]) || 0
+      unit: p.unit || ''
     }))
     if (items.length === 0) { toast('أضف منتجاً واحداً على الأقل', 'error'); return }
     setSaving(true)
@@ -258,18 +344,14 @@ export default function InventoryPage() {
         <div>
           <div className="table-card">
             <table>
-              <thead><tr><th>التاريخ</th><th>النوع</th><th>منتجات</th><th>بفروقات</th><th>فرق الكمية</th><th>خسائر</th><th>ملاحظات</th><th>بواسطة</th><th></th></tr></thead>
+              <thead><tr><th>التاريخ</th><th>النوع</th><th>عدد المنتجات</th><th>المخزون</th><th>ملاحظات</th><th>بواسطة</th><th></th></tr></thead>
               <tbody>
                 {inventories.map(inv => (
                   <tr key={inv._id}>
                     <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{formatDate(inv.createdAt)}</td>
-                    <td>{inv.type === 'full' ? 'كامل' : 'جزئي'}{inv.filterCategory ? ` (${inv.filterCategory})` : ''}</td>
+                    <td>{inv.type === 'full' ? 'كامل' : 'جزئي'}</td>
                     <td>{inv.itemsCount}</td>
-                    <td style={{ fontWeight: 'bold' }}>{inv.itemsWithDiff}</td>
-                    <td style={{ fontWeight: 'bold', color: inv.totalQuantityDifference > 0 ? 'var(--success)' : inv.totalQuantityDifference < 0 ? 'var(--danger)' : 'inherit' }}>
-                      {inv.totalQuantityDifference > 0 ? '+' : ''}{inv.totalQuantityDifference}
-                    </td>
-                    <td style={{ fontWeight: 'bold', color: 'var(--danger)' }}>{formatMoney(inv.totalFinancialLoss)}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text2)' }}>{inv.type === 'full' ? 'جميع المنتجات' : (inv.filterCategory || 'بدون تصنيف')}</td>
                     <td style={{ fontSize: '12px', color: 'var(--text2)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inv.notes || '-'}</td>
                     <td style={{ fontSize: '12px' }}>{inv.createdBy}</td>
                     <td>
@@ -280,7 +362,7 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                 ))}
-                {inventories.length === 0 && <tr><td colSpan="9" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد جرديات</td></tr>}
+                {inventories.length === 0 && <tr><td colSpan="7" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد جرديات</td></tr>}
               </tbody>
             </table>
           </div>
@@ -388,56 +470,57 @@ export default function InventoryPage() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input placeholder="ابحث عن منتج وأضفه..." value={invSearch}
-                  onInput={e => setInvSearch(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') searchAndAddProduct() }}
-                  style={{ flex: 1 }} />
-                <button onClick={searchAndAddProduct} style={{ ...secondaryBtn, padding: '8px 16px', whiteSpace: 'nowrap' }}><AddIcon size={14} /> إضافة</button>
-                <select value={invCategory} onChange={e => setInvCategory(e.target.value)} style={{ width: '140px' }}>
-                  <option value="">اختر صنف</option>
-                  {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <button onClick={addCategoryToInventory} style={{ ...secondaryBtn, padding: '8px 12px', whiteSpace: 'nowrap', fontSize: '11px' }}>+ إضافة صنف</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input ref={invSearchInputRef} placeholder="ابحث بالاسم أو الباركود..." value={invSearch}
+                    onInput={e => setInvSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); searchAndAddProduct() } }}
+                    style={{ flex: '1 1 240px', minWidth: '220px' }} />
+                  <button onClick={searchAndAddProduct} style={{ ...secondaryBtn, padding: '8px 16px', whiteSpace: 'nowrap' }}><AddIcon size={14} /> إضافة</button>
+                  <select value={invCategory} onChange={e => setInvCategory(e.target.value)} style={{ width: '140px', minWidth: '140px' }}>
+                    <option value="">اختر صنف</option>
+                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <button onClick={addCategoryToInventory} style={{ ...secondaryBtn, padding: '8px 12px', whiteSpace: 'nowrap', fontSize: '11px' }}>+ إضافة صنف</button>
+                </div>
+                {invSearchResults.length > 0 && (
+                  <div style={{ border: '1px solid var(--bg3)', borderRadius: '8px', background: 'var(--bg)', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {invSearchResults.map(p => (
+                      <button key={p._id} type="button" onClick={() => addProductToInventoryByQuery(p.name)} style={{ textAlign: 'right', padding: '8px 10px', borderRadius: '6px', background: 'transparent', border: '1px solid transparent', color: 'var(--text)', cursor: 'pointer' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{p.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text2)' }}>{p.barcode ? `باركود: ${p.barcode}` : `SKU: ${p.sku || '-'}`}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="table-card" style={{ maxHeight: '280px', overflow: 'auto' }}>
-                <table style={{ fontSize: '12px' }}>
+              <div className="table-card" style={{ maxHeight: '320px', overflow: 'auto' }}>
+                <table style={{ fontSize: '12px', width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ width: '30px' }}></th>
                       <th>النوع</th>
                       <th>الاسم</th>
                       {invAddedProducts.some(x => x._type === 'product') && <th>الوحدة</th>}
-                      {invAddedProducts.some(x => x._type === 'product') && <th>المخزون</th>}
-                      {invAddedProducts.some(x => x._type === 'product') && <th>الكمية الفعلية</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {invAddedProducts.map(p => (
                       <tr key={p._id} style={{ background: p._type === 'category' ? 'rgba(59,106,181,0.1)' : 'transparent' }}>
-                        <td>
+                        <td style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', padding: '8px 6px' }}>
                           <button onClick={() => removeAddedProduct(p._id)} title="حذف" style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '16px', padding: '2px' }}>×</button>
                         </td>
-                        <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{p._type === 'category' ? 'صنف' : 'منتج'}</td>
-                        <td style={{ fontWeight: p._type === 'category' ? 'bold' : 'normal' }}>{p.name}{p._type === 'category' ? ` (${allCategories.includes(p.name) ? 'جميع المنتجات' : ''})` : ''}</td>
+                        <td style={{ fontSize: '11px', color: 'var(--text2)', whiteSpace: 'normal', overflowWrap: 'anywhere', padding: '8px 6px' }}>{p._type === 'category' ? 'صنف' : 'منتج'}</td>
+                        <td style={{ fontWeight: p._type === 'category' ? 'bold' : 'normal', whiteSpace: 'normal', overflowWrap: 'anywhere', padding: '8px 6px' }}>{p.name}{p._type === 'category' ? ` (${allCategories.includes(p.name) ? 'جميع المنتجات' : ''})` : ''}</td>
                         {p._type === 'category' ? (
-                          <td colSpan="3" style={{ fontSize: '11px', color: 'var(--text2)' }}>- يظهر في الطباعة -</td>
+                          <td colSpan="1" style={{ fontSize: '11px', color: 'var(--text2)', whiteSpace: 'normal', overflowWrap: 'anywhere', padding: '8px 6px' }}>- يظهر في الطباعة -</td>
                         ) : (
-                          <>
-                            <td>{p.unit}</td>
-                            <td style={{ fontWeight: 'bold' }}>{p.stock}</td>
-                            <td>
-                              <input type="number" step="any" placeholder={String(p.stock)}
-                                value={countValues[p._id] !== undefined ? countValues[p._id] : ''}
-                                onInput={e => updateCount(p._id, e.target.value)}
-                                style={{ width: '80px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--bg3)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px' }} />
-                            </td>
-                          </>
+                          <td style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', padding: '8px 6px' }}>{p.unit}</td>
                         )}
                       </tr>
                     ))}
-                    {invAddedProducts.length === 0 && <tr><td colSpan="6" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لم تضف أي منتجات أو أصناف بعد</td></tr>}
+                    {invAddedProducts.length === 0 && <tr><td colSpan="4" style={{ padding: '24px', color: 'var(--text2)', textAlign: 'center' }}>لم تضف أي منتجات أو أصناف بعد</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -449,7 +532,7 @@ export default function InventoryPage() {
 
           <button onClick={handleSaveInventory} disabled={saving}
             style={{ ...modalPrimaryBtn, background: 'var(--accent)', opacity: saving ? 0.6 : 1 }}>
-            <CheckIcon size={16} /> {saving ? 'جاري الحفظ...' : (inventoryType === 'full' ? 'تسجيل جرد كامل' : 'تسوية و حفظ الجرد')}
+            <CheckIcon size={16} /> {saving ? 'جاري الحفظ...' : 'حفظ الجرد'}
           </button>
         </div>
       </Modal>
@@ -468,36 +551,25 @@ export default function InventoryPage() {
                 <span>{formatDate(viewInv.createdAt)}</span>
               </div>
               <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>
+                <span style={{ color: 'var(--text2)' }}>عدد المنتجات: </span>
+                <span style={{ fontWeight: 'bold' }}>{viewInv.items.length}</span>
+              </div>
+              <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>
                 <span style={{ color: 'var(--text2)' }}>بواسطة: </span>
                 <span>{viewInv.createdBy}</span>
-              </div>
-              <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text2)' }}>فرق الكمية: </span>
-                <span style={{ fontWeight: 'bold', color: viewInv.totalQuantityDifference > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {viewInv.totalQuantityDifference > 0 ? '+' : ''}{viewInv.totalQuantityDifference}
-                </span>
-              </div>
-              <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text2)' }}>خسائر: </span>
-                <span style={{ fontWeight: 'bold', color: 'var(--danger)' }}>{formatMoney(viewInv.totalFinancialLoss)}</span>
               </div>
             </div>
             {viewInv.notes && <div style={{ background: 'var(--bg3)', padding: '8px', borderRadius: '8px', fontSize: '12px' }}>ملاحظات: {viewInv.notes}</div>}
             <div className="table-card" style={{ maxHeight: '350px', overflow: 'auto' }}>
               <table style={{ fontSize: '12px' }}>
-                <thead><tr><th>#</th><th>المنتج</th><th>النظام</th><th>الفعلي</th><th>الفرق</th><th>التكلفة</th><th>الخسارة</th></tr></thead>
+                <thead><tr><th>#</th><th>المنتج</th><th>المخزون</th><th>الوحدة</th></tr></thead>
                 <tbody>
                   {viewInv.items.map((item, i) => (
                     <tr key={item.productId}>
                       <td>{i + 1}</td>
                       <td>{item.productName}</td>
                       <td>{item.systemQuantity}</td>
-                      <td>{item.actualQuantity}</td>
-                      <td style={{ fontWeight: 'bold', color: item.difference > 0 ? 'var(--success)' : item.difference < 0 ? 'var(--danger)' : 'inherit' }}>
-                        {item.difference > 0 ? '+' : ''}{item.difference}
-                      </td>
-                      <td>{formatMoney(item.cost)}</td>
-                      <td style={{ color: 'var(--danger)' }}>{item.lossAmount > 0 ? formatMoney(item.lossAmount) : '-'}</td>
+                      <td>{item.unit || '-'}</td>
                     </tr>
                   ))}
                 </tbody>

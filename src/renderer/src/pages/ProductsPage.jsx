@@ -92,7 +92,7 @@ export default function ProductsPage() {
   }
 
   function resetForm() {
-    setForm({ name: '', category: '', unit: '', barcode: '', cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '', stock: '', reorderPoint: '', image: '' })
+    setForm({ name: '', category: '', unit: '', barcode: '', cost: '', priceRetail: '', priceHalfWholesale: '', priceWholesale: '', stock: '', reorderPoint: '', image: '', expiryDate: '' })
   }
 
   function openEdit(product) {
@@ -105,7 +105,8 @@ export default function ProductsPage() {
       priceWholesale: String(product.priceWholesale ?? ''),
       stock: String(product.stock ?? ''),
       reorderPoint: String(product.reorderPoint ?? ''),
-      image: product.image || ''
+      image: product.image || '',
+      expiryDate: product.expiryDate || ''
     })
     setShowModal(true)
   }
@@ -132,7 +133,7 @@ export default function ProductsPage() {
     if (!form.name.trim()) { toast('الرجاء إدخال اسم المنتج', 'error'); return }
     if (!form.priceRetail || Number(form.priceRetail) <= 0) { toast('الرجاء إدخال سعر التجزئة', 'error'); return }
     const token = localStorage.getItem('token')
-    const data = { ...form, _id: edit?._id, cost: Number(form.cost) || 0, priceRetail: Number(form.priceRetail) || 0, priceHalfWholesale: Number(form.priceHalfWholesale) || 0, priceWholesale: Number(form.priceWholesale) || 0, stock: Number(form.stock) || 0, reorderPoint: Number(form.reorderPoint) || 0 }
+    const data = { ...form, _id: edit?._id, cost: Number(form.cost) || 0, priceRetail: Number(form.priceRetail) || 0, priceHalfWholesale: Number(form.priceHalfWholesale) || 0, priceWholesale: Number(form.priceWholesale) || 0, stock: Number(form.stock) || 0, reorderPoint: Number(form.reorderPoint) || 0, expiryDate: form.expiryDate || '' }
     try {
       await api.saveProduct(token, data)
       toast(edit ? 'تم تحديث المنتج' : 'تمت إضافة المنتج', 'success')
@@ -348,6 +349,10 @@ export default function ProductsPage() {
             <Input label="سعر الجملة" type="number" step="any" value={form.priceWholesale} onInput={v => setForm(f => ({ ...f, priceWholesale: v }))} placeholder="سعر الجملة" />
             <Input label="المخزون" type="number" step="any" value={form.stock} onInput={v => setForm(f => ({ ...f, stock: v }))} placeholder="المخزون" />
             <Input label="تنبيه انتهاء المخزون" type="number" step="any" value={form.reorderPoint} onInput={v => setForm(f => ({ ...f, reorderPoint: v }))} placeholder="تنبيه انتهاء المخزون" />
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>تاريخ انتهاء الصلاحية</label>
+              <input type="date" value={form.expiryDate} onInput={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} style={{ width: '100%' }} />
+            </div>
           </div>
           </div>
           <button type="submit" style={modalPrimaryBtn}><CheckIcon size={16} /> {edit ? 'تحديث' : 'إضافة'}</button>

@@ -2,52 +2,78 @@ import { formatMoney } from '../utils/money'
 import { formatDateTime } from '../utils/date'
 
 export default function PrintTemplateThermal({ data, settings }) {
+  const paymentLabel = data.paymentMethod === 'card' ? 'بطاقة' : data.paymentMethod === 'credit' ? 'آجل' : 'نقداً'
+
   return (
-    <div style={{ width: '100%', fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif", fontSize: '12px', color: '#000', direction: 'rtl' }}>
-      {settings?.showLogo !== false && settings?.logoDataUrl && <div className="center"><img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '40px', marginBottom: '4px' }} /></div>}
-      {settings?.showBusinessName !== false && <div className="center bold" style={{ fontSize: '14px', marginBottom: '2px' }}>{settings?.businessName || 'SMART X'}</div>}
-      {settings?.showPhone !== false && settings?.phone && <div className="center" style={{ fontSize: '10px' }}>هاتف: {settings.phone}</div>}
-      {settings?.showAddress !== false && settings?.address && <div className="center" style={{ fontSize: '10px' }}>{settings.address}</div>}
-      <hr />
-      <div className="center bold" style={{ marginBottom: '4px' }}>فاتورة #{data.invoiceNo}</div>
-      <div className="center" style={{ fontSize: '10px', marginBottom: '4px' }}>{formatDateTime(data.createdAt)}</div>
-      {data.customerName && <div className="right" style={{ fontSize: '11px', marginBottom: '4px' }}>العميل: {data.customerName}</div>}
-      <hr />
-      <table>
-        <tbody>
-          {data.items?.map((item, i) => (
-            <tr key={i}>
-              <td className="right">{item.name}</td>
-              <td className="center">{item.quantity}</td>
-              <td className="left">{formatMoney(item.unitPrice)}</td>
-              <td className="left">{formatMoney(item.unitPrice * item.quantity)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <hr />
-      <table style={{ width: '100%' }}>
-        <tbody>
-          <tr><td className="right">المجموع</td><td className="left">{formatMoney(data.subtotal)}</td></tr>
-          {data.discount > 0 && <tr><td className="right" style={{ color: '#d00' }}>الخصم</td><td className="left" style={{ color: '#d00' }}>-{formatMoney(data.discount)}</td></tr>}
-          {data.tax > 0 && <tr><td className="right">الضريبة</td><td className="left">{formatMoney(data.tax)}</td></tr>}
-          <tr><td className="right bold">الإجمالي</td><td className="left bold">{formatMoney(data.total)}</td></tr>
-          {data.previousDebt > 0 && <tr><td className="right" style={{ color: '#d00' }}>رصيد مستحق من العميل</td><td className="left" style={{ color: '#d00' }}>{formatMoney(data.previousDebt)}</td></tr>}
-          {data.previousCredit > 0 && <tr><td className="right" style={{ color: '#080' }}>دين مستحق للعميل</td><td className="left" style={{ color: '#080' }}>-{formatMoney(data.previousCredit)}</td></tr>}
-          {data.paid > 0 && <tr><td className="right">المدفوع</td><td className="left">{formatMoney(data.paid)}</td></tr>}
-          {data.paymentMethod === 'credit' && data.total > (data.paid || 0) && <tr><td className="right" style={{ color: '#d00' }}>رصيد مستحق من العميل</td><td className="left" style={{ color: '#d00' }}>{formatMoney(data.total - (data.paid || 0))}</td></tr>}
-          {(() => {
-            const rem = (data.total || 0) - (data.paid || 0)
-            const totalRem = rem + (data.previousDebt || 0) - (data.previousCredit || 0)
-            if (totalRem <= 0 && rem <= 0) return null
-            return <tr style={{ fontWeight: 'bold' }}><td className="right">إجمالي الرصيد المتبقي</td><td className="left">{formatMoney(totalRem)}</td></tr>
-          })()}
-        </tbody>
-      </table>
-      <hr />
-      {data.paymentMethod && <div className="center bold" style={{ marginTop: '4px', marginBottom: '2px' }}>نوع الدفع: {data.paymentMethod === 'credit' ? 'آجل' : data.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</div>}
-      {data.cashierName && <div className="center" style={{ fontSize: '10px', marginTop: '4px' }}>الكاشير: {data.cashierName}</div>}
-      {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div className="center" style={{ fontSize: '9px', marginTop: '8px', borderTop: '1px dashed #000', paddingTop: '4px' }}>{settings.receiptFooter}</div>}
+    <div style={{
+      width: '100%', maxWidth: '80mm', margin: '0 auto', padding: '6px 4px',
+      fontFamily: '"Cairo", "Segoe UI", Tahoma, Arial, sans-serif', fontSize: '11px', fontWeight: '400', lineHeight: '1.3',
+      color: '#111', direction: 'rtl', background: '#fff'
+    }}>
+      {settings?.showLogo !== false && settings?.logoDataUrl && (
+        <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+          <img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '34px', maxWidth: '100%' }} />
+        </div>
+      )}
+      {settings?.showBusinessName !== false && (
+        <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '13px', marginBottom: '2px' }}>
+          {settings?.businessName || 'SMART X'}
+        </div>
+      )}
+      {settings?.showPhone !== false && settings?.phone && <div style={{ textAlign: 'center', fontSize: '9px', color: '#444' }}>هاتف: {settings.phone}</div>}
+      {settings?.showAddress !== false && settings?.address && <div style={{ textAlign: 'center', fontSize: '9px', color: '#444' }}>{settings.address}</div>}
+
+      <div style={{ borderTop: '1px dashed #999', margin: '6px 0 4px', paddingTop: '4px' }} />
+      <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '12px', marginBottom: '2px' }}>فاتورة #{data.invoiceNo}</div>
+      <div style={{ textAlign: 'center', fontSize: '9px', color: '#666', marginBottom: '4px' }}>{formatDateTime(data.createdAt)}</div>
+      {data.customerName && <div style={{ fontSize: '10px', marginBottom: '4px' }}>العميل: {data.customerName}</div>}
+      <div style={{ textAlign: 'center', fontSize: '9px', marginBottom: '4px', color: '#555' }}>الطريقة: {paymentLabel}</div>
+
+      <div style={{ borderTop: '1px dashed #999', margin: '4px 0' }} />
+      {data.items?.map((item, i) => (
+        <div key={i} style={{ marginBottom: '4px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
+            <div style={{ flex: 1, textAlign: 'right', fontWeight: '600', fontSize: '10px' }}>{item.name}</div>
+            <div style={{ fontSize: '9px', whiteSpace: 'nowrap' }}>{item.quantity} × {formatMoney(item.unitPrice)}</div>
+          </div>
+          <div style={{ textAlign: 'left', fontSize: '9px', marginTop: '2px', color: '#444' }}>{formatMoney(item.unitPrice * item.quantity)}</div>
+        </div>
+      ))}
+
+      <div style={{ borderTop: '1px dashed #999', margin: '4px 0' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '2px 0' }}>
+        <span>المجموع</span><span>{formatMoney(data.subtotal)}</span>
+      </div>
+      {data.discount > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '2px 0', color: '#d00' }}>
+          <span>الخصم</span><span>-{formatMoney(data.discount)}</span>
+        </div>
+      )}
+      {data.tax > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '2px 0' }}>
+          <span>الضريبة</span><span>{formatMoney(data.tax)}</span>
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700', padding: '4px 0', borderTop: '1px solid #111' }}>
+        <span>الإجمالي</span><span>{formatMoney(data.total)}</span>
+      </div>
+      {data.paid > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '2px 0' }}>
+          <span>المدفوع</span><span>{formatMoney(data.paid)}</span>
+        </div>
+      )}
+      {data.paymentMethod === 'credit' && data.total > (data.paid || 0) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '2px 0', color: '#d00' }}>
+          <span>الرصيد</span><span>{formatMoney(data.total - (data.paid || 0))}</span>
+        </div>
+      )}
+
+      {data.cashierName && <div style={{ textAlign: 'center', fontSize: '9px', marginTop: '6px', color: '#555' }}>الكاشير: {data.cashierName}</div>}
+      {settings?.showReceiptFooter !== false && settings?.receiptFooter && (
+        <div style={{ textAlign: 'center', fontSize: '8px', marginTop: '6px', borderTop: '1px dashed #999', paddingTop: '4px', color: '#666' }}>
+          {settings.receiptFooter}
+        </div>
+      )}
     </div>
   )
 }

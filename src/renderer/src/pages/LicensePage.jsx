@@ -20,6 +20,10 @@ export default function LicensePage() {
     api.getContactInfo().then(setContact).catch(() => {})
   }, [])
 
+  const trialAvailable = !license?.wasEverActivated && !license?.trialUsed && !license?.activated
+  const statusTone = license?.remainingDays !== null && license?.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)'
+  const statusBg = license?.remainingDays !== null && license?.remainingDays <= 7 ? 'rgba(239,68,68,0.14)' : 'rgba(16,185,129,0.14)'
+
   async function handleStartTrial() {
     setLoading(true); setError('')
     try {
@@ -56,119 +60,145 @@ export default function LicensePage() {
   }
 
   return (
-    <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',padding:'20px',gap:'20px' }}>
-      <div style={{ fontSize:'28px',fontWeight:'bold',color:'var(--accent)' }}>SMART X</div>
-
-      {mode === 'choose' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
-          <h2 style={{ fontSize:'18px',marginBottom:'4px' }}>تفعيل البرنامج</h2>
-          {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',background:license.remainingDays !== null && license.remainingDays <= 7 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',color:license.remainingDays !== null && license.remainingDays <= 7 ? 'var(--danger)' : 'var(--success)' }}>{license.remainingText}</div>}
-          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            {license?.trialUsed && !license?.activated || license?.wasEverActivated
-              ? 'تم استخدام الفترة التجريبية من قبل. يرجى إدخال مفتاح التفعيل.'
-              : 'يمكنك بدء الفترة التجريبية لمدة 14 يوماً أو إدخال مفتاح التفعيل الخاص بك'}
-          </p>
-          {(license?.wasEverActivated ? false : !license?.trialUsed && !license?.activated) && (
-            <button onClick={handleStartTrial} disabled={loading} style={{
-              background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold'
-            }}>
-              {loading ? 'جاري...' : 'بدء الفترة التجريبية (14 يوم)'}
-            </button>
-          )}
-          {(license?.wasEverActivated ? false : !license?.trialUsed && !license?.activated) && (
-            <div style={{ position:'relative',margin:'8px 0' }}>
-              <div style={{ borderTop:'1px solid var(--bg3)' }}></div>
-              <div style={{ position:'absolute',top:'-8px',left:'50%',transform:'translateX(-50%)',background:'var(--bg2)',padding:'0 12px',color:'var(--text2)',fontSize:'12px' }}>أو</div>
-            </div>
-          )}
-          <input value={key} onInput={e => setKey(e.target.value)} placeholder="مفتاح التفعيل" style={{ textAlign:'center',direction:'ltr' }} />
-          <button onClick={handleActivate} disabled={loading} style={{
-            background:'var(--success)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold'
-          }}>
-            {loading ? 'جاري...' : 'تفعيل الترخيص'}
-          </button>
-          {error && <div style={{ color:'var(--danger)',fontSize:'13px' }}>{error}</div>}
-          {(license?.trialUsed || license?.activated) && !license?.expired && (
-            <button onClick={goToLogin} style={{ background:'transparent',color:'var(--text2)',padding:'8px',borderRadius:'8px',fontSize:'13px',textDecoration:'underline',cursor:'pointer' }}>
-              رجوع إلى تسجيل الدخول
-            </button>
-          )}
-        </div>
-      )}
-
-      {mode === 'expired' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
-          <div style={{ fontSize:'40px' }}>⏰</div>
-          <h2 style={{ fontSize:'18px',color:'var(--danger)' }}>انتهت صلاحية الترخيص</h2>
-          {license?.remainingText && <div style={{ padding:'6px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:'600',color:'var(--danger)' }}>{license.remainingText}</div>}
-          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            {license?.trialUsed && !license?.activated || license?.wasEverActivated
-              ? 'انتهت الفترة التجريبية. يرجى تفعيل الترخيص للمتابعة.'
-              : 'انتهت صلاحية الترخيص. يرجى تجديد الترخيص للمتابعة.'}
-          </p>
-          <button onClick={() => setMode('choose')} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
-            تفعيل الترخيص
-          </button>
-        </div>
-      )}
-
-      {mode === 'trial-started' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
-          <div style={{ fontSize:'40px' }}>🎉</div>
-          <h2 style={{ fontSize:'18px' }}>تم تفعيل الفترة التجريبية</h2>
-          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            يمكنك استخدام البرنامج لمدة 14 يوماً. تفضل بتسجيل الدخول للبدء.
-          </p>
-          <button onClick={goToLogin} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
-            تسجيل الدخول
-          </button>
-        </div>
-      )}
-
-      {mode === 'trial-already' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
-          <div style={{ fontSize:'40px' }}>⏳</div>
-          <h2 style={{ fontSize:'18px' }}>الفترة التجريبية مفعلة مسبقاً</h2>
-          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            {license?.remainingText
-              ? `باقي من الفترة التجريبية: ${license.remainingText}`
-              : 'لقد بدأت الفترة التجريبية من قبل. يمكنك تسجيل الدخول للمتابعة.'}
-          </p>
-          <button onClick={goToLogin} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
-            تسجيل الدخول
-          </button>
-        </div>
-      )}
-
-      {mode === 'activated' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:'14px',width:'380px',background:'var(--bg2)',padding:'28px',borderRadius:'16px',textAlign:'center' }}>
-          <div style={{ fontSize:'40px' }}>✅</div>
-          <h2 style={{ fontSize:'18px' }}>تم التفعيل بنجاح</h2>
-          <p style={{ fontSize:'13px',color:'var(--text2)',lineHeight:1.8 }}>
-            تم تفعيل الترخيص بنجاح. يمكنك الآن تسجيل الدخول.
-          </p>
-          <button onClick={goToLogin} style={{ background:'var(--accent)',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold' }}>
-            تسجيل الدخول
-          </button>
-        </div>
-      )}
-
-      {contact && (
-        <div style={{ width:'380px',textAlign:'center' }}>
-          <button onClick={() => setShowContact(!showContact)} style={{ background:'var(--bg3)',color:'var(--text2)',padding:'10px 20px',borderRadius:'8px',fontSize:'13px',width:'100%' }}>
-            {showContact ? 'إخفاء' : 'الدعم الفني'}
-          </button>
-          {showContact && (
-            <div style={{ background:'var(--bg2)',padding:'20px',borderRadius:'16px',textAlign:'center',border:'1px solid var(--bg3)',marginTop:'8px' }}>
-        {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
-          <div key={i} style={{ fontSize:'12px',color:'var(--text2)',marginBottom:'4px' }}>
-            {item.label}: {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{item.value}</a> : item.value}
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', background:'var(--bg)', direction:'rtl' }}>
+      <div style={{ width:'100%', maxWidth:'460px', display:'flex', flexDirection:'column', gap:'16px', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderRadius:'999px', background:'rgba(255,255,255,0.05)', border:'1px solid var(--outline)' }}>
+          <div style={{ width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg, var(--accent), var(--secondary))', color:'#fff', fontSize:'20px', fontWeight:'800' }}>S</div>
+          <div>
+            <div style={{ fontSize:'18px', fontWeight:'800', color:'var(--text)' }}>SMART X</div>
+            <div style={{ fontSize:'12px', color:'var(--text2)' }}>نظام إدارة المبيعات والمخزون</div>
           </div>
-        ))}
-            </div>
-          )}
         </div>
-      )}
+
+        {mode === 'choose' && (
+          <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'14px', background:'var(--bg2)', padding:'28px', borderRadius:'24px', border:'1px solid var(--outline)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)' }}>
+            <div style={{ textAlign:'center', display:'flex', flexDirection:'column', gap:'6px' }}>
+              <div style={{ fontSize:'22px', fontWeight:'800', color:'var(--text)' }}>تفعيل البرنامج</div>
+              <div style={{ fontSize:'13px', color:'var(--text2)', lineHeight:1.7 }}>
+                {license?.trialUsed && !license?.activated || license?.wasEverActivated
+                  ? 'تم استخدام الفترة التجريبية من قبل. يرجى إدخال مفتاح التفعيل.'
+                  : 'ابدأ تجربة مجانية أو أدخل مفتاح تفعيلك لاستكمال الوصول.'}
+              </div>
+            </div>
+
+            {license?.remainingText && (
+              <div style={{ padding:'10px 12px', borderRadius:'12px', fontSize:'13px', fontWeight:'700', background:statusBg, color:statusTone, textAlign:'center' }}>
+                {license.remainingText}
+              </div>
+            )}
+
+            {trialAvailable && (
+              <button type="button" onClick={handleStartTrial} disabled={loading} style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700', cursor:loading ? 'wait' : 'pointer', opacity:loading ? 0.72 : 1 }}>
+                {loading ? 'جاري الإعداد...' : 'بدء الفترة التجريبية (14 يوم)'}
+              </button>
+            )}
+
+            {trialAvailable && (
+              <div style={{ position:'relative', margin:'4px 0' }}>
+                <div style={{ borderTop:'1px solid var(--bg3)' }} />
+                <div style={{ position:'absolute', top:'-8px', left:'50%', transform:'translateX(-50%)', background:'var(--bg2)', padding:'0 10px', color:'var(--text2)', fontSize:'12px' }}>أو</div>
+              </div>
+            )}
+
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px', textAlign:'right' }}>
+              <label style={{ fontSize:'13px', color:'var(--text2)', fontWeight:'700' }}>مفتاح التفعيل</label>
+              <input
+                value={key}
+                onInput={e => setKey(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleActivate() }}
+                placeholder="أدخل المفتاح هنا"
+                style={{ width:'100%', padding:'12px 14px', borderRadius:'12px', border:'1px solid var(--outline)', background:'var(--bg)', color:'var(--text)', textAlign:'center', direction:'ltr', outline:'none' }}
+              />
+            </div>
+
+            <button type="button" onClick={handleActivate} disabled={loading} style={{ background:'var(--success)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700', cursor:loading ? 'wait' : 'pointer', opacity:loading ? 0.72 : 1 }}>
+              {loading ? 'جاري التفعيل...' : 'تفعيل الترخيص'}
+            </button>
+
+            {error && <div style={{ color:'var(--danger)', fontSize:'13px', textAlign:'center' }}>{error}</div>}
+
+            {(license?.trialUsed || license?.activated) && !license?.expired && (
+              <button type="button" onClick={goToLogin} style={{ background:'transparent', color:'var(--text2)', border:'none', padding:'6px', borderRadius:'8px', fontSize:'13px', cursor:'pointer', textDecoration:'underline' }}>
+                الرجوع إلى تسجيل الدخول
+              </button>
+            )}
+          </div>
+        )}
+
+        {mode === 'expired' && (
+          <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'14px', background:'var(--bg2)', padding:'28px', borderRadius:'24px', border:'1px solid rgba(239,68,68,0.24)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', textAlign:'center' }}>
+            <div style={{ fontSize:'44px' }}>⏰</div>
+            <div style={{ fontSize:'22px', fontWeight:'800', color:'var(--danger)' }}>انتهت صلاحية الترخيص</div>
+            {license?.remainingText && <div style={{ padding:'10px 12px', borderRadius:'12px', fontSize:'13px', fontWeight:'700', color:'var(--danger)', background:'rgba(239,68,68,0.14)' }}>{license.remainingText}</div>}
+            <div style={{ fontSize:'13px', color:'var(--text2)', lineHeight:1.8 }}>
+              {license?.trialUsed && !license?.activated || license?.wasEverActivated
+                ? 'انتهت الفترة التجريبية. يرجى تفعيل الترخيص للمتابعة.'
+                : 'انتهت صلاحية الترخيص. يرجى تجديد الترخيص للمتابعة.'}
+            </div>
+            <button type="button" onClick={() => setMode('choose')} style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700' }}>
+              تفعيل الترخيص
+            </button>
+          </div>
+        )}
+
+        {mode === 'trial-started' && (
+          <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'14px', background:'var(--bg2)', padding:'28px', borderRadius:'24px', border:'1px solid var(--outline)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', textAlign:'center' }}>
+            <div style={{ fontSize:'44px' }}>🎉</div>
+            <div style={{ fontSize:'22px', fontWeight:'800', color:'var(--text)' }}>تم تفعيل الفترة التجريبية</div>
+            <div style={{ fontSize:'13px', color:'var(--text2)', lineHeight:1.8 }}>
+              يمكنك استخدام البرنامج لمدة 14 يوماً. تفضل بتسجيل الدخول للبدء.
+            </div>
+            <button type="button" onClick={goToLogin} style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700' }}>
+              تسجيل الدخول
+            </button>
+          </div>
+        )}
+
+        {mode === 'trial-already' && (
+          <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'14px', background:'var(--bg2)', padding:'28px', borderRadius:'24px', border:'1px solid var(--outline)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', textAlign:'center' }}>
+            <div style={{ fontSize:'44px' }}>⏳</div>
+            <div style={{ fontSize:'22px', fontWeight:'800', color:'var(--text)' }}>الفترة التجريبية مفعلة مسبقاً</div>
+            <div style={{ fontSize:'13px', color:'var(--text2)', lineHeight:1.8 }}>
+              {license?.remainingText
+                ? `باقي من الفترة التجريبية: ${license.remainingText}`
+                : 'لقد بدأت الفترة التجريبية من قبل. يمكنك تسجيل الدخول للمتابعة.'}
+            </div>
+            <button type="button" onClick={goToLogin} style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700' }}>
+              تسجيل الدخول
+            </button>
+          </div>
+        )}
+
+        {mode === 'activated' && (
+          <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'14px', background:'var(--bg2)', padding:'28px', borderRadius:'24px', border:'1px solid rgba(16,185,129,0.24)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', textAlign:'center' }}>
+            <div style={{ fontSize:'44px' }}>✅</div>
+            <div style={{ fontSize:'22px', fontWeight:'800', color:'var(--text)' }}>تم التفعيل بنجاح</div>
+            <div style={{ fontSize:'13px', color:'var(--text2)', lineHeight:1.8 }}>
+              تم تفعيل الترخيص بنجاح. يمكنك الآن تسجيل الدخول.
+            </div>
+            <button type="button" onClick={goToLogin} style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'12px 14px', borderRadius:'12px', fontSize:'14px', fontWeight:'700' }}>
+              تسجيل الدخول
+            </button>
+          </div>
+        )}
+
+        {contact && (
+          <div style={{ width:'100%', textAlign:'center' }}>
+            <button type="button" onClick={() => setShowContact(!showContact)} style={{ background:'var(--bg3)', color:'var(--text2)', border:'1px solid var(--outline)', padding:'10px 16px', borderRadius:'999px', fontSize:'13px', width:'100%', fontWeight:'700' }}>
+              {showContact ? 'إخفاء الدعم الفني' : 'الدعم الفني'}
+            </button>
+            {showContact && (
+              <div style={{ background:'var(--bg2)', padding:'18px', borderRadius:'16px', textAlign:'center', border:'1px solid var(--outline)', marginTop:'8px' }}>
+                {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+                  <div key={i} style={{ fontSize:'12px', color:'var(--text2)', marginBottom:'6px' }}>
+                    {item.label}: {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{item.value}</a> : item.value}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -45,7 +45,7 @@ function listExpenses(realm, filter, page, pageSize) {
   const mapExpense = e => ({
     _id: e._id, amount: e.amount, category: e.category,
     note: e.note, date: e.date?.toISOString(), createdAt: e.createdAt?.toISOString(),
-    paymentMethod: e.paymentMethod
+    paymentMethod: e.paymentMethod, isInventoryLoss: e.isInventoryLoss
   })
   if (page != null) {
     const result = paginate(results, page, pageSize || 20)
@@ -68,6 +68,7 @@ function checkShiftBalance(shift, amount) {
 function saveExpense(realm, session, data) {
   let expense
   const pm = data.paymentMethod || 'cash'
+  const isInventoryLoss = data.isInventoryLoss || false
   realm.write(() => {
     const isNew = !data._id || !realm.objectForPrimaryKey('Expense', data._id)
     const newAmount = Number(data.amount) || 0
@@ -75,7 +76,7 @@ function saveExpense(realm, session, data) {
       const old = realm.objectForPrimaryKey('Expense', data._id)
       const diff = newAmount - old.amount
       if (diff !== 0) {
-        if (!old.shiftId) updateTreasury(realm, -diff, 'تعديل مصروف - ' + (data.category || data.note || ''), session, data._id, pm)
+        if (!old.shiftId && !old.isInventoryLoss) updateTreasury(realm, -diff, 'تعديل مصروف - ' + (data.category || data.note || ''), session, data._id, pm)
         if (old.shiftId) {
           if (diff > 0) {
             const shift = realm.objectForPrimaryKey('Shift', old.shiftId)
@@ -89,6 +90,7 @@ function saveExpense(realm, session, data) {
           updateShiftExpenses(realm, old.shiftId, diff)
         }
       }
+      if (old.isInventoryLoss) data.isInventoryLoss = true
     } else if (data.shiftId) {
       const shift = realm.objectForPrimaryKey('Shift', data.shiftId)
       if (data.paymentMethod === 'card') {
@@ -107,13 +109,14 @@ function saveExpense(realm, session, data) {
       date: data.date ? new Date(data.date) : new Date(),
       paymentMethod: pm,
       shiftId: data.shiftId || '',
+      isInventoryLoss,
       createdAt: isNew ? new Date() : realm.objectForPrimaryKey('Expense', data._id).createdAt
     }, Realm.UpdateMode.Modified)
     if (isNew) {
-      if (!data.shiftId) updateTreasury(realm, -newAmount, 'مصروف - ' + (data.category || data.note || ''), session, expense._id, pm)
+      if (!data.shiftId && !isInventoryLoss) updateTreasury(realm, -newAmount, 'مصروف - ' + (data.category || data.note || ''), session, expense._id, pm)
     }
   })
-  return { _id: expense._id, amount: expense.amount, category: expense.category, note: expense.note, date: expense.date?.toISOString(), createdAt: expense.createdAt?.toISOString(), paymentMethod: expense.paymentMethod, shiftId: expense.shiftId }
+  return { _id: expense._id, amount: expense.amount, category: expense.category, note: expense.note, date: expense.date?.toISOString(), createdAt: expense.createdAt?.toISOString(), paymentMethod: expense.paymentMethod, shiftId: expense.shiftId, isInventoryLoss }
 }
 
 function removeExpense(realm, id) {
@@ -121,7 +124,7 @@ function removeExpense(realm, id) {
     const expense = realm.objectForPrimaryKey('Expense', id)
     if (expense) {
       if (expense.shiftId) updateShiftExpenses(realm, expense.shiftId, -expense.amount)
-      if (!expense.shiftId) updateTreasury(realm, expense.amount, 'إلغاء مصروف - ' + (expense.category || expense.note || ''), { userId: 'system' }, expense._id, expense.paymentMethod || 'cash')
+      if (!expense.shiftId && !expense.isInventoryLoss) updateTreasury(realm, expense.amount, 'إلغاء مصروف - ' + (expense.category || expense.note || ''), { userId: 'system' }, expense._id, expense.paymentMethod || 'cash')
       realm.delete(expense)
     }
   })

@@ -36,6 +36,14 @@ function dashboardSummary(realm) {
   const lowStockProducts = realm.objects('Product').filtered('active == true AND (stock <= reorderPoint OR stock == 0)')
   const lowStock = Array.from(lowStockProducts)
 
+  const now = new Date()
+  const thirtyDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
+  const expiringProducts = realm.objects('Product').filtered('active == true AND expiryDate != ""')
+  const nearExpiry = Array.from(expiringProducts).filter(p => {
+    const d = new Date(p.expiryDate + 'T23:59:59')
+    return d > now && d <= thirtyDaysFromNow
+  }).sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
+
   const recentSales = realm.objects('Sale').sorted('createdAt', true).slice(0, 6)
 
   const totalInventoryValue = realm.objects('StockBatch').reduce((sum, b) => sum + (b.quantity * b.cost), 0)
@@ -45,6 +53,8 @@ function dashboardSummary(realm) {
     todayInvoices: todaySales.length,
     lowStock: lowStock.length,
     lowStockProducts: lowStock.map(p => ({ _id: p._id, name: p.name, stock: p.stock, reorderPoint: p.reorderPoint })),
+    nearExpiry: nearExpiry.map(p => ({ _id: p._id, name: p.name, expiryDate: p.expiryDate })),
+    nearExpiryCount: nearExpiry.length,
     grossProfit: todayProfit,
     totalProducts: realm.objects('Product').filtered('active == true').length,
     totalInventoryValue,
