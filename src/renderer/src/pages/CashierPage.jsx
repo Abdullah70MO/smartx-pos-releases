@@ -171,7 +171,7 @@ const [taxRate, setTaxRate] = useState(14)
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  const PRODUCT_PAGE_SIZE = 50
+  const PRODUCT_PAGE_SIZE = 9999
 
   async function loadProducts(q, page = 0, append = false) {
     const token = localStorage.getItem('token')
