@@ -987,7 +987,7 @@ export default function ReportsPage() {
                 {employees.length > 0 && (
                   <div className="card" style={{ padding: '12px', marginBottom: '14px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text2)', marginBottom: '8px' }}>الموظفون ورواتبهم</div>
-                    {(employeeFilter ? employees.filter(e => e.name?.includes(employeeFilter)) : employees).slice(0, 10).map(e => {
+                    {employees.slice(0, 10).map(e => {
                       const empAdvances = employeeAdvances.filter(a => a.employeeId === e._id && a.type !== 'deduction')
                       const empPending = empAdvances.filter(a => !a.deducted)
                       const empTotal = empAdvances.reduce((s, a) => s + a.amount, 0)
@@ -1106,6 +1106,9 @@ export default function ReportsPage() {
 
       {selectedReport === 'profit' && (
         <div>
+          <div style={{ marginBottom: '16px' }}>
+            <PeriodPresets current={period} onChange={setPeriodFilter} dateFrom={filterDateFrom} dateTo={filterDateTo} onDateFrom={setFilterDateFrom} onDateTo={setFilterDateTo} />
+          </div>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} label="صافي الربح" value={formatMoney(netProfit)} color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
             <ProfitSummaryCard icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} label="إجمالي المبيعات" value={formatMoney(totalSales)} color="var(--success)" />
