@@ -54,8 +54,12 @@ function createCustomerPayment(realm, user, { customerId, customerName, amount, 
     if (activeShift) {
       if (paymentMethod === 'card') {
         activeShift.cardTotal = (activeShift.cardTotal || 0) + Number(amount)
+        updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'card')
+      } else if (paymentMethod === 'credit') {
+        activeShift.creditPaidTotal = (activeShift.creditPaidTotal || 0) + Number(amount)
       } else {
         activeShift.cashTotal = (activeShift.cashTotal || 0) + Number(amount)
+        updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'cash')
       }
     } else {
       updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
@@ -88,8 +92,12 @@ function removeCustomerPayment(realm, id) {
         : null
       if (activeShift && payment.paymentMethod === 'card' && (activeShift.cardTotal || 0) >= payment.amount) {
         activeShift.cardTotal = (activeShift.cardTotal || 0) - payment.amount
-      } else if (activeShift && payment.paymentMethod !== 'card' && (activeShift.cashTotal || 0) >= payment.amount) {
+        updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, 'card')
+      } else if (activeShift && payment.paymentMethod === 'credit' && (activeShift.creditPaidTotal || 0) >= payment.amount) {
+        activeShift.creditPaidTotal = (activeShift.creditPaidTotal || 0) - payment.amount
+      } else if (activeShift && (activeShift.cashTotal || 0) >= payment.amount) {
         activeShift.cashTotal = (activeShift.cashTotal || 0) - payment.amount
+        updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, 'cash')
       } else {
         updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, payment.paymentMethod || 'cash')
       }

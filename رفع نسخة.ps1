@@ -64,7 +64,7 @@ $releaseId = $release.id
 Write-Host "Release created: v$n (ID: $releaseId)" -ForegroundColor Green
 
 # Upload blockmap
-$exeName = "SMART X POS Setup $n.exe"
+$exeName = "SMART-X-POS-Setup-$n.exe"
 $blockmapName = "$exeName.blockmap"
 $blockmapSrc = Join-Path $PSScriptRoot "build-out" | Join-Path -ChildPath $blockmapName
 if (Test-Path $blockmapSrc) {
