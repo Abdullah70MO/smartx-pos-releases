@@ -1,10 +1,19 @@
 import { formatMoney } from '../utils/money'
 import { formatDateTime } from '../utils/date'
+import { generateQrSvg } from '../utils/qrcode'
 
 export default function PrintTemplateA4({ type, data, settings, suppliers, customers }) {
   const isSale = type === 'sale'
   const title = isSale ? 'فاتورة بيع' : 'فاتورة شراء'
   const paymentLabel = data.paymentMethod === 'card' ? 'بطاقة' : data.paymentMethod === 'credit' ? 'آجل' : 'نقداً'
+  const qrContent = settings?.showQR !== false
+    ? generateQrSvg([
+        `فاتورة #${data.invoiceNo}`,
+        settings?.businessName || 'SMART X',
+        `الإجمالي: ${formatMoney(isSale ? data.total : data.netCost)}`,
+        formatDateTime(data.createdAt)
+      ].join('\n'), 100)
+    : null
 
   return (
     <div id="a4-print-content" style={{
@@ -137,6 +146,11 @@ export default function PrintTemplateA4({ type, data, settings, suppliers, custo
               <span>المدفوع</span><span>{formatMoney(data.paid)}</span>
             </div>
           )}
+          {data.change > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#15803d' }}>
+              <span>الباقي</span><span>{formatMoney(data.change)}</span>
+            </div>
+          )}
           {settings?.showPaid !== false && ((isSale && (data.paid || 0) < data.total) || (!isSale && (data.paid || 0) < data.netCost)) && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#d00' }}>
               <span>{isSale ? 'رصيد مستحق من العميل' : 'دين مستحق للمورد'}</span><span>{formatMoney((isSale ? data.total : data.netCost) - (data.paid || 0))}</span>
@@ -156,6 +170,13 @@ export default function PrintTemplateA4({ type, data, settings, suppliers, custo
       {settings?.showNotes !== false && data.note && (
         <div style={{ marginTop: '12px', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '11px', background: '#fefce8' }}>
           <strong>ملاحظة: </strong>{data.note}
+        </div>
+      )}
+
+      {settings?.showQR !== false && qrContent && (
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <div dangerouslySetInnerHTML={{ __html: qrContent }} />
+          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{formatDateTime(data.createdAt)}</div>
         </div>
       )}
 

@@ -10,6 +10,7 @@ import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalDangerBtn, PrintIcon, DeleteIcon, AddIcon, CheckIcon, SearchIcon, PaymentIcon } from '../components/ActionIcons'
 
@@ -18,6 +19,9 @@ export default function SalesPage() {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
   const canDelete = user?.permissions?.includes('sales.delete')
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewElement, setPreviewElement] = useState(null)
+  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [sales, setSales] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [error, setError] = useState(null)
@@ -193,24 +197,37 @@ export default function SalesPage() {
             {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)' }}>ملاحظة: {viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>}
             {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
-            <button onClick={async () => {
-              try {
-                if (settings?.printDefaultSize === 'a4') {
-                  await printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
-                } else {
-                  await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={async () => {
+                try {
+                  if (settings?.printDefaultSize === 'a4') {
+                    await printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
+                  } else {
+                    await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                  }
+                } catch (err) {
+                  toast('فشلت الطباعة: ' + err.message, 'error')
                 }
-              } catch (err) {
-                toast('فشلت الطباعة: ' + err.message, 'error')
-              }
-            }}
-              style={modalPrimaryBtn}>
-              <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
-            </button>
+              }}
+                style={modalPrimaryBtn}>
+                <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+              </button>
+              <button onClick={() => {
+                const isA4 = settings?.printDefaultSize === 'a4'
+                setPreviewElement(isA4
+                  ? <PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />
+                  : <PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                setPreviewIsA4(isA4)
+                setPreviewOpen(true)
+              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
+                معاينة
+              </button>
+            </div>
             </>)}
           </div>
         )}
       </Modal>
+      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
       <ConfirmDialog />
     </div>
   )

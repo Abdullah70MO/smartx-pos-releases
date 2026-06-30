@@ -35,7 +35,8 @@ export default function SettingsPage() {
   const settingsSections = [
     { id: 'store', title: 'بيانات المتجر', description: 'الشعار، اسم المتجر، الهاتف، الإيميل، السجل التجاري، الرقم الضريبي، العنوان' },
     { id: 'config', title: 'التهيئة', description: 'مظهر التطبيق، التقويم، الوقت، الخطوط، العملة، الضريبة' },
-    { id: 'printing', title: 'الطباعة', description: 'الطابعة الافتراضية، طابعة الباركود، مقاسات الطباعة، تذييل الفاتورة' },
+    { id: 'printing', title: 'الطباعة', description: 'الطابعة الافتراضية، مقاسات الطباعة، تذييل الفاتورة' },
+    { id: 'barcode', title: 'الباركود', description: 'طابعة الباركود، مقاسات اللاصقة، المعاينة' },
     { id: 'invoice', title: 'الفاتورة', description: 'إظهار وإخفاء عناصر الفاتورة' },
     { id: 'notifications', title: 'الإشعارات', description: 'تفعيل/تعطيل أنواع الإشعارات (مخزون، مبيعات، مدفوعات، مرتجعات، ورديات)' },
     { id: 'data', title: 'البيانات', description: 'النسخ الاحتياطي، الاستعادة، إعادة التعيين', adminOnly: true },
@@ -44,11 +45,12 @@ export default function SettingsPage() {
     { id: 'support', title: 'الدعم الفني', description: 'بيانات التواصل' }
   ]
 
-  const sectionColors = { store: 'var(--accent)', config: 'var(--secondary)', printing: 'var(--teal)', invoice: 'var(--special)', data: 'var(--success)', updates: 'var(--warning)', license: 'var(--accent)', support: 'var(--secondary)', notifications: 'var(--teal)' }
+  const sectionColors = { store: 'var(--accent)', config: 'var(--secondary)', printing: 'var(--teal)', barcode: 'var(--special)', invoice: 'var(--special)', data: 'var(--success)', updates: 'var(--warning)', license: 'var(--accent)', support: 'var(--secondary)', notifications: 'var(--teal)' }
   const sectionIcons = {
   store: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   config: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   printing: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+  barcode: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><path d="M2 4v16"/><path d="M4 4v16"/><path d="M7 4v16"/><path d="M9 4v16"/><path d="M12 4v16"/><path d="M15 4v16"/><path d="M18 4v16"/><path d="M20 4v16"/><path d="M22 4v16"/></svg>,
   invoice: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>,
   data: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
   updates: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
@@ -125,6 +127,7 @@ export default function SettingsPage() {
           showNotes: s.showNotes !== false,
           showClientInfo: s.showClientInfo !== false,
           showSupplierInfo: s.showSupplierInfo !== false,
+          showQR: s.showQR !== false,
           currency: s.currency || 'EGP',
           taxEnabled: s.taxEnabled !== false,
           theme: s.theme || 'dark',
@@ -143,6 +146,10 @@ export default function SettingsPage() {
           defaultPrinter: s.defaultPrinter || '',
           barcodePrinter: s.barcodePrinter || '',
           barcodeLabelSize: s.barcodeLabelSize || '50x30',
+          barcodeShowName: s.barcodeShowName !== false,
+          barcodeShowPrice: s.barcodeShowPrice !== false,
+          barcodeScale: s.barcodeScale ?? 1.0,
+          barcodeFontWeight: s.barcodeFontWeight || 'bold',
           autoBackup: s.autoBackup || false,
           autoBackupInterval: s.autoBackupInterval || 'weekly',
           autoBackupPath: s.autoBackupPath || '',
@@ -352,6 +359,11 @@ export default function SettingsPage() {
       localStorage.setItem('customPaperHeight', nextForm.customPaperHeight || '')
       localStorage.setItem('barcodePrinter', nextForm.barcodePrinter || '')
       localStorage.setItem('barcodeLabelSize', nextForm.barcodeLabelSize || '50x30')
+      localStorage.setItem('barcodeShowName', nextForm.barcodeShowName !== false ? 'true' : 'false')
+      localStorage.setItem('barcodeShowPrice', nextForm.barcodeShowPrice !== false ? 'true' : 'false')
+      localStorage.setItem('barcodeScale', String(nextForm.barcodeScale ?? 1.0))
+      localStorage.setItem('barcodeFontWeight', nextForm.barcodeFontWeight || 'bold')
+      localStorage.setItem('showQR', nextForm.showQR !== false ? 'true' : 'false')
       localStorage.setItem('fontFamily', nextForm.fontFamily || 'Cairo')
       const updated = await updateSettings(nextForm)
       const normalized = updated || nextForm
@@ -590,13 +602,6 @@ export default function SettingsPage() {
                           {printers.map(p => <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (إفتراضية)' : ''}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>طابعة الباركود</label>
-                        <select value={form.barcodePrinter} onChange={e => setForm(f => ({ ...f, barcodePrinter: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
-                          <option value="">إفتراضي (النظام)</option>
-                          {printers.map(p => <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (إفتراضية)' : ''}</option>)}
-                        </select>
-                      </div>
                     </div>
                     {printers.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px' }}>جاري تحميل قائمة الطابعات...</div>}
                   </div>
@@ -647,10 +652,59 @@ export default function SettingsPage() {
                       <input type="checkbox" id="printDirectly" checked={form.printDirectly} onChange={e => setForm(f => ({ ...f, printDirectly: e.target.checked }))} disabled={!canManage} />
                       <label htmlFor="printDirectly" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة مباشرة بدون نافذة اختيار الطابعة</label>
                     </div>
+                </div>
+              </div>
+              )}
+
+              {selectedSection === 'barcode' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '12px' }}>طابعة الباركود</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                      <div>
+                        <select value={form.barcodePrinter} onChange={e => setForm(f => ({ ...f, barcodePrinter: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
+                          <option value="">إفتراضي (النظام)</option>
+                          {printers.map(p => <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (إفتراضية)' : ''}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {printers.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px' }}>جاري تحميل قائمة الطابعات...</div>}
                   </div>
 
-                  <div style={{ borderTop: '1px solid var(--bg3)', paddingTop: '12px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '12px' }}>طباعة الباركود</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>البيانات على اللاصقة</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input type="checkbox" id="barcodeShowName" checked={form.barcodeShowName ?? true} onChange={e => setForm(f => ({ ...f, barcodeShowName: e.target.checked }))} disabled={!canManage} />
+                      <label htmlFor="barcodeShowName" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>عرض اسم المنتج</label>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input type="checkbox" id="barcodeShowPrice" checked={form.barcodeShowPrice ?? true} onChange={e => setForm(f => ({ ...f, barcodeShowPrice: e.target.checked }))} disabled={!canManage} />
+                      <label htmlFor="barcodeShowPrice" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>عرض سعر المنتج</label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>سمك الخط</label>
+                        <select value={form.barcodeFontWeight || 'bold'} onChange={e => setForm(f => ({ ...f, barcodeFontWeight: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
+                          <option value="lighter">خفيف</option>
+                          <option value="normal">عادي</option>
+                          <option value="bold">ثقيل</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>حجم الباركود</label>
+                        <select value={String(form.barcodeScale ?? 1.0)} onChange={e => setForm(f => ({ ...f, barcodeScale: Number(e.target.value) }))} style={{ width: '100%' }} disabled={!canManage}>
+                          <option value="0.5">صغير (50%)</option>
+                          <option value="0.75">متوسط (75%)</option>
+                          <option value="1">كامل (100%)</option>
+                          <option value="1.25">كبير (125%)</option>
+                          <option value="1.5">كبير جداً (150%)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '12px' }}>إعدادات اللاصقة</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
                         <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>كود الباركود للمعاينة</label>
@@ -683,11 +737,14 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     {barcodePreview && (
-                      <div style={{ marginTop: '12px', padding: '16px', background: '#fff', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ marginTop: '12px', padding: '16px', background: '#fff', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                        {form.barcodeShowName !== false && <div style={{ fontSize: '11px', fontWeight: form.barcodeFontWeight || 'bold', color: '#333', textAlign: 'center' }}>منتج تجريبي</div>}
+                        {form.barcodeShowPrice !== false && <div style={{ fontSize: '10px', fontWeight: form.barcodeFontWeight || 'bold', color: '#555', textAlign: 'center' }}>100 ج.م</div>}
                         {(() => {
                           const dims = barcodeLabel === 'custom' ? [barcodeLabelWidth, barcodeLabelHeight] : barcodeLabel.split('x').map(Number)
-                          const bw = Math.min(Number(dims[0]) * 3.78, 400)
-                          const bh = Math.min(Number(dims[1]) * 3.78, 250)
+                          const scale = form.barcodeScale ?? 1
+                          const bw = Math.min(Number(dims[0]) * 3.78 * scale, 600)
+                          const bh = Math.min(Number(dims[1]) * 3.78 * scale, 400)
                           return <BarcodeSVG code={barcodePreview} width={bw} height={bh} />
                         })()}
                         <div style={{ fontSize: '12px', color: '#333', fontFamily: 'monospace' }}>{barcodePreview}</div>
@@ -747,6 +804,9 @@ export default function SettingsPage() {
                       </label>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={form.showNotes} onChange={e => setForm(f => ({ ...f, showNotes: e.target.checked }))} /> الملاحظات
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.showQR} onChange={e => setForm(f => ({ ...f, showQR: e.target.checked }))} /> رمز QR في الفاتورة
                       </label>
                     </div>
                   </div>

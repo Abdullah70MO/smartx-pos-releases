@@ -94,13 +94,13 @@ function createSale(realm, session, data) {
 
     const fifoItems = data.items.map(item => {
       const qty = Number(item.quantity) || 0
-      const fifoCost = deductFromFifo(realm, item.productId, qty)
+      const fifoCost = item.productId ? (deductFromFifo(realm, item.productId, qty) || 0) : 0
       return {
         productId: item.productId,
         name: item.name,
         quantity: qty,
         unitPrice: Number(item.unitPrice) || 0,
-        cost: qty > 0 ? fifoCost / qty : 0
+        cost: item.productId && qty > 0 ? fifoCost / qty : 0
       }
     })
 

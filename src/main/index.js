@@ -102,9 +102,10 @@ function registerIpc() {
         offscreen: true
       }
     })
-    const opts = { silent: !!silent, margins: { marginType: 'default' } }
+    const isCustomSize = pageSize && typeof pageSize === 'string' && pageSize.includes('mm')
+    const opts = { silent: !!silent, margins: { marginType: isCustomSize ? 'none' : 'default' } }
     if (deviceName) opts.deviceName = deviceName
-    if (pageSize && typeof pageSize === 'string' && pageSize.includes('mm')) {
+    if (isCustomSize) {
       const parts = pageSize.replace('mm', '').trim().split(/\s+/)
       const w = parseInt(parts[0])
       const h = parts[1] ? parseInt(parts[1]) : w * 1.5
@@ -546,6 +547,16 @@ async function seedDatabase() {
 app.commandLine.appendSwitch('no-sandbox')
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
+  // Pre-migration: ensure Realm database is at current schema version before
+  // the obfuscated openRealm tries to open it (handles new fields with defaults)
+  try {
+    const Realm = require('realm')
+    const { SCHEMAS, SCHEMA_VERSION } = require('./schemas')
+    const pre = await Realm.open({ schema: SCHEMAS, schemaVersion: SCHEMA_VERSION, migration: () => {} })
+    pre.close()
+  } catch (e) {
+    // First run or migration already handled — proceed normally
+  }
   registerIpc()
   await seedDatabase()
   createWindow()

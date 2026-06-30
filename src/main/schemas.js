@@ -125,6 +125,10 @@ const BusinessSettingsSchema = {
     defaultPrinter:          { type: 'string', default: '' },
     barcodePrinter:          { type: 'string', default: '' },
     barcodeLabelSize:        { type: 'string', default: '50x30' },
+    barcodeShowName:         { type: 'bool', default: true },
+    barcodeShowPrice:        { type: 'bool', default: true },
+    barcodeScale:            { type: 'float', default: 1.0 },
+    barcodeFontWeight:       { type: 'string', default: 'bold' },
     showCommercialReg:       { type: 'bool', default: true },
     showTaxReg:              { type: 'bool', default: true },
     showBusinessName:        { type: 'bool', default: true },
@@ -140,6 +144,7 @@ const BusinessSettingsSchema = {
     showNotes:               { type: 'bool', default: true },
     showClientInfo:          { type: 'bool', default: true },
     showSupplierInfo:        { type: 'bool', default: true },
+    showQR:                  { type: 'bool', default: true },
     autoBackup:              { type: 'bool', default: false },
     autoBackupInterval:      { type: 'string', default: 'weekly' },
     autoBackupLastDate:      { type: 'date', optional: true },
@@ -638,9 +643,13 @@ const SCHEMAS = [
 //   42    Added Shift.cardEndingBalance
 //   43    Added Inventory + InventoryItem schemas
 //   44    Added Product.expiryDate, BusinessSettings.notificationExpiry, expiry notification type
+//   45    Added BusinessSettings.barcodeShowName, barcodeShowPrice (non-breaking defaults)
+//   46    Added BusinessSettings.barcodeScale, barcodeFontWeight (non-breaking defaults)
+//   47    (unused)
+//   48    Added BusinessSettings.showQR (non-breaking default)
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 45
+const SCHEMA_VERSION = 48
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

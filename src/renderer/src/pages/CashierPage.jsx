@@ -7,6 +7,7 @@ import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, topBarBtn, secondaryBtn, modalPrimaryBtn, modalSuccessBtn, modalWarningBtn, modalDangerBtn, AddIcon, EditIcon, DeleteIcon, ViewIcon, PrintIcon, CheckIcon, CloseIcon, PaymentIcon, ReturnIcon, WithdrawIcon, AdvanceIcon, ShiftIcon, ClearIcon, MoneyIcon, BackIcon, SalaryIcon } from '../components/ActionIcons'
 
@@ -58,6 +59,13 @@ const [taxRate, setTaxRate] = useState(14)
   const [endCardBalance, setEndCardBalance] = useState('')
   const [errorModal, setErrorModal] = useState({ show: false, message: '' })
   const [receipt, setReceipt] = useState(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewElement, setPreviewElement] = useState(null)
+  const [previewIsA4, setPreviewIsA4] = useState(false)
+  const [showCustomItem, setShowCustomItem] = useState(false)
+  const [customItemDesc, setCustomItemDesc] = useState('')
+  const [customItemPrice, setCustomItemPrice] = useState('')
+  const customItemIdRef = useRef(1)
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseNote, setExpenseNote] = useState('')
@@ -279,6 +287,8 @@ const [taxRate, setTaxRate] = useState(14)
           businessName={user?.businessName || 'SMART X POS'}
           businessPhone={user?.businessPhone || ''}
           businessAddress={user?.businessAddress || ''}
+          logoDataUrl={settings?.logoDataUrl}
+          showLogo={settings?.showLogo}
           paperWidth={Number((localStorage.getItem('thermalPaperSize') || '80mm') === 'custom' ? (localStorage.getItem('customPaperWidth') || '80') : (localStorage.getItem('thermalPaperSize') || '80mm').replace('mm', ''))}
         />
       )
@@ -352,6 +362,18 @@ const [taxRate, setTaxRate] = useState(14)
   }, [])
   addToCartRef.current = addToCart
 
+  function addCustomItem() {
+    const desc = customItemDesc.trim()
+    const price = Number(customItemPrice)
+    if (!desc) { toast('يرجى إدخال البيان', 'error'); return }
+    if (isNaN(price) || price <= 0) { toast('يرجى إدخال سعر صحيح', 'error'); return }
+    const id = 'custom_' + (customItemIdRef.current++)
+    setCart(prev => [{ productId: id, name: desc, quantity: 1, unitPrice: price, cost: 0 }, ...prev])
+    setCustomItemDesc('')
+    setCustomItemPrice('')
+    setShowCustomItem(false)
+  }
+
   function updateCartItem(id, qty) {
     if (qty < 0) { setCart(c => c.filter(item => item.productId !== id)); return }
     const product = productMapRef.current.byId[id]
@@ -409,7 +431,8 @@ const [taxRate, setTaxRate] = useState(14)
     if (!activeShift) { setErrorModal({ show: true, message: 'يجب بدء الوردية قبل البيع' }); return }
     if (paymentMethod !== 'credit') {
       const requiredPaid = Math.max(0, total - customerCredit)
-      if (Number(paid) < requiredPaid) {
+      const actualPaid = paid === '' || paid === undefined || paid === null ? total : Number(paid)
+      if (actualPaid < requiredPaid) {
         const msg = customerCredit > 0
           ? `المبلغ المدفوع أقل من الإجمالي بعد خصم الرصيد السابق (الإجمالي: ${total.toFixed(2)} - دين مستحق للعميل: ${customerCredit.toFixed(2)} = ${requiredPaid.toFixed(2)})`
           : 'المبلغ المدفوع أقل من الإجمالي'
@@ -419,6 +442,7 @@ const [taxRate, setTaxRate] = useState(14)
     if (paymentMethod === 'credit' && (!customerName.trim() || !customerPhone.trim())) { setErrorModal({ show: true, message: 'يرجى تسجيل اسم العميل ورقم الهاتف للفاتورة الآجلة' }); return }
 
     for (const item of cart) {
+      if (item.productId && item.productId.startsWith('custom_')) continue
       const product = productMapRef.current.byId[item.productId]
       if (!product || product.stock < item.quantity) {
         const name = item.name
@@ -442,7 +466,8 @@ const [taxRate, setTaxRate] = useState(14)
         customerName, customerPhone, note,
         previousCredit: paymentMethod !== 'credit' ? customerCredit : 0
       })
-      const receiptData = { ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: paymentMethod === 'credit' ? payable : (payable || total), customerName, customerPhone, note, previousCredit: paymentMethod !== 'credit' ? customerCredit : 0, previousDebt: result.previousDebt || 0, settings, customers, cashierName: user?.name }
+      const paidAmount = paymentMethod === 'credit' ? payable : (payable || total)
+      const receiptData = { ...result, items: cart, subtotal, discount: discAmount, tax, total, paymentMethod, paid: paidAmount, change: paidAmount > total ? paidAmount - total : 0, customerName, customerPhone, note, previousCredit: paymentMethod !== 'credit' ? customerCredit : 0, previousDebt: result.previousDebt || 0, settings, customers, cashierName: user?.name }
       if (settings?.printAfterPayment) {
         if (settings?.printDirectly) {
           try {
@@ -726,10 +751,16 @@ const [taxRate, setTaxRate] = useState(14)
       <div style={{ width: '400px', background: 'var(--bg2)', padding: '16px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--bg3)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '14px' }}>فاتورة البيع</h2>
-          {cart.length > 0 && <button onClick={() => { setCart([]); setCustomerName(''); setCustomerPhone(''); setSelectedCustomer(null); setDiscount(''); setDiscountType('amount'); setNote(''); setPaid(''); setCreditPaid(''); setCustomerCredit(0); setCustomerDebt(0); }} style={{
-            background: 'transparent', color: 'var(--text2)', border: '1px solid var(--bg3)',
-            borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px'
-          }}><ClearIcon size={12} /> تفريغ</button>}
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button onClick={() => { setCustomItemDesc(''); setCustomItemPrice(''); setShowCustomItem(true) }} style={{
+              background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)',
+              borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px'
+            }}><AddIcon size={12} /> بيع حر</button>
+            {cart.length > 0 && <button onClick={() => { setCart([]); setCustomerName(''); setCustomerPhone(''); setSelectedCustomer(null); setDiscount(''); setDiscountType('amount'); setNote(''); setPaid(''); setCreditPaid(''); setCustomerCredit(0); setCustomerDebt(0); }} style={{
+              background: 'transparent', color: 'var(--text2)', border: '1px solid var(--bg3)',
+              borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px'
+            }}><ClearIcon size={12} /> تفريغ</button>}
+          </div>
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', marginBottom: '12px' }}>
@@ -1073,6 +1104,7 @@ const [taxRate, setTaxRate] = useState(14)
             {receipt.previousDebt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل</span><span style={{ color: 'var(--danger)' }}>{formatMoney(receipt.previousDebt)}</span></div>}
             {receipt.previousCredit > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--success)' }}>دين مستحق للعميل</span><span style={{ color: 'var(--success)' }}>-{formatMoney(receipt.previousCredit)}</span></div>}
             {receipt.settings?.showPaid !== false && receipt.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>المدفوع</span><span>{formatMoney(receipt.paid)}</span></div>}
+            {receipt.change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--success)' }}><span>الباقي</span><span>{formatMoney(receipt.change)}</span></div>}
             {(() => {
               const rem = Math.max(0, (receipt.total || 0) - (receipt.paid || 0))
               const totalRem = rem + (receipt.previousDebt || 0) - (receipt.previousCredit || 0)
@@ -1098,22 +1130,56 @@ const [taxRate, setTaxRate] = useState(14)
             {receipt.settings?.showNotes !== false && receipt.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{receipt.note}</div>}
             {receipt.settings?.showCashier !== false && receipt.cashierName && <div style={{ marginTop: '6px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {receipt.cashierName}</div>}
             {receipt.settings?.showReceiptFooter !== false && receipt.settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{receipt.settings.receiptFooter}</div>}
-            <button onClick={async () => {
-              try {
-                if (receipt.settings?.printDefaultSize === 'a4') {
-                  await printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />)
-                } else {
-                  await printThermal(<PrintTemplateThermal data={receipt} settings={receipt.settings} />)
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={async () => {
+                try {
+                  if (receipt.settings?.printDefaultSize === 'a4') {
+                    await printA4(<PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />)
+                  } else {
+                    await printThermal(<PrintTemplateThermal data={receipt} settings={receipt.settings} />)
+                  }
+                } catch (err) {
+                  toast('فشلت الطباعة: ' + err.message, 'error')
                 }
-              } catch (err) {
-                toast('فشلت الطباعة: ' + err.message, 'error')
-              }
-            }}
-              style={modalPrimaryBtn}>
-              <PrintIcon size={16} /> {receipt.settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
-            </button>
+              }}
+                style={modalPrimaryBtn}>
+                <PrintIcon size={16} /> {receipt.settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+              </button>
+              <button onClick={() => {
+                const isA4 = receipt.settings?.printDefaultSize === 'a4'
+                setPreviewElement(isA4
+                  ? <PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />
+                  : <PrintTemplateThermal data={receipt} settings={receipt.settings} />)
+                setPreviewIsA4(isA4)
+                setPreviewOpen(true)
+              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
+                معاينة
+              </button>
+            </div>
           </div>
         )}
+      </Modal>
+      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
+      <Modal open={showCustomItem} onClose={() => setShowCustomItem(false)} title="بيع حر" width="380px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>البيان</label>
+            <input placeholder="مثال: شحن رصيد" value={customItemDesc}
+              onInput={e => setCustomItemDesc(e.target.value)}
+              autoFocus
+              style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>السعر</label>
+            <input type="number" step="any" placeholder="0.00" value={customItemPrice}
+              onInput={e => setCustomItemPrice(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addCustomItem() }}
+              style={{ width: '100%' }} />
+          </div>
+          <button onClick={addCustomItem} style={modalPrimaryBtn}>
+            <AddIcon size={16} /> إضافة للسلة
+          </button>
+        </div>
       </Modal>
 
       <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setSelectedReturnSale(null); setReturnItems([]); setReturnSearch(''); setReturnSales([]); setReturnPaymentMethod('cash'); setReturnRefundCash(false); setCustomerPaidForSale(0) }} title="المرتجع" width="450px">

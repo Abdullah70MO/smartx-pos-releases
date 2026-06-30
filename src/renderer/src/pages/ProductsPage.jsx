@@ -8,7 +8,8 @@ import { formatMoney } from '../utils/money'
 import { printBarcode } from '../utils/print'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
-import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, BarcodeIcon, PrintIcon, DownloadIcon, UploadIcon } from '../components/ActionIcons'
+import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, BarcodeIcon, PrintIcon, DownloadIcon, UploadIcon, ViewIcon } from '../components/ActionIcons'
+import BarcodePreviewModal from '../components/BarcodePreviewModal'
 
 import { generateBarcode as genBarcode, encodeEAN13 } from '../utils/barcode'
 
@@ -54,6 +55,7 @@ export default function ProductsPage() {
   const [units, setUnits] = useState([])
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
+  const [barcodePreviewOpen, setBarcodePreviewOpen] = useState(false)
   const [printingBarcode, setPrintingBarcode] = useState(false)
   const [importing, setImporting] = useState(false)
   const nameRef = useRef(null)
@@ -186,11 +188,20 @@ export default function ProductsPage() {
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(ws)
       const token = localStorage.getItem('token')
-      let count = 0
+
+      const existingRes = await api.listProducts(token, '', null, 0, 100000)
+      const existing = existingRes.data || []
+      const barcodeMap = new Map()
+      for (const p of existing) { if (p.barcode) barcodeMap.set(p.barcode.trim(), p) }
+
+      let created = 0, updated = 0
       for (const row of rows) {
+        const barcode = String(row['الباركود'] || row['barcode'] || '').trim()
+        const name = String(row['الاسم'] || row['name'] || '').trim()
+        if (!name) continue
         const product = {
-          name: String(row['الاسم'] || row['name'] || '').trim(),
-          barcode: String(row['الباركود'] || row['barcode'] || '').trim(),
+          name,
+          barcode,
           category: String(row['التصنيف'] || row['category'] || '').trim(),
           unit: String(row['الوحدة'] || row['unit'] || '').trim(),
           cost: Number(row['التكلفة'] || row['cost'] || 0),
@@ -200,11 +211,21 @@ export default function ProductsPage() {
           stock: Number(row['المخزون'] || row['stock'] || 0),
           reorderPoint: Number(row['حد التنبيه'] || row['reorderPoint'] || 0)
         }
-        if (!product.name) continue
+        const existingProduct = barcode && barcodeMap.get(barcode)
+        if (existingProduct) {
+          product._id = existingProduct._id
+          product.batchData = existingProduct.batchData
+          product.expiryDate = existingProduct.expiryDate
+          product.createdAt = existingProduct.createdAt
+          updated++
+        } else {
+          created++
+        }
         await api.saveProduct(token, product)
-        count++
+        if (barcode) barcodeMap.set(barcode.trim(), { ...existingProduct, ...product })
       }
-      toast(`تم استيراد ${count} منتج${count > 1 ? '' : ''}`, 'success')
+      const msg = updated > 0 ? `تم التحديث: ${created} منتج جديد و ${updated} منتج محدث` : `تم إضافة ${created} منتج`
+      toast(msg, 'success')
       load(); window.dispatchEvent(new Event('dataChanged'))
     } catch (err) { toast('خطأ في الاستيراد: ' + err.message, 'error') }
     setImporting(false)
@@ -220,6 +241,7 @@ export default function ProductsPage() {
           {canManage && <button onClick={() => fileRef.current?.click()} disabled={importing} style={secondaryBtn}><UploadIcon size={14} /> {importing ? 'جاري...' : 'استيراد'}</button>}
           {canManage && <button onClick={handleExport} style={{ ...secondaryBtn, color: 'var(--success)' }}><DownloadIcon size={14} /> تصدير</button>}
           {canManage && <button onClick={() => setShowModal(true)} style={headerBtn}><AddIcon size={16} /> إضافة منتج</button>}
+          <button onClick={() => setBarcodePreviewOpen(true)} style={{ ...secondaryBtn }}><BarcodeIcon size={14} /> معاينة الباركود</button>
         </div>
       </div>
 
@@ -292,7 +314,7 @@ export default function ProductsPage() {
                     return <BarcodeSVG code={form.barcode} width={bw} height={bh} />
                   })()}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>{form.barcode}</div>
-                  <button type="button" onClick={async () => { setPrintingBarcode(true); try { await printBarcode(form.barcode) } catch (err) { toast('فشلت طباعة الباركود: ' + err.message, 'error') }; setPrintingBarcode(false) }} disabled={printingBarcode} style={{ ...secondaryBtn, background: 'var(--success)', color: '#fff' }}><PrintIcon size={14} /> {printingBarcode ? 'جاري...' : 'طباعة الباركود'}</button>
+                  <button type="button" onClick={async () => { setPrintingBarcode(true); try { await printBarcode(form.barcode, { name: form.name, price: form.priceRetail }) } catch (err) { toast('فشلت طباعة الباركود: ' + err.message, 'error') }; setPrintingBarcode(false) }} disabled={printingBarcode} style={{ ...secondaryBtn, background: 'var(--success)', color: '#fff' }}><PrintIcon size={14} /> {printingBarcode ? 'جاري...' : 'طباعة الباركود'}</button>
                 </div>
               )}
             </div>
@@ -359,6 +381,7 @@ export default function ProductsPage() {
         </form>
       </Modal>
       <ConfirmDialog />
+      <BarcodePreviewModal open={barcodePreviewOpen} onClose={() => setBarcodePreviewOpen(false)} />
     </div>
   )
 }

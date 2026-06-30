@@ -1,5 +1,6 @@
 import { formatMoney } from '../utils/money'
 import { formatDate } from '../utils/date'
+import { generateQrSvg } from '../utils/qrcode'
 
 export default function StatementA4({ type, party, transactions, settings }) {
   const isCustomer = type === 'customer'
@@ -11,6 +12,14 @@ export default function StatementA4({ type, party, transactions, settings }) {
   const summaryLabel = isCustomer ? 'إجمالي المشتريات' : 'إجمالي المشتريات / الشراء'
   const paidLabel = 'المدفوع'
   const balanceTitle = balance > 0 ? (isCustomer ? 'رصيد مستحق من العميل' : 'دين مستحق للمورد') : balance < 0 ? (isCustomer ? 'دين مستحق للعميل' : 'رصيد مستحق من المورد') : 'الرصيد الحالي'
+  const qrContent = settings?.showQR !== false
+    ? generateQrSvg([
+        title,
+        party?.name || '',
+        `الرصيد: ${formatMoney(Math.abs(balance))}`,
+        new Date().toLocaleDateString('ar-EG')
+      ].join('\n'), 100)
+    : null
 
   return (
     <div id="a4-print-content" style={{
@@ -99,6 +108,12 @@ export default function StatementA4({ type, party, transactions, settings }) {
       <div style={{ textAlign: 'center', fontSize: '11px', marginTop: '8px', color: '#374151' }}>
         {balanceTitle}: <strong style={{ color: balanceColor }}>{formatMoney(Math.abs(balance))}</strong>
       </div>
+
+      {settings?.showQR !== false && qrContent && (
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <div dangerouslySetInnerHTML={{ __html: qrContent }} />
+        </div>
+      )}
 
       {settings?.receiptFooter && (
         <div style={{ position: 'absolute', bottom: '10mm', left: '18mm', right: '18mm', textAlign: 'center', fontSize: '10px', borderTop: '1px solid #d1d5db', paddingTop: '6px', color: '#6b7280' }}>

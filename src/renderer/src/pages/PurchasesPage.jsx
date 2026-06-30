@@ -10,6 +10,7 @@ import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalWarningBtn, modalSuccessBtn, modalDangerBtn, EditIcon, DeleteIcon, AddIcon, PrintIcon, CheckIcon, PaymentIcon, ReturnIcon, BarcodeIcon, SearchIcon } from '../components/ActionIcons'
 
@@ -50,6 +51,9 @@ export default function PurchasesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editPurchase, setEditPurchase] = useState(null)
   const [viewInvoice, setViewInvoice] = useState(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewElement, setPreviewElement] = useState(null)
+  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
@@ -624,23 +628,36 @@ export default function PurchasesPage() {
             })()}
             {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{viewInvoice.note}</div>}
             {settings?.showCashier !== false && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>}
-            <button onClick={async () => {
-              try {
-                if (settings?.printDefaultSize === 'a4') {
-                  await printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
-                } else {
-                  await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={async () => {
+                try {
+                  if (settings?.printDefaultSize === 'a4') {
+                    await printA4(<PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />)
+                  } else {
+                    await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                  }
+                } catch (err) {
+                  toast('فشلت الطباعة: ' + err.message, 'error')
                 }
-              } catch (err) {
-                toast('فشلت الطباعة: ' + err.message, 'error')
-              }
-            }}
-              style={modalPrimaryBtn}>
-              <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
-            </button>
+              }}
+                style={modalPrimaryBtn}>
+                <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
+              </button>
+              <button onClick={() => {
+                const isA4 = settings?.printDefaultSize === 'a4'
+                setPreviewElement(isA4
+                  ? <PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />
+                  : <PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                setPreviewIsA4(isA4)
+                setPreviewOpen(true)
+              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
+                معاينة
+              </button>
+            </div>
           </div>
         )}
       </Modal>
+      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
 
       <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setReturnPurchase(null); setReturnRefundCash(false); setSupplierPaidForReturn(0) }} title={`مرتجع مشتريات - فاتورة #${returnPurchase?.invoiceNo}`} width="500px">
         {returnPurchase && (
@@ -736,7 +753,7 @@ export default function PurchasesPage() {
                     return <BarcodeSVG code={productForm.barcode} width={bw} height={bh} />
                   })()}
                   <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>{productForm.barcode}</div>
-                  <button type="button" onClick={async () => { setPrintingBarcode(true); try { await printBarcode(productForm.barcode) } catch (err) { toast('فشلت طباعة الباركود: ' + err.message, 'error') }; setPrintingBarcode(false) }} disabled={printingBarcode}
+                  <button type="button" onClick={async () => { setPrintingBarcode(true); try { await printBarcode(productForm.barcode, { name: productForm.name, price: productForm.priceRetail }) } catch (err) { toast('فشلت طباعة الباركود: ' + err.message, 'error') }; setPrintingBarcode(false) }} disabled={printingBarcode}
                     style={{ ...secondaryBtn, background: 'var(--success)', color: '#fff' }}>
                     <PrintIcon size={14} /> {printingBarcode ? 'جاري...' : 'طباعة الباركود'}
                   </button>
