@@ -550,81 +550,15 @@ export default function PurchasesPage() {
         </form>
       </Modal>
 
-      <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة شراء #${viewInvoice?.invoiceNo}`} width="380px">
+      <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة شراء #${viewInvoice?.invoiceNo}`} width={settings?.printDefaultSize === 'a4' ? '700px' : '380px'}>
         {viewInvoice && (
-          <div style={{ fontSize: '12px', textAlign: 'center' }} id="purchase-print">
-            {settings?.showBusinessName !== false && <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>فاتورة شراء</div>}
-            <div style={{ color: 'var(--text2)', marginBottom: '4px' }}>رقم: #{viewInvoice.invoiceNo}</div>
-            <div style={{ color: 'var(--text2)', marginBottom: '8px' }}>{formatDate(viewInvoice.createdAt)}</div>
-            {settings?.showSupplierInfo !== false && viewInvoice.supplierName && ((s => (
-              <div style={{ marginBottom: '8px', color: 'var(--text2)', fontSize: '11px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--text)' }}>{viewInvoice.supplierName}</div>
-                {viewInvoice.supplierPhone && <div>الهاتف: {viewInvoice.supplierPhone}</div>}
-                {s?.email && <div>البريد: {s.email}</div>}
-                {s?.commercialReg && <div>سجل تجاري: {s.commercialReg}</div>}
-                {s?.taxReg && <div>سجل ضريبي: {s.taxReg}</div>}
-                {s?.address && <div>العنوان: {s.address}</div>}
-              </div>
-            ))(suppliers.find(s => s._id === viewInvoice.supplierId)))}
-            {settings?.showProductsTable !== false && (<>
-            <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
-            {viewInvoice.items?.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>{item.name} × {item.quantity}</span>
-                <span>{formatMoney(item.quantity * item.cost)}</span>
-              </div>
-            ))}
-            <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
-            </>)}
-            {settings?.showTotals !== false && (<>
-            {(s => {
-              const l = s === 'paid' ? 'مدفوعة' : s === 'partial' ? 'مدفوعة جزئياً' : 'آجل'
-              return <div style={{ marginTop: '4px', color: 'var(--text2)', fontSize: '11px' }}>الحالة: {l}</div>
-            })(viewInvoice.paymentStatus)}
-            <div style={{ marginTop: '4px', color: 'var(--text2)', fontSize: '11px' }}>طريقة الدفع: {viewInvoice.paymentMethod === 'credit' ? 'آجل' : viewInvoice.paymentMethod === 'card' ? 'بطاقة' : 'نقداً'}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>
-              <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.totalCost)}</span>
-            </div>
-            {viewInvoice.discount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
-                <span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(viewInvoice.discount)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
-              <span>الصافي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.netCost)}</span>
-            </div>
-            {viewInvoice.previousCredit > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
-                <span style={{ color: 'var(--success)' }}>رصيد مستحق من المورد (خصم)</span><span style={{ color: 'var(--success)' }}>-{formatMoney(viewInvoice.previousCredit)}</span>
-              </div>
-            )}
-            {viewInvoice.previousDebt > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
-                <span style={{ color: 'var(--warning)' }}>دين مستحق للمورد (سابق)</span><span style={{ color: 'var(--warning)' }}>{formatMoney(viewInvoice.previousDebt)}</span>
-              </div>
-            )}
-            </>)}
-            {settings?.showPaid !== false && viewInvoice.paid > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px' }}>
-                <span>المدفوع</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.paid)}</span>
-              </div>
-            )}
-            {settings?.showPaid !== false && (viewInvoice.paid || 0) < viewInvoice.netCost && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', color: 'var(--warning)' }}>
-                <span>دين مستحق للمورد</span><span>{formatMoney(viewInvoice.netCost - (viewInvoice.paid || 0))}</span>
-              </div>
-            )}
+          <div id="purchase-print">
             {(() => {
-              const rem = (viewInvoice.netCost || 0) - (viewInvoice.paid || 0)
-              const totalRem = rem + (viewInvoice.previousDebt || 0) - (viewInvoice.previousCredit || 0)
-              if (totalRem <= 0 && rem <= 0) return null
-              return <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '2px', fontWeight: 'bold', borderTop: '1px solid var(--bg3)', paddingTop: '4px' }}>
-                <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
-              </div>
+              return settings?.printDefaultSize === 'a4'
+                ? <PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />
+                : <PrintTemplateThermal data={viewInvoice} settings={settings} />
             })()}
-            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)', fontSize: '11px' }}>{viewInvoice.note}</div>}
-            {settings?.showCashier !== false && <div style={{ marginTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{viewInvoice.createdBy}</div>}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
               <button onClick={async () => {
                 try {
                   if (settings?.printDefaultSize === 'a4') {

@@ -14,7 +14,12 @@ export default function StatementThermal({ type, party, transactions, settings }
   const paperSize = settings?.thermalPaperSize || '80mm'
 
   const qrContent = settings?.showQR !== false
-    ? generateQrSvg([title, party?.name || '', `الرصيد: ${formatMoney(Math.abs(balance))}`, new Date().toLocaleDateString('ar-EG')].join('\n'), 80)
+    ? generateQrSvg([
+        title,
+        party?.name || '',
+        `الرصيد: ${formatMoney(Math.abs(balance))}`,
+        new Date().toLocaleDateString('ar-EG')
+      ].join('\n'), 80)
     : null
 
   return (

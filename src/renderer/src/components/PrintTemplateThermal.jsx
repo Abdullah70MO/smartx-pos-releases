@@ -236,7 +236,6 @@ export default function PrintTemplateThermal({ data, settings }) {
       {settings?.showQR !== false && qrContent && (
         <div style={{ textAlign: 'center', marginBottom: '6px' }}>
           <div dangerouslySetInnerHTML={{ __html: qrContent }} />
-          <div style={{ fontSize: '7px', color: '#9ca3af', marginTop: '1px' }}>{formatDateTime(data.createdAt)}</div>
         </div>
       )}
 

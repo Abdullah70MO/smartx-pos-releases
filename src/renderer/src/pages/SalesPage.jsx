@@ -134,67 +134,16 @@ export default function SalesPage() {
       </div>
       <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onChange={setPage} />
 
-      <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة #${viewInvoice?.invoiceNo}`} width="380px">
+      <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`فاتورة #${viewInvoice?.invoiceNo}`} width={settings?.printDefaultSize === 'a4' ? '700px' : '380px'}>
         {viewInvoice && (
-          <div style={{ fontSize: '12px', textAlign: 'center' }} id="invoice-print">
-            {settings?.showBusinessName !== false && <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '2px' }}>{settings?.businessName || 'SMART X'}</div>}
-            {settings?.showLogo !== false && settings?.logoDataUrl && <div style={{ marginBottom: '4px' }}><img src={settings.logoDataUrl} alt="logo" style={{ maxHeight: '50px' }} /></div>}
-            {settings?.showPhone !== false && settings?.phone && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>هاتف: {settings.phone}</div>}
-            {settings?.showEmail !== false && settings?.email && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>بريد: {settings.email}</div>}
-            {settings?.showAddress !== false && settings?.address && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>{settings.address}</div>}
-            {settings?.showCommercialReg && settings?.commercialRegistration && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>سجل تجاري: {settings.commercialRegistration}</div>}
-            {settings?.showTaxReg && settings?.taxNumber && <div style={{ color: 'var(--text2)', fontSize: '11px' }}>رقم ضريبي: {settings.taxNumber}</div>}
-            <div style={{ color: 'var(--text2)', margin: '6px 0 10px' }}>فاتورة #{viewInvoice.invoiceNo}</div>
-            <div style={{ color: 'var(--text2)', marginBottom: '4px', fontSize: '11px' }}>{formatDateTime(viewInvoice.createdAt)}</div>
-            {settings?.showClientInfo !== false && viewInvoice.customerName && <div style={{ marginBottom: '8px', color: 'var(--text2)', fontSize: '11px' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--text)' }}>{viewInvoice.customerName}</div>
-              {viewInvoice.customerPhone && <div>الهاتف: {viewInvoice.customerPhone}</div>}
-              {(() => {
-                if (!customers) return null
-                const c = customers.find(x => x.name === viewInvoice.customerName)
-                if (!c) return null
-                return <>
-                  {c.commercialReg && <div>سجل تجاري: {c.commercialReg}</div>}
-                  {c.taxReg && <div>سجل ضريبي: {c.taxReg}</div>}
-                  {c.address && <div>العنوان: {c.address}</div>}
-                </>
-              })()}
-            </div>}
-            {settings?.showProductsTable !== false && (<>
-            <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
-            {viewInvoice.items?.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>{item.name} × {item.quantity}</span>
-                <span>{(item.unitPrice * item.quantity)?.toFixed(2)}</span>
-              </div>
-            ))}
-            <div style={{ borderTop: '1px dashed var(--bg3)', margin: '8px 0' }}></div>
-            </>)}
-            {settings?.showTotals !== false && (<>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}><span>المجموع</span><span>{formatMoney(viewInvoice.subtotal)}</span></div>
-            {viewInvoice.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الخصم</span><span style={{ color: 'var(--danger)' }}>-{formatMoney(viewInvoice.discount)}</span></div>}
-            {viewInvoice.tax > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>الضريبة</span><span>{formatMoney(viewInvoice.tax)}</span></div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '4px', borderTop: '2px solid var(--bg3)', paddingTop: '4px' }}>
-              <span>الإجمالي</span><span style={{ color: 'var(--success)' }}>{formatMoney(viewInvoice.total)}</span>
-            </div>
-            {viewInvoice.previousDebt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل</span><span style={{ color: 'var(--danger)' }}>{formatMoney(viewInvoice.previousDebt)}</span></div>}
-            {viewInvoice.previousCredit > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--success)' }}>دين مستحق للعميل</span><span style={{ color: 'var(--success)' }}>-{formatMoney(viewInvoice.previousCredit)}</span></div>}
-            {settings?.showPaid !== false && viewInvoice.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>المدفوع</span><span>{formatMoney(viewInvoice.paid)}</span></div>}
-            {viewInvoice.paid > viewInvoice.total && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: 'var(--success)' }}><span>الباقي</span><span>{formatMoney(viewInvoice.paid - viewInvoice.total)}</span></div>}
-            {settings?.showPaid !== false && viewInvoice.paymentMethod === 'credit' && (viewInvoice.paid || 0) < viewInvoice.total && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: 'var(--danger)' }}><span>رصيد مستحق من العميل</span><span>{formatMoney(viewInvoice.total - (viewInvoice.paid || 0))}</span></div>}
+          <div id="invoice-print">
             {(() => {
-              const rem = (viewInvoice.total || 0) - (viewInvoice.paid || 0)
-              const totalRem = rem + (viewInvoice.previousDebt || 0) - (viewInvoice.previousCredit || 0)
-              if (totalRem <= 0 && rem <= 0) return null
-              return <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', fontWeight: 'bold', borderTop: '1px solid var(--bg3)', paddingTop: '4px' }}>
-                <span>إجمالي الرصيد المتبقي</span><span style={{ color: 'var(--danger)' }}>{formatMoney(totalRem)}</span>
-              </div>
+              const printData = { ...viewInvoice, change: (viewInvoice.paid || 0) > viewInvoice.total ? viewInvoice.paid - viewInvoice.total : 0 }
+              return settings?.printDefaultSize === 'a4'
+                ? <PrintTemplateA4 type="sale" data={printData} settings={settings} customers={customers} />
+                : <PrintTemplateThermal data={printData} settings={settings} />
             })()}
-            <div style={{ marginTop: '4px', color: 'var(--text2)' }}>طريقة الدفع: {viewInvoice.paymentMethod === 'card' ? 'بطاقة' : viewInvoice.paymentMethod === 'credit' ? 'آجل' : 'نقداً'}</div>
-            {settings?.showNotes !== false && viewInvoice.note && <div style={{ marginTop: '8px', color: 'var(--warning)' }}>ملاحظة: {viewInvoice.note}</div>}
-            {settings?.showCashier !== false && <div style={{ marginTop: '12px', color: 'var(--text2)', fontSize: '11px' }}>الكاشير: {viewInvoice.cashierName}</div>}
-            {settings?.showReceiptFooter !== false && settings?.receiptFooter && <div style={{ marginTop: '10px', borderTop: '1px dashed var(--bg3)', paddingTop: '8px', color: 'var(--text2)', fontSize: '11px' }}>{settings.receiptFooter}</div>}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
               <button onClick={async () => {
                 try {
                   const printData = { ...viewInvoice, change: (viewInvoice.paid || 0) > viewInvoice.total ? viewInvoice.paid - viewInvoice.total : 0 }
@@ -211,7 +160,6 @@ export default function SalesPage() {
                 <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
               </button>
             </div>
-            </>)}
           </div>
         )}
       </Modal>

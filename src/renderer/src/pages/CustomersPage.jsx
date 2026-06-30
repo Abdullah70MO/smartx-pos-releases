@@ -217,32 +217,13 @@ export default function CustomersPage() {
         </form>
       </Modal>
 
-      <Modal open={!!transModal} onClose={() => setTransModal(null)} title={`عمليات العميل: ${transModal?.name}`} width="500px">
-        <div style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '8px' }}>
-          {(() => { const b = transactions.length > 0 ? transactions[transactions.length - 1]?.balance : 0; return b > 0 ? 'رصيد مستحق من العميل' : b < 0 ? 'دين مستحق للعميل' : 'الرصيد الحالي' })()}: <span style={{ color: transactions.length > 0 ? (transactions[transactions.length - 1]?.balance > 0 ? 'var(--danger)' : 'var(--success)') : 'var(--text2)', fontWeight: 'bold' }}>
-            {transactions.length > 0 ? Math.abs(transactions[transactions.length - 1]?.balance)?.toFixed(2) : '0.00'}
-          </span>
+      <Modal open={!!transModal} onClose={() => setTransModal(null)} title={`عمليات العميل: ${transModal?.name}`} width={settings?.printDefaultSize === 'a4' ? '700px' : '380px'}>
+        <div id="customer-print-statement">
+          {settings?.printDefaultSize === 'a4'
+            ? <StatementA4 type="customer" party={transModal} transactions={transactions} settings={settings} />
+            : <StatementThermal type="customer" party={transModal} transactions={transactions} settings={settings} />}
         </div>
-        <div id="customer-print">
-          <div style={{ background: 'var(--bg)', borderRadius: '8px', overflow: 'auto', maxHeight: '400px' }}>
-            <table>
-              <thead><tr><th>البيان</th><th>المبلغ</th><th>الرصيد</th><th>نوع الدفع</th><th>التاريخ</th></tr></thead>
-              <tbody>
-                {transactions.map((t, i) => (
-                  <tr key={i}>
-                    <td style={{ fontSize: '12px' }}>{t.desc}</td>
-                    <td style={{ color: t.amount > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '12px' }}>{Math.abs(t.amount).toFixed(2)}</td>
-                    <td style={{ color: t.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold', fontSize: '12px' }}>{t.balance.toFixed(2)}</td>
-                    <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{t.paymentMethod === 'credit' ? 'آجل' : t.paymentMethod === 'card' ? 'بطاقة' : t.paymentMethod ? 'نقداً' : '-'}</td>
-                    <td style={{ fontSize: '11px', color: 'var(--text2)' }}>{formatDate(t.date)}</td>
-                  </tr>
-                ))}
-                {transactions.length === 0 && <tr><td colSpan="5" style={{ padding: '16px', color: 'var(--text2)', textAlign: 'center' }}>لا توجد عمليات</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
           <button onClick={async () => { try { const isA4 = settings?.printDefaultSize === 'a4'; const template = isA4 ? <StatementA4 type="customer" party={transModal} transactions={transactions} settings={settings} /> : <StatementThermal type="customer" party={transModal} transactions={transactions} settings={settings} />; if (isA4) await printA4(template); else await printThermal(template) } catch (err) { toast('فشلت الطباعة: ' + err.message, 'error') } }} style={{ ...printBtn }}><PrintIcon size={16} /> طباعة</button>
         </div>
       </Modal>

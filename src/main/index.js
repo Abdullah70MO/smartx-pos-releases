@@ -135,7 +135,8 @@ function registerIpc() {
         clearTimeout(timeout)
         cleanup(new Error(errorDescription || 'فشل تحميل صفحة الطباعة'))
       })
-      printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(err => {
+      const base64Html = Buffer.from(html, 'utf-8').toString('base64')
+      printWin.loadURL(`data:text/html;charset=utf-8;base64,${base64Html}`).catch(err => {
         if (done) return
         done = true
         reject(err)

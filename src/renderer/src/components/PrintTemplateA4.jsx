@@ -176,7 +176,6 @@ export default function PrintTemplateA4({ type, data, settings, suppliers, custo
       {settings?.showQR !== false && qrContent && (
         <div style={{ marginTop: '12px', textAlign: 'center' }}>
           <div dangerouslySetInnerHTML={{ __html: qrContent }} />
-          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{formatDateTime(data.createdAt)}</div>
         </div>
       )}
 
