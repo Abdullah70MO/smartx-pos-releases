@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import api from '../api'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -7,6 +7,12 @@ import { useConfirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import ActivateLicenseModal from '../components/ActivateLicenseModal'
 import BarcodeSVG from '../components/BarcodeSVG'
+import PrintTemplateThermal from '../components/PrintTemplateThermal'
+import PrintTemplateA4 from '../components/PrintTemplateA4'
+import StatementThermal from '../components/StatementThermal'
+import StatementA4 from '../components/StatementA4'
+import { renderThermalHtml, renderA4Html, printBarcode } from '../utils/print'
+import { formatMoney } from '../utils/money'
 
 export default function SettingsPage() {
   const toast = useToast()
@@ -31,6 +37,13 @@ export default function SettingsPage() {
   const [barcodeLabel, setBarcodeLabel] = useState('50x30')
   const [barcodeLabelWidth, setBarcodeLabelWidth] = useState('50')
   const [barcodeLabelHeight, setBarcodeLabelHeight] = useState('30')
+  const [barcodeSearch, setBarcodeSearch] = useState('')
+  const [barcodeProducts, setBarcodeProducts] = useState([])
+  const [barcodeSelectedProduct, setBarcodeSelectedProduct] = useState(null)
+  const [barcodeSearchLoading, setBarcodeSearchLoading] = useState(false)
+  const barcodeSearchTimer = useRef(null)
+  const [invoicePreviewIsA4, setInvoicePreviewIsA4] = useState(false)
+  const [previewDocType, setPreviewDocType] = useState('sale')
 
   const settingsSections = [
     { id: 'store', title: 'بيانات المتجر', description: 'الشعار، اسم المتجر، الهاتف، الإيميل، السجل التجاري، الرقم الضريبي، العنوان' },
@@ -79,6 +92,21 @@ export default function SettingsPage() {
     if (!initialForm) return
     markSettingsDirty(JSON.stringify(form) !== JSON.stringify(initialForm))
   }, [form, initialForm])
+
+  // Barcode product search
+  useEffect(() => {
+    if (!barcodeSearch.trim() || barcodeSelectedProduct) { setBarcodeProducts([]); return }
+    clearTimeout(barcodeSearchTimer.current)
+    barcodeSearchTimer.current = setTimeout(async () => {
+      setBarcodeSearchLoading(true)
+      try {
+        const res = await api.listProducts(localStorage.getItem('token'), barcodeSearch, null, 0, 10)
+        setBarcodeProducts(res.data || [])
+      } catch { setBarcodeProducts([]) }
+      setBarcodeSearchLoading(false)
+    }, 300)
+    return () => clearTimeout(barcodeSearchTimer.current)
+  }, [barcodeSearch, barcodeSelectedProduct])
 
   // Load font dynamically for preview
   useEffect(() => {
@@ -441,7 +469,7 @@ export default function SettingsPage() {
         </div>
       ) : (
         <form onSubmit={handleSave}>
-          <div style={{ maxWidth: '800px' }}>
+          <div style={{ width: '100%' }}>
             <Section title={settingsSections.find(s => s.id === selectedSection)?.title}>
               {selectedSection === 'store' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -616,7 +644,7 @@ export default function SettingsPage() {
                           <option value="a4">كبير (A4)</option>
                         </select>
                       </div>
-                      <div>
+                      {form.printDefaultSize === 'receipt' && <div>
                         <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مقاس الطباعة الحرارية</label>
                         <select value={form.thermalPaperSize} onChange={e => setForm(f => ({ ...f, thermalPaperSize: e.target.value }))} style={{ width: '100%' }} disabled={!canManage}>
                           <option value="57mm">57mm</option>
@@ -625,9 +653,9 @@ export default function SettingsPage() {
                           <option value="80mm">80mm</option>
                           <option value="custom">مخصص</option>
                         </select>
-                      </div>
+                      </div>}
                     </div>
-                    {form.thermalPaperSize === 'custom' && (
+                    {form.thermalPaperSize === 'custom' && form.printDefaultSize === 'receipt' && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
                         <div>
                           <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>العرض (mm)</label>
@@ -647,12 +675,12 @@ export default function SettingsPage() {
                       <label htmlFor="printAfter" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة الفاتورة تلقائياً بعد الدفع</label>
                     </div>
                   </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input type="checkbox" id="printDirectly" checked={form.printDirectly} onChange={e => setForm(f => ({ ...f, printDirectly: e.target.checked }))} disabled={!canManage} />
-                      <label htmlFor="printDirectly" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة مباشرة بدون نافذة اختيار الطابعة</label>
-                    </div>
-                </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input type="checkbox" id="printDirectly" checked={form.printDirectly} onChange={e => { const v = e.target.checked; setForm(f => ({ ...f, printDirectly: v, printAfterPayment: v ? true : f.printAfterPayment })) }} disabled={!canManage} />
+                        <label htmlFor="printDirectly" style={{ fontSize: '14px', color: 'var(--text)', cursor: 'pointer' }}>طباعة مباشرة بدون نافذة اختيار الطابعة</label>
+                      </div>
+                  </div>
               </div>
               )}
 
@@ -705,11 +733,7 @@ export default function SettingsPage() {
 
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '12px' }}>إعدادات اللاصقة</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>كود الباركود للمعاينة</label>
-                        <input type="text" value={barcodePreview} onInput={e => setBarcodePreview(e.target.value)} placeholder="مثال: 0123456789123" style={{ width: '100%' }} />
-                      </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                       <div>
                         <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>مقاس لاصقة الباركود</label>
                         <select value={barcodeLabel} onChange={e => { setBarcodeLabel(e.target.value); setForm(f => ({ ...f, barcodeLabelSize: e.target.value })) }} style={{ width: '100%' }}>
@@ -736,21 +760,54 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </div>
-                    {barcodePreview && (
-                      <div style={{ marginTop: '12px', padding: '16px', background: '#fff', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                        {form.barcodeShowName !== false && <div style={{ fontSize: '11px', fontWeight: form.barcodeFontWeight || 'bold', color: '#333', textAlign: 'center' }}>منتج تجريبي</div>}
-                        {form.barcodeShowPrice !== false && <div style={{ fontSize: '10px', fontWeight: form.barcodeFontWeight || 'bold', color: '#555', textAlign: 'center' }}>100 ج.م</div>}
-                        {(() => {
-                          const dims = barcodeLabel === 'custom' ? [barcodeLabelWidth, barcodeLabelHeight] : barcodeLabel.split('x').map(Number)
-                          const scale = form.barcodeScale ?? 1
-                          const bw = Math.min(Number(dims[0]) * 3.78 * scale, 600)
-                          const bh = Math.min(Number(dims[1]) * 3.78 * scale, 400)
-                          return <BarcodeSVG code={barcodePreview} width={bw} height={bh} />
-                        })()}
-                        <div style={{ fontSize: '12px', color: '#333', fontFamily: 'monospace' }}>{barcodePreview}</div>
-                        <div style={{ fontSize: '11px', color: '#666' }}>مقاس اللاصقة: {barcodeLabel === 'custom' ? `${barcodeLabelWidth} × ${barcodeLabelHeight} mm` : barcodeLabel.replace('x', ' × ') + ' mm'}</div>
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--bg3)', paddingTop: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>معاينة الباركود</div>
+                        <button onClick={() => { setBarcodeSelectedProduct({ name: 'منتج تجريبي', barcode: '0123456789123', priceRetail: 100 }); setBarcodePreview('0123456789123'); setBarcodeSearch(''); setBarcodeProducts([]) }}
+                          style={{ background: 'var(--bg3)', color: 'var(--text)', border: 'none', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', cursor: 'pointer' }}>
+                          معاينة تجريبية
+                        </button>
                       </div>
-                    )}
+                      <input placeholder="ابحث عن منتج..." value={barcodeSearch} onInput={e => { setBarcodeSearch(e.target.value); setBarcodeSelectedProduct(null); setBarcodePreview('') }}
+                        style={{ width: '100%', marginBottom: '8px' }} />
+                      {barcodeSearch.length >= 2 && !barcodeSelectedProduct && null}
+                      {barcodeSearchLoading && <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '8px' }}>جاري البحث...</div>}
+                      {!barcodeSearchLoading && barcodeProducts.length > 0 && !barcodeSelectedProduct && (
+                        <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--outline)', borderRadius: '8px', marginBottom: '8px' }}>
+                          {barcodeProducts.map((p, i) => (
+                            <div key={p._id || i} onClick={() => { setBarcodeSelectedProduct(p); setBarcodePreview(p.barcode || '') }} style={{
+                              padding: '8px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text)',
+                              borderBottom: i < barcodeProducts.length - 1 ? '1px solid var(--bg3)' : 'none',
+                              display: 'flex', justifyContent: 'space-between'
+                            }}>
+                              <span>{p.name}</span>
+                              <span style={{ color: 'var(--text2)', fontFamily: 'monospace', fontSize: '11px' }}>{p.barcode || ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {!barcodeSearchLoading && barcodeSearch.length >= 2 && barcodeProducts.length === 0 && !barcodeSelectedProduct && (
+                        <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '8px' }}>لا توجد نتائج</div>
+                      )}
+                      {barcodePreview && (() => {
+                        const dims = barcodeLabel === 'custom' ? [barcodeLabelWidth, barcodeLabelHeight] : barcodeLabel.split('x').map(Number)
+                        const scale = form.barcodeScale ?? 1
+                        const bw = Math.min(Number(dims[0]) * 3.78 * scale, 400)
+                        const bh = Math.min(Number(dims[1]) * 3.78 * scale, 250)
+                        return (
+                          <div style={{ padding: '12px', background: '#fff', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', border: '1px solid var(--outline)' }}>
+                            {barcodeSelectedProduct && form.barcodeShowName !== false && <div style={{ fontSize: '11px', fontWeight: form.barcodeFontWeight || 'bold', color: '#333', textAlign: 'center' }}>{barcodeSelectedProduct.name}</div>}
+                            {barcodeSelectedProduct && form.barcodeShowPrice !== false && <div style={{ fontSize: '10px', fontWeight: form.barcodeFontWeight || 'bold', color: '#555', textAlign: 'center' }}>{barcodeSelectedProduct.priceRetail || 0} ج.م</div>}
+                            {!barcodeSelectedProduct && <div style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>باركود يدوي</div>}
+                            <BarcodeSVG code={barcodePreview} width={bw} height={bh} />
+                            <button onClick={() => printBarcode(barcodePreview, barcodeSelectedProduct ? { name: barcodeSelectedProduct.name, price: barcodeSelectedProduct.priceRetail } : undefined)}
+                              style={{ marginTop: '8px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 20px', fontSize: '12px', cursor: 'pointer' }}>
+                              طباعة
+                            </button>
+                          </div>
+                        )
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}
@@ -826,6 +883,91 @@ export default function SettingsPage() {
                   <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '10px' }}>نص تذييل الفاتورة</div>
                   <textarea value={form.receiptFooter} onInput={e => setForm(f => ({ ...f, receiptFooter: e.target.value }))} rows="2" readOnly={!canManage}
                     style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--outline)', borderRadius: '8px', padding: '10px', resize: 'vertical' }} />
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--bg3)', paddingTop: '16px', marginTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>معاينة الفاتورة</div>
+                    <select value={previewDocType} onChange={e => setPreviewDocType(e.target.value)} style={{
+                      background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--outline)', borderRadius: '6px',
+                      padding: '4px 10px', fontSize: '12px', cursor: 'pointer'
+                    }}>
+                      <option value="sale">فاتورة بيع</option>
+                      <option value="purchase">فاتورة شراء</option>
+                      <option value="customerStatement">كشف حساب عميل</option>
+                      <option value="supplierStatement">كشف حساب مورد</option>
+                    </select>
+                    <button onClick={() => setInvoicePreviewIsA4(!invoicePreviewIsA4)} style={{
+                      background: 'var(--bg3)', color: 'var(--text)', border: 'none', borderRadius: '6px',
+                      padding: '4px 12px', fontSize: '11px', cursor: 'pointer'
+                    }}>{invoicePreviewIsA4 ? 'عرض حراري' : 'عرض A4'}</button>
+                  </div>
+                  {(() => {
+                    const previewSettings = { ...form, logoDataUrl: settings?.logoDataUrl, thermalPaperSize: form.thermalPaperSize || '80mm', printDefaultSize: form.printDefaultSize || 'thermal', receiptFooter: form.receiptFooter }
+                    const isInvoice = previewDocType === 'sale' || previewDocType === 'purchase'
+                    const isPurchase = previewDocType === 'purchase'
+                    if (isInvoice) {
+                      const demoData = {
+                        invoiceNo: 9999, createdAt: new Date().toISOString(),
+                        paymentMethod: 'cash',
+                        customerName: 'عميل تجريبي',
+                        customerPhone: '01234567890',
+                        supplierName: 'مورد تجريبي',
+                        supplierPhone: '01234567890',
+                        items: [
+                          { name: 'منتج تجريبي 1', quantity: 2, unitPrice: 50, cost: 30, subtotal: 60 },
+                          { name: 'منتج تجريبي 2', quantity: 1, unitPrice: 75, cost: 45, subtotal: 45 },
+                          { name: 'منتج تجريبي 3', quantity: 3, unitPrice: 25, cost: 15, subtotal: 45 }
+                        ],
+                        subtotal: 250, discount: 10, tax: 33.6, total: 273.6,
+                        totalCost: 150, netCost: 140,
+                        paid: 300, change: 26.4,
+                        cashierName: 'كاشير تجريبي', note: 'ملاحظة تجريبية',
+                        previousDebt: 50, previousCredit: 0
+                      }
+                      if (isPurchase) {
+                        demoData.customerName = undefined
+                        demoData.customerPhone = undefined
+                        demoData.tax = 0
+                        demoData.subtotal = undefined
+                        demoData.total = undefined
+                      } else {
+                        demoData.supplierName = undefined
+                        demoData.supplierPhone = undefined
+                        demoData.totalCost = undefined
+                        demoData.netCost = undefined
+                      }
+                      const element = invoicePreviewIsA4
+                        ? <PrintTemplateA4 type={previewDocType} data={demoData} settings={previewSettings} />
+                        : <PrintTemplateThermal data={demoData} settings={previewSettings} />
+                      const html = invoicePreviewIsA4 ? renderA4Html(element) : renderThermalHtml(element)
+                      return (
+                        <div style={{ background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+                          <iframe srcdoc={html} style={{ width: invoicePreviewIsA4 ? '900px' : '100%', height: '600px', border: 'none', background: '#fff' }} title="معاينة الفاتورة" />
+                        </div>
+                      )
+                    } else {
+                      const isSupplierStmt = previewDocType === 'supplierStatement'
+                      const party = isSupplierStmt
+                        ? { name: 'مورد تجريبي', phone: '01234567890', address: 'عنوان المورد التجريبي', commercialReg: '123456', taxReg: '654321', totalPurchases: 800, totalPaid: 300 }
+                        : { name: 'عميل تجريبي', phone: '01234567890', address: 'عنوان العميل التجريبي', commercialReg: '123456', taxReg: '654321', totalDebt: 800, totalPaid: 300 }
+                      const transactions = [
+                        { type: 'رصيد سابق', desc: 'رصيد مستحق سابق', amount: 200, date: new Date(Date.now() - 86400000 * 7).toISOString(), paymentMethod: 'credit', balance: 200 },
+                        { type: 'فاتورة آجلة', desc: 'فاتورة #1001', amount: 500, date: new Date(Date.now() - 86400000 * 5).toISOString(), paymentMethod: 'credit', invoiceNo: 1001, balance: 700 },
+                        { type: 'دفعة', desc: 'دفعة نقدية', amount: -200, date: new Date(Date.now() - 86400000 * 3).toISOString(), paymentMethod: 'cash', balance: 500 },
+                        { type: 'فاتورة آجلة', desc: 'فاتورة #1002', amount: 300, date: new Date(Date.now() - 86400000 * 1).toISOString(), paymentMethod: 'credit', invoiceNo: 1002, balance: 800 }
+                      ]
+                      const element = invoicePreviewIsA4
+                        ? <StatementA4 type={isSupplierStmt ? 'supplier' : 'customer'} party={party} transactions={transactions} settings={previewSettings} />
+                        : <StatementThermal type={isSupplierStmt ? 'supplier' : 'customer'} party={party} transactions={transactions} settings={previewSettings} />
+                      const html = invoicePreviewIsA4 ? renderA4Html(element) : renderThermalHtml(element)
+                      return (
+                        <div style={{ background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+                          <iframe srcdoc={html} style={{ width: invoicePreviewIsA4 ? '900px' : '100%', height: '600px', border: 'none', background: '#fff' }} title="معاينة كشف الحساب" />
+                        </div>
+                      )
+                    }
+                  })()}
                 </div>
               </div>
             )}
@@ -1129,7 +1271,7 @@ export default function SettingsPage() {
 
 function Section({ title, children }) {
   return (
-    <div style={{ background: 'var(--bg2)', borderRadius: '16px', padding: '20px', border: '1px solid var(--outline)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+    <div style={{ background: 'var(--bg2)', borderRadius: '16px', padding: '28px', border: '1px solid var(--outline)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
       <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ width: '4px', height: '14px', background: 'var(--accent)', borderRadius: '2px', display: 'inline-block' }}></span>
         {title}

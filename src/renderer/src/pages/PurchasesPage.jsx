@@ -10,7 +10,6 @@ import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
-import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalWarningBtn, modalSuccessBtn, modalDangerBtn, EditIcon, DeleteIcon, AddIcon, PrintIcon, CheckIcon, PaymentIcon, ReturnIcon, BarcodeIcon, SearchIcon } from '../components/ActionIcons'
 
@@ -51,9 +50,6 @@ export default function PurchasesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editPurchase, setEditPurchase] = useState(null)
   const [viewInvoice, setViewInvoice] = useState(null)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewElement, setPreviewElement] = useState(null)
-  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
@@ -643,21 +639,10 @@ export default function PurchasesPage() {
                 style={modalPrimaryBtn}>
                 <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
               </button>
-              <button onClick={() => {
-                const isA4 = settings?.printDefaultSize === 'a4'
-                setPreviewElement(isA4
-                  ? <PrintTemplateA4 type="purchase" data={viewInvoice} settings={settings} suppliers={suppliers} />
-                  : <PrintTemplateThermal data={viewInvoice} settings={settings} />)
-                setPreviewIsA4(isA4)
-                setPreviewOpen(true)
-              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
-                معاينة
-              </button>
             </div>
           </div>
         )}
       </Modal>
-      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
 
       <Modal open={showReturnModal} onClose={() => { setShowReturnModal(false); setReturnPurchase(null); setReturnRefundCash(false); setSupplierPaidForReturn(0) }} title={`مرتجع مشتريات - فاتورة #${returnPurchase?.invoiceNo}`} width="500px">
         {returnPurchase && (

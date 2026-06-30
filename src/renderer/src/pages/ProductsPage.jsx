@@ -9,7 +9,6 @@ import { printBarcode } from '../utils/print'
 import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, EditIcon, DeleteIcon, AddIcon, CheckIcon, BarcodeIcon, PrintIcon, DownloadIcon, UploadIcon, ViewIcon } from '../components/ActionIcons'
-import BarcodePreviewModal from '../components/BarcodePreviewModal'
 
 import { generateBarcode as genBarcode, encodeEAN13 } from '../utils/barcode'
 
@@ -55,7 +54,6 @@ export default function ProductsPage() {
   const [units, setUnits] = useState([])
   const [generatedBarcode, setGeneratedBarcode] = useState('')
   const [showPrintBarcode, setShowPrintBarcode] = useState(false)
-  const [barcodePreviewOpen, setBarcodePreviewOpen] = useState(false)
   const [printingBarcode, setPrintingBarcode] = useState(false)
   const [importing, setImporting] = useState(false)
   const nameRef = useRef(null)
@@ -241,7 +239,6 @@ export default function ProductsPage() {
           {canManage && <button onClick={() => fileRef.current?.click()} disabled={importing} style={secondaryBtn}><UploadIcon size={14} /> {importing ? 'جاري...' : 'استيراد'}</button>}
           {canManage && <button onClick={handleExport} style={{ ...secondaryBtn, color: 'var(--success)' }}><DownloadIcon size={14} /> تصدير</button>}
           {canManage && <button onClick={() => setShowModal(true)} style={headerBtn}><AddIcon size={16} /> إضافة منتج</button>}
-          <button onClick={() => setBarcodePreviewOpen(true)} style={{ ...secondaryBtn }}><BarcodeIcon size={14} /> معاينة الباركود</button>
         </div>
       </div>
 
@@ -381,7 +378,6 @@ export default function ProductsPage() {
         </form>
       </Modal>
       <ConfirmDialog />
-      <BarcodePreviewModal open={barcodePreviewOpen} onClose={() => setBarcodePreviewOpen(false)} />
     </div>
   )
 }

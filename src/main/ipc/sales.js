@@ -94,7 +94,7 @@ function createSale(realm, session, data) {
 
     const fifoItems = data.items.map(item => {
       const qty = Number(item.quantity) || 0
-      const fifoCost = item.productId ? (deductFromFifo(realm, item.productId, qty) || 0) : 0
+      const fifoCost = item.productId && !String(item.productId).startsWith('custom_') ? (deductFromFifo(realm, item.productId, qty) || 0) : 0
       return {
         productId: item.productId,
         name: item.name,
@@ -150,19 +150,21 @@ function createSale(realm, session, data) {
       }
     }
 
-    const paidAmount = data.paid != null ? Number(data.paid) : 0
-    if (paidAmount > 0) {
-      const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
-      updateTreasury(realm, paidAmount, 'مبيعات فاتورة #' + invoiceNo, session, sale._id, 'sale', pm)
+    const paidVal = Number(data.paid || 0)
+    if (total > 0 || paidVal > 0) {
+      const amount = data.paymentMethod === 'credit' ? paidVal : Math.min(paidVal, total)
+      if (amount > 0) {
+        const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
+        updateTreasury(realm, amount, 'مبيعات فاتورة #' + invoiceNo, session, sale._id, 'sale', pm)
+      }
     }
 
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
     if (activeShift) {
-      const paid = Number(data.paid || 0)
-      activeShift.totalSales += paid
-      if (data.paymentMethod === 'cash') activeShift.cashTotal += paid
-      else if (data.paymentMethod === 'card') activeShift.cardTotal += paid
-      else if (data.paymentMethod === 'credit') activeShift.creditPaidTotal += paid
+      activeShift.totalSales += total
+      if (data.paymentMethod === 'cash') activeShift.cashTotal += total
+      else if (data.paymentMethod === 'card') activeShift.cardTotal += total
+      else if (data.paymentMethod === 'credit') activeShift.creditPaidTotal += paidVal
       activeShift.invoiceCount += 1
     }
   })
@@ -200,14 +202,17 @@ function removeSale(realm, id) {
           })
         })
         const remaining = item.quantity - returnedQty
-        if (remaining > 0) {
+        if (remaining > 0 && !String(item.productId).startsWith('custom_')) {
           const cost = item.cost || 0
           addBatch(realm, item.productId, remaining, cost)
         }
       })
-      if ((sale.paid || 0) > 0) {
+      if ((sale.paid || 0) > 0 || sale.total > 0) {
         const pm = sale.paymentMethod === 'card' ? 'card' : 'cash'
-        updateTreasury(realm, -sale.paid, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
+        const reversalAmount = sale.paymentMethod === 'credit' ? (sale.paid || 0) : Math.min(sale.paid || 0, sale.total || 0)
+        if (reversalAmount > 0) {
+          updateTreasury(realm, -reversalAmount, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
+        }
       }
       if (sale.paymentMethod === 'credit' && sale.customerName) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
@@ -220,9 +225,9 @@ function removeSale(realm, id) {
       }
       const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', sale.cashierId)[0]
       if (activeShift) {
-        activeShift.totalSales -= sale.paid
-        if (sale.paymentMethod === 'cash') activeShift.cashTotal -= sale.paid
-        else if (sale.paymentMethod === 'card') activeShift.cardTotal -= sale.paid
+        activeShift.totalSales -= sale.total
+        if (sale.paymentMethod === 'cash') activeShift.cashTotal -= sale.total
+        else if (sale.paymentMethod === 'card') activeShift.cardTotal -= sale.total
         else if (sale.paymentMethod === 'credit') activeShift.creditPaidTotal -= sale.paid
         activeShift.invoiceCount -= 1
       }

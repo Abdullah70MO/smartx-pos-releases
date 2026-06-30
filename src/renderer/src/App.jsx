@@ -109,12 +109,13 @@ function AppContent() {
         {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }} />}
         <Sidebar currentPage={safePage} onNavigate={(p) => { setPage(p); setSidebarOpen(false) }} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: 'var(--bg2)', borderBottom: '1px solid var(--outline)', minHeight: '40px', flexShrink: 0, gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: 'var(--bg2)', borderBottom: '1px solid var(--outline)', minHeight: '40px', flexShrink: 0, gap: '8px', position: 'relative' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', color: 'var(--text)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>
               ☰
             </button>
             <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--accent)' }}>{settings?.businessName || 'SMART X'}</span>
             <span style={{ fontSize: '11px', color: 'var(--text2)', marginRight: '12px' }}>{formatDateTime(currentTime)}</span>
+            <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: '15px', fontWeight: '800', color: 'var(--text)', letterSpacing: '0.5px' }}>SMART X POS</span>
             <div style={{ flex: 1 }} />
             <NotificationBell />
             <button onClick={toggleTheme} title="تبديل الوضع الداكن/الفاتح" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', fontSize: '16px' }}>

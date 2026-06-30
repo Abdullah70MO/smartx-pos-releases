@@ -9,7 +9,6 @@ import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import StatementA4 from '../components/StatementA4'
 import StatementThermal from '../components/StatementThermal'
-import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, modalSuccessBtn, modalPrimaryBtn, printBtn, EditIcon, DeleteIcon, ViewIcon, PaymentIcon, AddIcon, PrintIcon, CheckIcon } from '../components/ActionIcons'
 
@@ -32,9 +31,6 @@ export default function SuppliersPage() {
   const [activeShift, setActiveShift] = useState(null)
   const [transModal, setTransModal] = useState(null)
   const [transactions, setTransactions] = useState([])
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewElement, setPreviewElement] = useState(null)
-  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [search, setSearch] = useState('')
   const [settings, setSettings] = useState(null)
   const [page, setPage] = useState(0)
@@ -278,17 +274,8 @@ export default function SuppliersPage() {
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <button onClick={async () => { try { const isA4 = settings?.printDefaultSize === 'a4'; const template = isA4 ? <StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} /> : <StatementThermal type="supplier" party={transModal} transactions={transactions} settings={settings} />; if (isA4) await printA4(template); else await printThermal(template) } catch (err) { toast('فشلت الطباعة: ' + err.message, 'error') } }} style={{ ...printBtn }}><PrintIcon size={16} /> طباعة</button>
-          <button onClick={() => {
-            const isA4 = settings?.printDefaultSize === 'a4'
-            setPreviewElement(isA4
-              ? <StatementA4 type="supplier" party={transModal} transactions={transactions} settings={settings} />
-              : <StatementThermal type="supplier" party={transModal} transactions={transactions} settings={settings} />)
-            setPreviewIsA4(isA4)
-            setPreviewOpen(true)
-          }} style={{ ...printBtn, background: 'var(--bg3)', color: 'var(--text)' }}>معاينة</button>
         </div>
       </Modal>
-      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة كشف الحساب" isA4={previewIsA4} />
       <ConfirmDialog />
     </div>
   )

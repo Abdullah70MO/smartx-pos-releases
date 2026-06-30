@@ -7,7 +7,6 @@ import { formatMoney } from '../utils/money'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
-import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, topBarBtn, secondaryBtn, modalPrimaryBtn, modalSuccessBtn, modalWarningBtn, modalDangerBtn, AddIcon, EditIcon, DeleteIcon, ViewIcon, PrintIcon, CheckIcon, CloseIcon, PaymentIcon, ReturnIcon, WithdrawIcon, AdvanceIcon, ShiftIcon, ClearIcon, MoneyIcon, BackIcon, SalaryIcon } from '../components/ActionIcons'
 
@@ -59,9 +58,6 @@ const [taxRate, setTaxRate] = useState(14)
   const [endCardBalance, setEndCardBalance] = useState('')
   const [errorModal, setErrorModal] = useState({ show: false, message: '' })
   const [receipt, setReceipt] = useState(null)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewElement, setPreviewElement] = useState(null)
-  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [showCustomItem, setShowCustomItem] = useState(false)
   const [customItemDesc, setCustomItemDesc] = useState('')
   const [customItemPrice, setCustomItemPrice] = useState('')
@@ -1145,21 +1141,10 @@ const [taxRate, setTaxRate] = useState(14)
                 style={modalPrimaryBtn}>
                 <PrintIcon size={16} /> {receipt.settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
               </button>
-              <button onClick={() => {
-                const isA4 = receipt.settings?.printDefaultSize === 'a4'
-                setPreviewElement(isA4
-                  ? <PrintTemplateA4 type="sale" data={receipt} settings={receipt.settings} customers={receipt.customers} />
-                  : <PrintTemplateThermal data={receipt} settings={receipt.settings} />)
-                setPreviewIsA4(isA4)
-                setPreviewOpen(true)
-              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
-                معاينة
-              </button>
             </div>
           </div>
         )}
       </Modal>
-      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
       <Modal open={showCustomItem} onClose={() => setShowCustomItem(false)} title="بيع حر" width="380px">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>

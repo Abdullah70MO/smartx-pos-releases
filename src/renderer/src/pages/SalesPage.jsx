@@ -10,7 +10,6 @@ import { useStore } from '../store'
 import { useConfirm } from '../components/ConfirmModal'
 import PrintTemplateA4 from '../components/PrintTemplateA4'
 import PrintTemplateThermal from '../components/PrintTemplateThermal'
-import PreviewModal from '../components/PreviewModal'
 import { printA4, printThermal } from '../utils/print'
 import { iconBtn, headerBtn, secondaryBtn, modalPrimaryBtn, modalDangerBtn, PrintIcon, DeleteIcon, AddIcon, CheckIcon, SearchIcon, PaymentIcon } from '../components/ActionIcons'
 
@@ -19,9 +18,6 @@ export default function SalesPage() {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
   const canDelete = user?.permissions?.includes('sales.delete')
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewElement, setPreviewElement] = useState(null)
-  const [previewIsA4, setPreviewIsA4] = useState(false)
   const [sales, setSales] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [error, setError] = useState(null)
@@ -184,6 +180,7 @@ export default function SalesPage() {
             {viewInvoice.previousDebt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--danger)' }}>رصيد مستحق من العميل</span><span style={{ color: 'var(--danger)' }}>{formatMoney(viewInvoice.previousDebt)}</span></div>}
             {viewInvoice.previousCredit > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}><span style={{ color: 'var(--success)' }}>دين مستحق للعميل</span><span style={{ color: 'var(--success)' }}>-{formatMoney(viewInvoice.previousCredit)}</span></div>}
             {settings?.showPaid !== false && viewInvoice.paid > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>المدفوع</span><span>{formatMoney(viewInvoice.paid)}</span></div>}
+            {viewInvoice.paid > viewInvoice.total && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: 'var(--success)' }}><span>الباقي</span><span>{formatMoney(viewInvoice.paid - viewInvoice.total)}</span></div>}
             {settings?.showPaid !== false && viewInvoice.paymentMethod === 'credit' && (viewInvoice.paid || 0) < viewInvoice.total && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: 'var(--danger)' }}><span>رصيد مستحق من العميل</span><span>{formatMoney(viewInvoice.total - (viewInvoice.paid || 0))}</span></div>}
             {(() => {
               const rem = (viewInvoice.total || 0) - (viewInvoice.paid || 0)
@@ -200,10 +197,11 @@ export default function SalesPage() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={async () => {
                 try {
+                  const printData = { ...viewInvoice, change: (viewInvoice.paid || 0) > viewInvoice.total ? viewInvoice.paid - viewInvoice.total : 0 }
                   if (settings?.printDefaultSize === 'a4') {
-                    await printA4(<PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />)
+                    await printA4(<PrintTemplateA4 type="sale" data={printData} settings={settings} customers={customers} />)
                   } else {
-                    await printThermal(<PrintTemplateThermal data={viewInvoice} settings={settings} />)
+                    await printThermal(<PrintTemplateThermal data={printData} settings={settings} />)
                   }
                 } catch (err) {
                   toast('فشلت الطباعة: ' + err.message, 'error')
@@ -212,22 +210,11 @@ export default function SalesPage() {
                 style={modalPrimaryBtn}>
                 <PrintIcon size={16} /> {settings?.printDefaultSize === 'a4' ? 'كبير (A4)' : 'طباعة'}
               </button>
-              <button onClick={() => {
-                const isA4 = settings?.printDefaultSize === 'a4'
-                setPreviewElement(isA4
-                  ? <PrintTemplateA4 type="sale" data={viewInvoice} settings={settings} customers={customers} />
-                  : <PrintTemplateThermal data={viewInvoice} settings={settings} />)
-                setPreviewIsA4(isA4)
-                setPreviewOpen(true)
-              }} style={{ ...modalPrimaryBtn, background: 'var(--bg3)', color: 'var(--text)' }}>
-                معاينة
-              </button>
             </div>
             </>)}
           </div>
         )}
       </Modal>
-      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} element={previewElement} title="معاينة الفاتورة" isA4={previewIsA4} />
       <ConfirmDialog />
     </div>
   )

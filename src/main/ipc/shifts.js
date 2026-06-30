@@ -144,7 +144,7 @@ function getShiftSales(realm, cashierId) {
     .sorted('createdAt', true)
   const returns = realm.objects('Return').filtered('cashierId == $0 AND createdAt >= $1', cashierId, shift.startedAt)
   const returnsTotal = returns.reduce((sum, r) => sum + (r.subtotal + (r.tax || 0)), 0)
-  const salesTotal = sales.reduce((sum, s) => sum + (s.paid || 0), 0)
+  const salesTotal = sales.reduce((sum, s) => sum + (s.total || 0), 0)
   return {
     sales: Array.from(sales).map(s => ({
       _id: s._id, invoiceNo: s.invoiceNo, total: s.total, paid: s.paid,

@@ -127,7 +127,8 @@ function registerIpc() {
         if (done) return
         printWin.webContents.print(opts, (success, reason) => {
           clearTimeout(timeout)
-          cleanup(success ? null : new Error(reason || 'فشلت الطباعة'))
+          const isCancel = reason && (reason.includes('cancel') || reason.includes('Cancel'))
+          cleanup(success ? null : new Error(isCancel ? 'تم إلغاء الطباعة' : (reason || 'فشلت الطباعة')))
         })
       })
       printWin.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
