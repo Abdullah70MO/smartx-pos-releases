@@ -26,15 +26,21 @@ function startShift(realm, session, startingBalance) {
   const existing = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
   if (existing) throw new Error('يوجد وردية نشطة حالياً')
 
-  let shift
+  const bal = Number(startingBalance) || 0
+  if (bal > 0) {
+    const treasury = realm.objects('Treasury').filtered('type == $0', 'main')[0]
+    if (!treasury) throw new Error('لا توجد خزنة رئيسية')
+    if (treasury.balance < bal) throw new Error('الرصيد غير كافٍ في الخزنة')
+  }
+
   realm.write(() => {
-    shift = realm.create('Shift', {
+    realm.create('Shift', {
       _id: crypto.randomUUID(),
       cashierId: session.userId,
       cashierName: session.name,
       startedAt: new Date(),
-      startingBalance: Number(startingBalance) || 0,
-      endingBalance: Number(startingBalance) || 0,
+      startingBalance: bal,
+      endingBalance: bal,
       totalSales: 0,
       invoiceCount: 0,
       cashTotal: 0,
@@ -45,6 +51,9 @@ function startShift(realm, session, startingBalance) {
       cardWithdrawalsTotal: 0,
       isActive: true
     })
+    if (bal > 0) {
+      updateTreasuryBalance(realm, 'main', -bal, 'سحبة بداية وردية')
+    }
   })
   return getActiveShift(realm, session.userId)
 }
@@ -59,26 +68,11 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
     shift.endingBalance = Number(endingCashBalance) || 0
     shift.cardEndingBalance = Number(endingCardBalance) || 0
 
-    const creditPaidTotal = shift.creditPaidTotal || 0
-    const expectedCash = Math.max(0, (shift.startingBalance || 0) + (shift.cashTotal || 0) + creditPaidTotal - (shift.expensesTotal || 0) - (shift.withdrawalsTotal || 0))
-    const cashDiff = (Number(endingCashBalance) || 0) - expectedCash
-    if (cashDiff !== 0) {
-      updateTreasuryBalance(realm, 'main', cashDiff, `تسوية كاش إنهاء الوردية (${cashDiff > 0 ? 'زيادة' : 'عجز'})`)
+    if ((Number(endingCashBalance) || 0) > 0) {
+      updateTreasuryBalance(realm, 'main', Number(endingCashBalance), 'إيداع نهاية وردية')
     }
-    if ((shift.expensesTotal || 0) > 0) {
-      updateTreasuryBalance(realm, 'main', -(shift.expensesTotal), 'مصروفات الوردية')
-    }
-    if ((shift.withdrawalsTotal || 0) > 0) {
-      updateTreasuryBalance(realm, 'main', -(shift.withdrawalsTotal), 'مسحوبات الوردية')
-    }
-
-    const expectedCard = (shift.cardTotal || 0) - (shift.cardWithdrawalsTotal || 0)
-    const cardDiff = (Number(endingCardBalance) || 0) - expectedCard
-    if (cardDiff !== 0) {
-      updateTreasuryBalance(realm, 'bank', cardDiff, `تسوية بطاقة إنهاء الوردية (${cardDiff > 0 ? 'زيادة' : 'عجز'})`)
-    }
-    if ((shift.cardWithdrawalsTotal || 0) > 0) {
-      updateTreasuryBalance(realm, 'bank', -(shift.cardWithdrawalsTotal), 'مسحوبات بطاقة الوردية')
+    if ((Number(endingCardBalance) || 0) > 0) {
+      updateTreasuryBalance(realm, 'bank', Number(endingCardBalance), 'إيداع نهاية وردية (بطاقة)')
     }
   })
 

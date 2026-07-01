@@ -63,6 +63,7 @@
             <option value="month">شهر</option>
           </select>
           <input type="number" id="newKeyMax" value="1" min="1" placeholder="حد التفعيل" style="width:100px;flex:0" />
+          <input type="text" id="newKeyOwner" placeholder="اسم المالك" />
           <button class="btn btn-success" onclick="createKey()">إنشاء</button>
         </div>
       </div>
@@ -126,15 +127,15 @@
       document.getElementById('keys-table').innerHTML = `
         <table>
           <thead><tr>
-            <th>المفتاح</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>الحد</th><th>الملاحظات</th><th>تاريخ الإنشاء</th><th></th>
+            <th>المفتاح</th><th>المالك</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>الحد</th><th>تاريخ الإنشاء</th><th></th>
           </tr></thead>
           <tbody>${keys.map(k => `
             <tr>
               <td style="direction:ltr;font-size:11px">${k.key_string}</td>
+              <td style="font-size:11px;color:#e2e8f0">${k.notes || '-'}</td>
               <td><span class="badge badge-lifetime">${k.license_type === 'lifetime' ? 'مدى الحياة' : k.license_type === 'year' ? 'سنة' : 'شهر'}</span></td>
               <td><span class="badge ${k.is_active ? 'badge-active' : 'badge-inactive'}">${k.is_active ? 'نشط' : 'ملغي'}</span></td>
               <td>${k.current_activations || 0} / ${k.max_activations}</td>
-              <td style="font-size:11px;color:#94a3b8">${k.notes || '-'}</td>
               <td style="font-size:11px">${new Date(k.created_at).toLocaleDateString('ar-EG')}</td>
               <td>
                 <div class="actions">
@@ -151,7 +152,8 @@
     async function createKey() {
       const type = document.getElementById('newKeyType').value
       const max = Number(document.getElementById('newKeyMax').value) || 1
-      const data = await apiCall('/api/createKey', 'POST', { license_type: type, max_activations: max })
+      const owner = document.getElementById('newKeyOwner').value.trim()
+      const data = await apiCall('/api/createKey', 'POST', { license_type: type, max_activations: max, notes: owner })
       if (data.error) return toast(data.error, 'error')
       toast(`تم إنشاء المفتاح: ${data.key.key_string}`)
       loadKeys()

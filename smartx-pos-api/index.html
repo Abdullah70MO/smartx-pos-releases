@@ -83,6 +83,7 @@
             <option value="quarter">3 أشهر</option>
             <option value="month">شهر</option>
           </select>
+          <input type="text" id="newKeyOwner" placeholder="اسم المالك" style="flex:2;min-width:150px" />
           <button class="btn btn-success" id="createKeyBtn">إنشاء</button>
         </div>
       </div>
@@ -158,7 +159,7 @@
       }
 
       var html = '<table><thead><tr>' +
-        '<th>المفتاح</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>وقت التفعيل</th><th>تاريخ الانتهاء</th><th>آخر تفعيل</th><th>ملاحظات</th><th>تاريخ الإنشاء</th><th></th>' +
+        '<th>المفتاح</th><th>المالك</th><th>النوع</th><th>الحالة</th><th>التفعيلات</th><th>وقت التفعيل</th><th>تاريخ الانتهاء</th><th>آخر تفعيل</th><th>تاريخ الإنشاء</th><th></th>' +
         '</tr></thead><tbody>'
 
       for (var i = 0; i < keys.length; i++) {
@@ -202,17 +203,18 @@
         } else {
           actionHtml = '<button class="btn btn-success btn-action" data-action="reactivate" data-id="' + k.id + '">تفعيل</button>'
         }
+        actionHtml += '<button class="btn btn-primary btn-action" data-action="edit-owner" data-id="' + k.id + '" style="background:#8b5cf6">مالك</button>'
         actionHtml += '<button class="btn btn-danger btn-action" data-action="delete" data-id="' + k.id + '">حذف</button>'
 
         html += '<tr>' +
           '<td style="direction:ltr;font-size:11px;font-family:monospace">' + k.key_string + ' <button class="btn btn-primary btn-copy-key" data-key="' + k.key_string.replace(/'/g, '&#39;') + '" style="padding:2px 6px;font-size:10px">نسخ</button></td>' +
+          '<td style="font-size:11px;color:#e2e8f0">' + (k.notes || '-') + '</td>' +
           '<td><span class="badge badge-lifetime">' + typeLabel + '</span></td>' +
           '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
           '<td>' + (k.current_activations || 0) + ' / ' + k.max_activations + '</td>' +
           '<td style="font-size:11px">' + activatedAtDisplay + '</td>' +
           '<td style="font-size:11px">' + expiresAtDisplay + '</td>' +
           '<td style="font-size:11px">' + lastActivationDate + '</td>' +
-          '<td style="font-size:11px;color:#94a3b8">' + (k.notes || '-') + '</td>' +
           '<td style="font-size:11px">' + formatDate(k.created_at) + '</td>' +
           '<td><div class="actions">' + actionHtml + '</div></td>' +
           '</tr>'
@@ -224,7 +226,8 @@
 
     function createNewKey() {
       var type = document.getElementById('newKeyType').value
-      apiCall('/createKey', 'POST', { license_type: type }).then(function(data) {
+      var owner = document.getElementById('newKeyOwner').value.trim()
+      apiCall('/createKey', 'POST', { license_type: type, notes: owner }).then(function(data) {
         if (data.error) return toast(data.error, 'error')
         lastCreatedKey = data.key.key_string
         document.getElementById('newKeyValue').textContent = lastCreatedKey
@@ -260,6 +263,16 @@
       })
     }
 
+    function editOwner(id) {
+      var name = prompt('اسم المالك:')
+      if (name === null) return
+      apiCall('/updateKey', 'POST', { id: id, notes: name.trim() }).then(function(data) {
+        if (data.error) return toast(data.error, 'error')
+        toast('تم حفظ اسم المالك')
+        loadKeys()
+      })
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('loginBtn').addEventListener('click', login)
       document.getElementById('createKeyBtn').addEventListener('click', createNewKey)
@@ -286,6 +299,7 @@
           if (action === 'revoke') revokeKey(id)
           else if (action === 'reactivate') reactivateKey(id)
           else if (action === 'delete') deleteKey(id)
+          else if (action === 'edit-owner') editOwner(id)
         }
       })
     })
