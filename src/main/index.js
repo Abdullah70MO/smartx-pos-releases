@@ -12,6 +12,7 @@ const { listExpenses, saveExpense, removeExpense } = require('./ipc/expenses')
 const { listUsers, saveUser, toggleUserActive, ROLES, ALL_PERMISSIONS } = require('./ipc/users')
 const { getSettings, saveSettings } = require('./ipc/settings')
 const { exportBackup, restoreBackup, autoBackup, resetDatabase } = require('./ipc/backup')
+const { startLinking } = require('./ipc/telegram')
 const { checkLicense, activateLicense, startTrial, periodicCheck, serverLicenseCheck, startPeriodicCheck, stopPeriodicCheck, getGraceWarning } = require('./ipc/license')
 const { listNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications } = require('./ipc/notifications')
 const { dashboardSummary } = require('./ipc/dashboard')
@@ -219,8 +220,13 @@ function registerIpc() {
   // Backup
   handle('backup:export', async ({ token }) => (requireUser(token, 'backup.manage'), exportBackup()))
   handle('backup:restore', async ({ token }) => (requireUser(token, 'backup.manage'), restoreBackup()))
-  handle('backup:auto', async ({ token, path }) => (requireUser(token, 'backup.manage'), autoBackup(path)))
+  handle('backup:auto', async ({ token, path, chatId }) => (requireUser(token, 'backup.manage'), autoBackup(path, chatId)))
   handle('backup:reset', async ({ token }) => (requireUser(token, 'backup.manage'), resetDatabase()))
+
+  // Telegram
+  handle('telegram:link', async ({ token, linkCode }) => (requireUser(token, 'backup.manage'), startLinking(linkCode)))
+  handle('telegram:send', async ({ token, chatId, filePath }) => (requireUser(token, 'backup.manage'), require('./ipc/telegram').sendBackup(chatId, filePath)))
+  handle('telegram:botUsername', async ({ token }) => (requireUser(token, 'backup.manage'), require('./config').telegramBotUsername))
 
   // Notifications
   handle('notifications:list', async ({ token, unreadOnly, limit, offset }) => (requireUser(token, 'dashboard.view'), listNotifications(await openRealm(), { unreadOnly, limit, offset })))
@@ -418,9 +424,12 @@ function registerIpc() {
   })
   handle('treasury:transactions', async ({ token, treasuryId, limit }) => (requireUser(token, 'treasury.view'), listTransactions(await openRealm(), { treasuryId, limit })))
 
+  // AI Assistant
+  handle('ai:chat', async ({ token, messages }) => (requireUser(token, 'dashboard.view'), require('./ipc/ai').chat(messages)))
+
   // Contact
   handle('contact:getInfo', () => CONTACT_INFO)
-  handle('open-external', (_, url) => { shell.openExternal(url); return true })
+  handle('open-external', (url) => { shell.openExternal(url); return true })
 
   // App
   handle('app:close', () => app.quit())
@@ -495,7 +504,7 @@ async function seedDatabase() {
       if (!settings) {
         r.create('BusinessSettings', {
           _id: 'business', currency: 'EGP', taxEnabled: true,
-          calendarType: 'gregorian', timeFormat: '24', theme: 'dark', fontFamily: 'Cairo',
+          calendarType: 'gregorian', timeFormat: '12', theme: 'light', fontFamily: 'Cairo',
           printAfterPayment: true, seeded: true
         })
       } else if (!settings.seeded) {
@@ -526,6 +535,13 @@ async function seedDatabase() {
           permissions: [...ALL_ADMIN_PERMISSIONS],
           active: true,
           createdAt: new Date()
+        })
+      } else {
+        // Sync all admin users with latest permissions
+        const adminUsers = r.objects('User').filtered('role == "admin"')
+        adminUsers.forEach(u => {
+          const missing = ALL_ADMIN_PERMISSIONS.filter(p => !u.permissions.includes(p))
+          if (missing.length > 0) u.permissions.push(...missing)
         })
       }
       // FIFO migration: create StockBatch for existing products

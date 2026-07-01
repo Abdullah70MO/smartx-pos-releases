@@ -110,8 +110,8 @@ const BusinessSettingsSchema = {
     currency:                { type: 'string', default: 'EGP' },
     taxEnabled:              { type: 'bool', default: true },
     calendarType:            { type: 'string', default: 'gregorian' },
-    timeFormat:              { type: 'string', default: '24' },
-    theme:                   { type: 'string', default: 'dark' },
+    timeFormat:              { type: 'string', default: '12' },
+    theme:                   { type: 'string', default: 'light' },
     fontFamily:              { type: 'string', default: 'Cairo' },
     receiptFooter:           { type: 'string', default: '' },
     printAfterPayment:       { type: 'bool', default: true },
@@ -155,6 +155,8 @@ const BusinessSettingsSchema = {
     notificationReturns:     { type: 'bool', default: true },
     notificationShifts:      { type: 'bool', default: true },
     notificationExpiry:      { type: 'bool', default: true },
+    telegramBotToken:        { type: 'string', default: '' },
+    telegramChatId:          { type: 'string', default: '' },
     seeded:                  { type: 'bool', default: false }
   }
 }
@@ -647,9 +649,10 @@ const SCHEMAS = [
 //   46    Added BusinessSettings.barcodeScale, barcodeFontWeight (non-breaking defaults)
 //   47    (unused)
 //   48    Added BusinessSettings.showQR (non-breaking default)
+//   49    Added BusinessSettings.telegramBotToken, telegramChatId (non-breaking defaults)
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 48
+const SCHEMA_VERSION = 49
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

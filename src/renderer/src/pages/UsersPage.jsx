@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: 'customers', label: 'العملاء' },
   { id: 'suppliers', label: 'الموردين' },
   { id: 'reports', label: 'التقارير' },
+  { id: 'aiAssistant', label: 'المساعد' },
   { id: 'shifts', label: 'الورديات' },
   { id: 'employees', label: 'الموظفين' },
   { id: 'employeeReports', label: 'تقارير الموظفين' },
@@ -30,6 +31,7 @@ const SECTIONS = [
 // Permission mapping per section
 function getViewPerm(sectionId) {
   if (sectionId === 'cashier') return 'cashier.access'
+  if (sectionId === 'aiAssistant') return 'ai.assistant'
   return sectionId + '.view'
 }
 function getManagePerms(sectionId) {
@@ -51,6 +53,7 @@ function getManagePerms(sectionId) {
     activity: ['activity.view'],
     employees: ['employees.view', 'employees.manage', 'employees.salaries'],
     employeeReports: ['employees.view'],
+    aiAssistant: ['ai.assistant'],
     settings: ['settings.view', 'settings.manage']
   }
   return map[sectionId] || [sectionId + '.view']

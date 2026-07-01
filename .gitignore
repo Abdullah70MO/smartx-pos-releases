@@ -18,3 +18,4 @@ coverage/
 *.tsbuildinfo
 *.bak
 .electron-cache/
+src/main/config.js

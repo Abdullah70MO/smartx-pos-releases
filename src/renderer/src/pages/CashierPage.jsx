@@ -238,10 +238,14 @@ const [taxRate, setTaxRate] = useState(14)
     }
     const token = localStorage.getItem('token')
     const bal = Number(startBalance) || 0
-    await api.startShift(token, bal)
-    toast('تم بدء الوردية', 'success')
-    setShowStartShift(false); setStartBalance('')
-    loadShiftData()
+    try {
+      await api.startShift(token, bal)
+      toast('تم بدء الوردية', 'success')
+      setShowStartShift(false); setStartBalance('')
+      loadShiftData()
+    } catch (e) {
+      toast(e?.message || 'فشل بدء الوردية', 'error')
+    }
   }
 
   async function handlePrintShiftReport(type = 'a4') {
@@ -317,12 +321,16 @@ const [taxRate, setTaxRate] = useState(14)
     const cashBal = Number(endCashBalance)
     const cardBal = hasCardTxns ? Number(endCardBalance) : 0
     if (isNaN(cashBal) || isNaN(cardBal)) { toast('الرجاء إدخال أرقام صحيحة', 'error'); return }
-    await api.endShift(token, cashBal, cardBal)
-    toast('تم إنهاء الوردية', 'success')
-    setShowEndShift(false); setEndCashBalance(''); setEndCardBalance('')
-    setActiveShift(null)
-    setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, returnsTotal: 0 })
-    setStartBalance(''); setShowStartShift(true)
+    try {
+      await api.endShift(token, cashBal, cardBal)
+      toast('تم إنهاء الوردية', 'success')
+      setShowEndShift(false); setEndCashBalance(''); setEndCardBalance('')
+      setActiveShift(null)
+      setShiftSales({ sales: [], total: 0, count: 0, creditTotal: 0, cashTotal: 0, cardTotal: 0, expensesTotal: 0, withdrawalsTotal: 0, returnsTotal: 0 })
+      setStartBalance(''); setShowStartShift(true)
+    } catch (e) {
+      toast(e?.message || 'فشل إنهاء الوردية', 'error')
+    }
   }
 
   function handleSearch(v) {
@@ -714,7 +722,7 @@ const [taxRate, setTaxRate] = useState(14)
         <div style={{ flex: 1, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px', alignContent: 'start' }}>
           {products.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text2)', fontSize: '14px' }}>
-              {search ? 'لا توجد منتجات مطابقة' : 'لا توجد منتجات<br />'}
+              {search ? 'لا توجد منتجات مطابقة' : 'لا توجد منتجات - '}
               <span style={{ fontSize: '12px' }}>{search ? 'جرب بحث آخر' : 'أضف منتجات من صفحة المنتجات أولاً'}</span>
             </div>
           )}
@@ -952,6 +960,9 @@ const [taxRate, setTaxRate] = useState(14)
       <Modal open={showStartShift} onClose={() => setShowStartShift(false)} title={activeShift ? 'بدء وردية جديدة' : 'بداية وردية جديدة'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {activeShift && <div style={{ color: 'var(--warning)', fontSize: '13px' }}>سيتم إنهاء الوردية الحالية أولاً</div>}
+          <div style={{ background: 'var(--bg2)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: 'var(--text2)', lineHeight: '1.6' }}>
+            ⚠️ رصيد بداية الوردية يتم <strong>خصمه</strong> من الخزنة الرئيسية. وعند إنهاء الوردية يتم <strong>إيداع</strong> رصيد النهاية في الخزنة.
+          </div>
           <input type="number" step="any" placeholder="رصيد بداية الوردية" value={startBalance}
             onInput={e => setStartBalance(e.target.value)}
             style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--bg3)', borderRadius: '8px', padding: '10px' }} />

@@ -235,7 +235,7 @@ export function StoreProvider({ children }) {
   }, [])
 
   function toggleTheme() {
-    const current = state.settings?.theme || localStorage.getItem('theme') || 'dark'
+    const current = state.settings?.theme || localStorage.getItem('theme') || 'light'
     const next = current === 'dark' ? 'light' : 'dark'
     localStorage.setItem('theme', next)
     document.documentElement.setAttribute('data-theme', next)
@@ -250,7 +250,7 @@ export function StoreProvider({ children }) {
 
   // Sync theme attribute with state.settings.theme
   useEffect(() => {
-    const theme = state.settings?.theme || localStorage.getItem('theme') || 'dark'
+    const theme = state.settings?.theme || localStorage.getItem('theme') || 'light'
     document.documentElement.setAttribute('data-theme', theme)
   }, [state.settings?.theme])
 

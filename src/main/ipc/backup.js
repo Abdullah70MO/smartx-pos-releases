@@ -3,6 +3,7 @@ const path = require('node:path')
 const Realm = require('realm')
 const { app, dialog } = require('electron')
 const { getRealmPath, closeRealm, openRealm, lockForBackup, unlockAfterBackup } = require('../database')
+const { sendBackup } = require('./telegram')
 
 async function safeBackup(backupFn) {
   lockForBackup()
@@ -43,7 +44,7 @@ async function restoreBackup() {
   })
 }
 
-async function autoBackup(backupDir) {
+async function autoBackup(backupDir, chatId) {
   if (!backupDir) {
     backupDir = path.join(app.getPath('documents'), 'SMART X Backups')
   }
@@ -52,10 +53,20 @@ async function autoBackup(backupDir) {
   const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-')
   const filePath = path.join(backupDir, `auto-backup-${dateStr}_${timeStr}.realm`)
 
-  return safeBackup(async () => {
-    await fs.copyFile(getRealmPath(), filePath)
-    return filePath
-  })
+  const r = require('realm')
+  const realmPath = getRealmPath()
+  await fs.copyFile(realmPath, filePath)
+  const savedPath = filePath
+
+  if (savedPath && chatId) {
+    try {
+      await sendBackup(chatId, savedPath)
+    } catch (e) {
+      console.error('Telegram backup failed:', e.message)
+    }
+  }
+
+  return savedPath
 }
 
 async function resetDatabase() {
@@ -98,7 +109,7 @@ async function resetDatabase() {
       if (admin) admin.passwordHash = require('bcryptjs').hashSync('admin', 12)
       r.create('BusinessSettings', {
         _id: 'business', currency: 'EGP', taxEnabled: true,
-        calendarType: 'gregorian', timeFormat: '24', theme: 'dark',
+        calendarType: 'gregorian', timeFormat: '12', theme: 'light',
         fontFamily: 'Cairo', printAfterPayment: true, seeded: false
       }, Realm.UpdateMode.Modified)
       r.create('Counter', { _id: 'invoice', value: 1000 }, Realm.UpdateMode.Modified)

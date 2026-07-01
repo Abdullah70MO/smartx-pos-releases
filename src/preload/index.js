@@ -49,8 +49,12 @@ const api = {
   // Backup
   exportBackup: (token) => ipcRenderer.invoke('backup:export', { token }),
   restoreBackup: (token) => ipcRenderer.invoke('backup:restore', { token }),
-  autoBackup: (token, path) => ipcRenderer.invoke('backup:auto', { token, path }),
+  autoBackup: (token, path, chatId) => ipcRenderer.invoke('backup:auto', { token, path, chatId }),
   resetDatabase: (token) => ipcRenderer.invoke('backup:reset', { token }),
+
+  // Telegram
+  telegramLink: (token, linkCode) => ipcRenderer.invoke('telegram:link', { token, linkCode }),
+  telegramBotUsername: (token) => ipcRenderer.invoke('telegram:botUsername', { token }),
 
   // Notifications
   listNotifications: (token, options) => ipcRenderer.invoke('notifications:list', { token, ...options }),
@@ -141,6 +145,9 @@ listPurchaseReturnsBySupplier: (token, supplierName, page, pageSize) => ipcRende
   withdrawFromTreasury: (token, data) => ipcRenderer.invoke('treasury:withdraw', { token, data }),
   transferBetweenTreasuries: (token, data) => ipcRenderer.invoke('treasury:transfer', { token, data }),
   listTreasuryTransactions: (token, treasuryId, limit) => ipcRenderer.invoke('treasury:transactions', { token, treasuryId, limit }),
+
+  // AI Assistant
+  aiChat: (token, messages) => ipcRenderer.invoke('ai:chat', { token, messages }),
 
   // Contact
   getContactInfo: () => ipcRenderer.invoke('contact:getInfo'),

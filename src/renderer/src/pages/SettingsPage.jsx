@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [barcodeProducts, setBarcodeProducts] = useState([])
   const [barcodeSelectedProduct, setBarcodeSelectedProduct] = useState(null)
   const [barcodeSearchLoading, setBarcodeSearchLoading] = useState(false)
+  const [telegramLinking, setTelegramLinking] = useState(false)
   const barcodeSearchTimer = useRef(null)
   const [invoicePreviewIsA4, setInvoicePreviewIsA4] = useState(false)
   const [previewDocType, setPreviewDocType] = useState('sale')
@@ -158,7 +159,7 @@ export default function SettingsPage() {
           showQR: s.showQR !== false,
           currency: s.currency || 'EGP',
           taxEnabled: s.taxEnabled !== false,
-          theme: s.theme || 'dark',
+          theme: s.theme || 'light',
           timeFormat: s.timeFormat || '12',
           fontFamily: savedFont,
           calendarType: s.calendarType || localStorage.getItem('calendarType') || 'gregorian',
@@ -181,6 +182,7 @@ export default function SettingsPage() {
           autoBackup: s.autoBackup || false,
           autoBackupInterval: s.autoBackupInterval || 'weekly',
           autoBackupPath: s.autoBackupPath || '',
+          telegramChatId: s.telegramChatId || localStorage.getItem('telegramChatId') || '',
           notificationLowStock: s.notificationLowStock !== false,
           notificationSales: s.notificationSales !== false,
           notificationPayments: s.notificationPayments !== false,
@@ -257,6 +259,49 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleTelegramSend() {
+    try {
+      const token = localStorage.getItem('token')
+      if (!form.telegramChatId) return toast('لا يوجد اتصال بتليجرام', 'error')
+      toast('جاري رفع النسخة...', 'info')
+      const result = await api.autoBackup(token, form.autoBackupPath, form.telegramChatId)
+      if (result) toast('تم إرسال النسخة إلى تليجرام', 'success')
+    } catch (e) {
+      toast(e?.message || JSON.stringify(e) || 'فشل الإرسال', 'error')
+    }
+  }
+
+  async function handleTelegramLink() {
+    const token = localStorage.getItem('token')
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase()
+    setTelegramLinking(true)
+
+    const username = (await api.telegramBotUsername(token)).replace(/^@/, '')
+    const link = 'https://t.me/' + username + '?start=' + code
+    api.openExternal(link)
+
+    let attempts = 0
+    const interval = setInterval(async () => {
+      attempts++
+      if (attempts > 30) {
+        clearInterval(interval)
+        setTelegramLinking(false)
+        return toast('لم يتم الربط. حاول مرة أخرى', 'error')
+      }
+      try {
+        const result = await api.telegramLink(token, code)
+        if (result && result.chatId) {
+          clearInterval(interval)
+          setTelegramLinking(false)
+          localStorage.setItem('telegramChatId', result.chatId)
+          setForm(f => ({ ...f, telegramChatId: result.chatId }))
+          markSettingsDirty(true)
+          toast(`✅ تم الربط مع ${result.chatName || 'تليجرام'}`, 'success')
+        }
+      } catch {}
+    }, 3000)
+  }
+
   // Auto-backup check on mount
   useEffect(() => {
     if (!settings?.autoBackup) return
@@ -272,10 +317,10 @@ export default function SettingsPage() {
       else if (settings.autoBackupInterval === 'monthly' && daysSince >= 30) shouldBackup = true
     }
     if (shouldBackup) {
-      api.autoBackup(localStorage.getItem('token'), settings.autoBackupPath).then(path => {
+      const token = localStorage.getItem('token')
+      api.autoBackup(token, settings.autoBackupPath, settings.telegramChatId).then(path => {
         if (path) toast('تم إنشاء نسخة احتياطية تلقائية', 'success')
         // Update last backup date
-        const token = localStorage.getItem('token')
         api.getSettings(token).then(s => {
           s.autoBackupLastDate = new Date().toISOString()
           api.saveSettings(token, s)
@@ -353,6 +398,7 @@ export default function SettingsPage() {
       const confirmed = await confirm('هل تريد إعادة تعيين قاعدة البيانات؟ سيتم حذف البيانات وإرجاع الإعدادات الأساسية.')
       if (!confirmed) return
       await api.resetDatabase(token)
+      localStorage.removeItem('telegramChatId')
       toast('تمت إعادة تعيين البيانات بنجاح', 'success')
       load()
       window.dispatchEvent(new Event('dataChanged'))
@@ -393,6 +439,7 @@ export default function SettingsPage() {
       localStorage.setItem('barcodeFontWeight', nextForm.barcodeFontWeight || 'bold')
       localStorage.setItem('showQR', nextForm.showQR !== false ? 'true' : 'false')
       localStorage.setItem('fontFamily', nextForm.fontFamily || 'Cairo')
+      localStorage.setItem('telegramChatId', nextForm.telegramChatId || '')
       const updated = await updateSettings(nextForm)
       const normalized = updated || nextForm
       setInitialForm(normalized)
@@ -1085,6 +1132,28 @@ export default function SettingsPage() {
                       <button type="button" onClick={saveSettingsNow} style={{ marginTop: '8px', background: 'var(--success)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
                         حفظ
                       </button>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--bg3)', margin: '16px 0 12px' }}></div>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)' }}>النسخ الاحتياطي عبر تليجرام</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--outline)' }}>
+                    {form.telegramChatId ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '13px', fontWeight: '600' }}>
+                        ✅ متصل بتليجرام
+                        <button type="button" onClick={handleTelegramSend} style={{ background: '#1da1f2', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}>إرسال نسخة</button>
+                        <button type="button" onClick={async () => { localStorage.removeItem('telegramChatId'); setForm(f => ({ ...f, telegramChatId: '' })); await saveSettingsNow() }} style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}>فصل</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={handleTelegramLink} disabled={telegramLinking}
+                        style={{ background: telegramLinking ? 'var(--bg3)' : '#1da1f2', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', border: 'none', cursor: telegramLinking ? 'not-allowed' : 'pointer' }}>
+                        {telegramLinking ? 'جاري الربط... افتح تليجرام وأرسل /start' : 'ربط التليجرام'}
+                      </button>
+                    )}
+                    {telegramLinking && (
+                      <div style={{ background: 'var(--bg2)', borderRadius: '8px', padding: '12px', textAlign: 'center', border: '1px dashed var(--outline)' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text2)' }}>تم فتح تليجرام — فقط اضغط Send لإرسال الكود</div>
+                      </div>
                     )}
                   </div>
                 </div>

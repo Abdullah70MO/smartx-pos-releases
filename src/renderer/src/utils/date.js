@@ -3,7 +3,7 @@ function getCalendarType() {
 }
 
 function getTimeFormat() {
-  return localStorage.getItem('timeFormat') || '24'
+  return localStorage.getItem('timeFormat') || '12'
 }
 
 function getCalendarLocale() {

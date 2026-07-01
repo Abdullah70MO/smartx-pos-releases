@@ -40,7 +40,8 @@ const ALL_PERMISSIONS = [
   'treasury.transfer',
   'employees.view',
   'employees.manage',
-  'employees.salaries'
+  'employees.salaries',
+  'ai.assistant'
 ]
 
 const ROLES = {
