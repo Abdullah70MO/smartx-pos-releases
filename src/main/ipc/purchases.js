@@ -1,4 +1,4 @@
-const Realm = require('realm')
+﻿const Realm = require('realm')
 const crypto = require('node:crypto')
 const { addBatch, syncProductStock, removeBatchesByRef } = require('./inventoryHelpers')
 const { paginate } = require('../database')
@@ -9,7 +9,7 @@ function updateTreasury(realm, amount, note, userId, refId, paymentMethod) {
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
   if (!treasury) return
   if (amount < 0 && treasury.balance + amount < 0) {
-    throw new Error('الرصيد غير كافٍ في الخزينة')
+    throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„Ø®Ø²ÙŠÙ†Ø©')
   }
   treasury.balance += amount
   treasury.updatedAt = new Date()
@@ -46,7 +46,7 @@ function listPurchases(realm, filter, page, pageSize) {
     results = realm.objects('Purchase').sorted('createdAt', true)
   }
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {
@@ -67,7 +67,7 @@ function getOrCreateProduct(realm, item) {
     product = realm.create('Product', {
       _id: productId,
       sku: '',
-      name: item.name || 'منتج جديد',
+      name: item.name || 'Ù…Ù†ØªØ¬ Ø¬Ø¯ÙŠØ¯',
       barcode: '',
       category: '',
       unit: '',
@@ -150,12 +150,12 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
     })
     if (supplierId) updateSupplierBalance(realm, supplierId, netCost < 0 ? 0 : netCost)
     if (paidAmount > 0) {
-      updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + invoiceNo, user.name, purchase._id, pm)
+      updateTreasury(realm, -paidAmount, 'Ù…Ø´ØªØ±ÙŠØ§Øª ÙØ§ØªÙˆØ±Ø© #' + invoiceNo, user.name, purchase._id, pm)
       if (supplierId) {
         realm.create('SupplierPayment', {
           _id: crypto.randomUUID(),
           supplierId, supplierName: supplierName || '',
-          amount: paidAmount, note: 'دفعة فاتورة #' + invoiceNo,
+          amount: paidAmount, note: 'Ø¯ÙØ¹Ø© ÙØ§ØªÙˆØ±Ø© #' + invoiceNo,
           paymentMethod: pm, createdBy: user.name, createdAt: new Date()
         })
         const supplier = realm.objectForPrimaryKey('Supplier', supplierId)
@@ -177,7 +177,7 @@ function savePurchase(realm, user, data) {
   realm.write(() => {
     if (data._id) {
       purchase = realm.objectForPrimaryKey('Purchase', data._id)
-      if (!purchase) throw new Error('الفاتورة غير موجودة')
+      if (!purchase) throw new Error('Ø§Ù„ÙØ§ØªÙˆØ±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©')
       const oldNetCost = (purchase.totalCost - (purchase.discount || 0))
       const oldSupplierId = purchase.supplierId
       const oldPaid = purchase.paid || 0
@@ -226,10 +226,10 @@ function savePurchase(realm, user, data) {
       if (oldSupplierId) updateSupplierBalance(realm, oldSupplierId, -oldNetCost)
       if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (oldPaid > 0) {
-        updateTreasury(realm, oldPaid, 'إلغاء مشتريات #' + purchase.invoiceNo, user.name, purchase._id, purchase.paymentMethod)
+        updateTreasury(realm, oldPaid, 'Ø¥Ù„ØºØ§Ø¡ Ù…Ø´ØªØ±ÙŠØ§Øª #' + purchase.invoiceNo, user.name, purchase._id, purchase.paymentMethod)
       }
       if (paidAmount > 0) {
-        updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + purchase.invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
+        updateTreasury(realm, -paidAmount, 'Ù…Ø´ØªØ±ÙŠØ§Øª ÙØ§ØªÙˆØ±Ø© #' + purchase.invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
       }
       if (oldPaid > 0 && oldSupplierId) {
         updateSupplierBalance(realm, oldSupplierId, -oldPaid, true)
@@ -241,7 +241,7 @@ function savePurchase(realm, user, data) {
         realm.create('SupplierPayment', {
           _id: crypto.randomUUID(),
           supplierId: data.supplierId, supplierName: data.supplierName || '',
-          amount: paidAmount, note: 'دفعة فاتورة #' + purchase.invoiceNo,
+          amount: paidAmount, note: 'Ø¯ÙØ¹Ø© ÙØ§ØªÙˆØ±Ø© #' + purchase.invoiceNo,
           paymentMethod: data.paymentMethod || 'cash',
           createdBy: user.name, createdAt: new Date()
         })
@@ -287,12 +287,12 @@ function savePurchase(realm, user, data) {
       })
       if (data.supplierId) updateSupplierBalance(realm, data.supplierId, newNetCost < 0 ? 0 : newNetCost)
       if (paidAmount > 0) {
-        updateTreasury(realm, -paidAmount, 'مشتريات فاتورة #' + invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
+        updateTreasury(realm, -paidAmount, 'Ù…Ø´ØªØ±ÙŠØ§Øª ÙØ§ØªÙˆØ±Ø© #' + invoiceNo, user.name, purchase._id, data.paymentMethod || 'cash')
         if (data.supplierId) {
           realm.create('SupplierPayment', {
             _id: crypto.randomUUID(),
             supplierId: data.supplierId, supplierName: data.supplierName || '',
-            amount: paidAmount, note: 'دفعة فاتورة #' + invoiceNo,
+            amount: paidAmount, note: 'Ø¯ÙØ¹Ø© ÙØ§ØªÙˆØ±Ø© #' + invoiceNo,
             paymentMethod: data.paymentMethod || 'cash',
             createdBy: user.name, createdAt: new Date()
           })
@@ -351,7 +351,7 @@ function removePurchase(realm, id, session) {
     if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -remNetCost)
     const paidAmount = purchase.paid || 0
     if (paidAmount > 0) {
-      updateTreasury(realm, paidAmount, 'إلغاء مشتريات #' + purchase.invoiceNo, session?.name || 'system', purchase._id, purchase.paymentMethod)
+      updateTreasury(realm, paidAmount, 'Ø¥Ù„ØºØ§Ø¡ Ù…Ø´ØªØ±ÙŠØ§Øª #' + purchase.invoiceNo, session?.name || 'system', purchase._id, purchase.paymentMethod)
       if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -paidAmount, true)
     }
     realm.delete(purchase)

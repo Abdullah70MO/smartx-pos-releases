@@ -1,4 +1,4 @@
-const crypto = require('node:crypto')
+﻿const crypto = require('node:crypto')
 const { addBatch, deductFromFifo, deductFromBatch, syncProductStock, getAvgCost } = require('./inventoryHelpers')
 const { checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications } = require('./notifications')
 const { paginate } = require('../database')
@@ -12,7 +12,7 @@ function listAdjustments(realm, filter, page, pageSize) {
     results = results.filtered('type == $0', filter.type)
   }
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {
@@ -36,7 +36,7 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
   let adjustment
   realm.write(() => {
     const product = realm.objectForPrimaryKey('Product', productId)
-    if (!product) throw new Error('المنتج غير موجود')
+    if (!product) throw new Error('Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯')
     const oldStock = product.stock || 0
     const qty = Number(quantity)
     let newStock, expenseId = ''
@@ -57,8 +57,8 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
         const expense = realm.create('Expense', {
           _id: crypto.randomUUID(),
           amount: lossAmount,
-          category: 'تسويات مخزون',
-          note: 'تسوية مخزون - ' + (productName || product.name) + ' (إزالة ' + qty + ')',
+          category: 'ØªØ³ÙˆÙŠØ§Øª Ù…Ø®Ø²ÙˆÙ†',
+          note: 'ØªØ³ÙˆÙŠØ© Ù…Ø®Ø²ÙˆÙ† - ' + (productName || product.name) + ' (Ø¥Ø²Ø§Ù„Ø© ' + qty + ')',
           date: date ? new Date(date) : new Date(),
           paymentMethod: 'cash',
           shiftId: '',
@@ -82,8 +82,8 @@ function createAdjustment(realm, user, { productId, productName, type, quantity,
           const expense = realm.create('Expense', {
             _id: crypto.randomUUID(),
             amount: lossAmount,
-            category: 'تسويات مخزون',
-            note: 'تسوية مخزون - ' + (productName || product.name) + ' (تحديد ' + oldStock + ' → ' + qty + ')',
+            category: 'ØªØ³ÙˆÙŠØ§Øª Ù…Ø®Ø²ÙˆÙ†',
+            note: 'ØªØ³ÙˆÙŠØ© Ù…Ø®Ø²ÙˆÙ† - ' + (productName || product.name) + ' (ØªØ­Ø¯ÙŠØ¯ ' + oldStock + ' â†’ ' + qty + ')',
             date: date ? new Date(date) : new Date(),
             paymentMethod: 'cash',
             shiftId: '',
@@ -135,7 +135,7 @@ function saveAdjustment(realm, user, data) {
   let adjustment
   realm.write(() => {
     adjustment = realm.objectForPrimaryKey('InventoryAdjustment', data._id)
-    if (!adjustment) throw new Error('التسوية غير موجودة')
+    if (!adjustment) throw new Error('Ø§Ù„ØªØ³ÙˆÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©')
 
     const product = realm.objectForPrimaryKey('Product', data.productId)
     if (product) {
@@ -283,8 +283,8 @@ function createInventory(realm, session, data) {
             const expense = realm.create('Expense', {
               _id: crypto.randomUUID(),
               amount: lossAmount,
-              category: 'تسويات مخزون',
-              note: 'جرد مخزون - ' + (item.productName || product.name) + ' (نقص ' + Math.abs(diff) + ')',
+              category: 'ØªØ³ÙˆÙŠØ§Øª Ù…Ø®Ø²ÙˆÙ†',
+              note: 'Ø¬Ø±Ø¯ Ù…Ø®Ø²ÙˆÙ† - ' + (item.productName || product.name) + ' (Ù†Ù‚Øµ ' + Math.abs(diff) + ')',
               date: now,
               paymentMethod: 'cash',
               shiftId: '',
@@ -302,7 +302,7 @@ function createInventory(realm, session, data) {
           quantity: Math.abs(diff),
           oldStock: sysQty,
           newStock: actQty,
-          reason: 'جرد مخزون',
+          reason: 'Ø¬Ø±Ø¯ Ù…Ø®Ø²ÙˆÙ†',
           createdBy: session.name,
           createdAt: now,
           expenseId: expId
@@ -342,7 +342,7 @@ function createInventory(realm, session, data) {
 function listInventories(realm, filter, page, pageSize) {
   let results = realm.objects('Inventory').sorted('createdAt', true)
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {

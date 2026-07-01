@@ -1,4 +1,4 @@
-const crypto = require('node:crypto')
+﻿const crypto = require('node:crypto')
 const { paginate } = require('../database')
 
 function logActivity(realm, session, { action, details }) {
@@ -17,7 +17,7 @@ function logActivity(realm, session, { action, details }) {
 function listActivity(realm, filter, page, pageSize) {
   let results = realm.objects('ActivityLog').sorted('createdAt', true)
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {

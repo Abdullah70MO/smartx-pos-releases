@@ -1265,7 +1265,7 @@ export default function SettingsPage() {
                 <div>
                   {contact.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {contact.filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+                      {contact.filter(i => i.label !== 'واتساب' && i.label !== 'البريد الإلكتروني').map((item, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', padding: '10px 14px', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--outline)' }}>
                           <span style={{ color: 'var(--text2)', minWidth: '80px' }}>{item.label}:</span>
                           <span style={{ color: 'var(--text)', fontWeight: '500' }}>{item.value}</span>

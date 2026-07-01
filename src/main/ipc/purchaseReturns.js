@@ -1,4 +1,4 @@
-const Realm = require('realm')
+﻿const Realm = require('realm')
 const crypto = require('node:crypto')
 const { returnToFifo, syncProductStock } = require('./inventoryHelpers')
 const { paginate } = require('../database')
@@ -15,7 +15,7 @@ function deductBatches(realm, purchaseId, productId, quantity) {
     remaining -= take
     if (batch.quantity <= 0) realm.delete(batch)
   }
-  if (remaining > 0) throw new Error('الرصيد المتاح في المخزون أقل من الكمية المطلوب إرجاعها')
+  if (remaining > 0) throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø­ ÙÙŠ Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ø£Ù‚Ù„ Ù…Ù† Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ø¥Ø±Ø¬Ø§Ø¹Ù‡Ø§')
   return totalCost
 }
 
@@ -32,9 +32,9 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
-      if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
+      if (available + amount < 0) throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„ÙˆØ±Ø¯ÙŠØ©')
     } else if (treasury.balance + amount < 0) {
-      throw new Error('الرصيد غير كافٍ في الخزينة')
+      throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„Ø®Ø²ÙŠÙ†Ø©')
     }
   }
   treasury.balance += amount
@@ -65,7 +65,7 @@ function updateSupplierBalance(realm, supplierId, delta) {
 function listPurchaseReturns(realm, filter, page, pageSize) {
   let results = realm.objects('PurchaseReturn').sorted('createdAt', true)
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {
@@ -120,7 +120,7 @@ function createPurchaseReturn(realm, session, data) {
   let ret
   realm.write(() => {
     const purchase = realm.objectForPrimaryKey('Purchase', data.purchaseId)
-    if (!purchase) throw new Error('فاتورة الشراء غير موجودة')
+    if (!purchase) throw new Error('ÙØ§ØªÙˆØ±Ø© Ø§Ù„Ø´Ø±Ø§Ø¡ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©')
 
     const previousReturns = realm.objects('PurchaseReturn').filtered('purchaseId == $0', data.purchaseId)
     const returnedQtyMap = new Map()
@@ -134,12 +134,12 @@ function createPurchaseReturn(realm, session, data) {
     const itemCosts = []
     data.items.forEach(item => {
       const purchaseItem = purchase.items.find(i => i.productId === item.productId || i.name === item.name)
-      if (!purchaseItem) throw new Error(`المنتج "${item.name}" غير موجود في فاتورة الشراء`)
+      if (!purchaseItem) throw new Error(`Ø§Ù„Ù…Ù†ØªØ¬ "${item.name}" ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ ÙÙŠ ÙØ§ØªÙˆØ±Ø© Ø§Ù„Ø´Ø±Ø§Ø¡`)
       const alreadyReturned = returnedQtyMap.get(item.productId) || 0
       const remaining = purchaseItem.quantity - alreadyReturned
       if (item.quantity > remaining) {
-        if (remaining <= 0) throw new Error(`تم إرجاع "${item.name}" بالكامل مسبقاً`)
-        throw new Error(`الكمية المطلوب إرجاعها من "${item.name}" (${item.quantity}) تتجاوز المتبقي (${remaining})`)
+        if (remaining <= 0) throw new Error(`ØªÙ… Ø¥Ø±Ø¬Ø§Ø¹ "${item.name}" Ø¨Ø§Ù„ÙƒØ§Ù…Ù„ Ù…Ø³Ø¨Ù‚Ø§Ù‹`)
+        throw new Error(`Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ø¥Ø±Ø¬Ø§Ø¹Ù‡Ø§ Ù…Ù† "${item.name}" (${item.quantity}) ØªØªØ¬Ø§ÙˆØ² Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ (${remaining})`)
       }
 
       const qty = Number(item.quantity) || 0
@@ -184,11 +184,11 @@ function createPurchaseReturn(realm, session, data) {
 
     if (refundAmount > 0) {
       const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
-      updateTreasury(realm, refundAmount, 'مرتجع مشتريات فاتورة #' + purchase.invoiceNo, session, pm)
+      updateTreasury(realm, refundAmount, 'Ù…Ø±ØªØ¬Ø¹ Ù…Ø´ØªØ±ÙŠØ§Øª ÙØ§ØªÙˆØ±Ø© #' + purchase.invoiceNo, session, pm)
     }
     if (purchase.tax > 0 && purchaseTaxRate > 0) {
       const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
-      updateTreasury(realm, returnTaxAmount, 'ضريبة مرتجع مشتريات #' + purchase.invoiceNo, session, pm)
+      updateTreasury(realm, returnTaxAmount, 'Ø¶Ø±ÙŠØ¨Ø© Ù…Ø±ØªØ¬Ø¹ Ù…Ø´ØªØ±ÙŠØ§Øª #' + purchase.invoiceNo, session, pm)
     }
 
     updateSupplierBalance(realm, purchase.supplierId, -Number(data.subtotal))
@@ -227,14 +227,14 @@ function removePurchaseReturn(realm, id) {
       const treasuryType = pm === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
       if (treasury) {
-        if (treasury.balance < retRefund) throw new Error('رصيد الخزينة غير كافٍ')
+        if (treasury.balance < retRefund) throw new Error('Ø±ØµÙŠØ¯ Ø§Ù„Ø®Ø²ÙŠÙ†Ø© ØºÙŠØ± ÙƒØ§ÙÙ')
         treasury.balance += -retRefund
         treasury.updatedAt = new Date()
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
           type: 'purchaseReturn', amount: -retRefund,
-          note: 'إلغاء مرتجع مشتريات #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
+          note: 'Ø¥Ù„ØºØ§Ø¡ Ù…Ø±ØªØ¬Ø¹ Ù…Ø´ØªØ±ÙŠØ§Øª #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
           paymentMethod: pm,
           createdBy: 'system', createdAt: new Date()
         })

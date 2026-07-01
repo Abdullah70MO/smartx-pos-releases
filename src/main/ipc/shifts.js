@@ -1,4 +1,4 @@
-const crypto = require('node:crypto')
+﻿const crypto = require('node:crypto')
 const { createNotification } = require('./notifications')
 const { paginate } = require('../database')
 
@@ -24,13 +24,13 @@ function hasAnyActiveShift(realm) {
 
 function startShift(realm, session, startingBalance) {
   const existing = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
-  if (existing) throw new Error('يوجد وردية نشطة حالياً')
+  if (existing) throw new Error('ÙŠÙˆØ¬Ø¯ ÙˆØ±Ø¯ÙŠØ© Ù†Ø´Ø·Ø© Ø­Ø§Ù„ÙŠØ§Ù‹')
 
   const bal = Number(startingBalance) || 0
   if (bal > 0) {
     const treasury = realm.objects('Treasury').filtered('type == $0', 'main')[0]
-    if (!treasury) throw new Error('لا توجد خزنة رئيسية')
-    if (treasury.balance < bal) throw new Error('الرصيد غير كافٍ في الخزنة')
+    if (!treasury) throw new Error('Ù„Ø§ ØªÙˆØ¬Ø¯ Ø®Ø²Ù†Ø© Ø±Ø¦ÙŠØ³ÙŠØ©')
+    if (treasury.balance < bal) throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„Ø®Ø²Ù†Ø©')
   }
 
   realm.write(() => {
@@ -52,7 +52,7 @@ function startShift(realm, session, startingBalance) {
       isActive: true
     })
     if (bal > 0) {
-      updateTreasuryBalance(realm, 'main', -bal, 'سحبة بداية وردية')
+      updateTreasuryBalance(realm, 'main', -bal, 'Ø³Ø­Ø¨Ø© Ø¨Ø¯Ø§ÙŠØ© ÙˆØ±Ø¯ÙŠØ©')
     }
   })
   return getActiveShift(realm, session.userId)
@@ -60,7 +60,7 @@ function startShift(realm, session, startingBalance) {
 
 function endShift(realm, session, endingCashBalance, endingCardBalance) {
   const shift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
-  if (!shift) throw new Error('لا توجد وردية نشطة')
+  if (!shift) throw new Error('Ù„Ø§ ØªÙˆØ¬Ø¯ ÙˆØ±Ø¯ÙŠØ© Ù†Ø´Ø·Ø©')
 
   realm.write(() => {
     shift.isActive = false
@@ -69,10 +69,10 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
     shift.cardEndingBalance = Number(endingCardBalance) || 0
 
     if ((Number(endingCashBalance) || 0) > 0) {
-      updateTreasuryBalance(realm, 'main', Number(endingCashBalance) || 0, 'إيداع نهاية وردية')
+      updateTreasuryBalance(realm, 'main', Number(endingCashBalance) || 0, 'Ø¥ÙŠØ¯Ø§Ø¹ Ù†Ù‡Ø§ÙŠØ© ÙˆØ±Ø¯ÙŠØ©')
     }
     if ((Number(endingCardBalance) || 0) > 0) {
-      updateTreasuryBalance(realm, 'bank', Number(endingCardBalance) || 0, 'إيداع نهاية وردية (بطاقة)')
+      updateTreasuryBalance(realm, 'bank', Number(endingCardBalance) || 0, 'Ø¥ÙŠØ¯Ø§Ø¹ Ù†Ù‡Ø§ÙŠØ© ÙˆØ±Ø¯ÙŠØ© (Ø¨Ø·Ø§Ù‚Ø©)')
     }
   })
 
@@ -80,8 +80,8 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
   if (settings && settings.notificationShifts !== false) {
     createNotification(realm, {
       type: 'success',
-      title: 'تم إغلاق الوردية',
-      message: `أغلق ${shift.cashierName} الوردية - إجمالي المبيعات: ${shift.totalSales} ج.م - فواتير: ${shift.invoiceCount}`,
+      title: 'ØªÙ… Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„ÙˆØ±Ø¯ÙŠØ©',
+      message: `Ø£ØºÙ„Ù‚ ${shift.cashierName} Ø§Ù„ÙˆØ±Ø¯ÙŠØ© - Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø¨ÙŠØ¹Ø§Øª: ${shift.totalSales} Ø¬.Ù… - ÙÙˆØ§ØªÙŠØ±: ${shift.invoiceCount}`,
       referenceId: shift._id,
       referenceType: 'shift'
     })

@@ -415,7 +415,7 @@ export default function LoginPage() {
           </button>
           {showContact && (
             <div style={S.contactPanel}>
-              {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+              {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'واتساب' && i.label !== 'البريد الإلكتروني').map((item, i) => (
                 <div key={i} style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: i < contact.length - 1 ? '6px' : 0 }}>
                   {item.label}: {item.link
                     ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: '600' }}>{item.value}</a>

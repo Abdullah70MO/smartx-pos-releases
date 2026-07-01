@@ -1,4 +1,4 @@
-const Realm = require('realm')
+﻿const Realm = require('realm')
 const crypto = require('node:crypto')
 const { deductFromFifo, addBatch } = require('./inventoryHelpers')
 const { checkAndCreateLowStockNotifications, checkAndCreateExpiryNotifications, createNotification } = require('./notifications')
@@ -13,9 +13,9 @@ function updateTreasury(realm, amount, note, session, refId, refType, paymentMet
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
-      if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
+      if (available + amount < 0) throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„ÙˆØ±Ø¯ÙŠØ©')
     } else if (treasury.balance + amount < 0) {
-      throw new Error('الرصيد غير كافٍ في الخزينة')
+      throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„Ø®Ø²ÙŠÙ†Ø©')
     }
   }
   treasury.balance += amount
@@ -45,7 +45,7 @@ function listSales(realm, filter, page, pageSize) {
     results = realm.objects('Sale').sorted('createdAt', true)
   }
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {
@@ -155,7 +155,7 @@ function createSale(realm, session, data) {
       const amount = data.paymentMethod === 'credit' ? paidVal : Math.min(paidVal, total)
       if (amount > 0) {
         const pm = data.paymentMethod === 'card' ? 'card' : 'cash'
-        updateTreasury(realm, amount, 'مبيعات فاتورة #' + invoiceNo, session, sale._id, 'sale', pm)
+        updateTreasury(realm, amount, 'Ù…Ø¨ÙŠØ¹Ø§Øª ÙØ§ØªÙˆØ±Ø© #' + invoiceNo, session, sale._id, 'sale', pm)
       }
     }
 
@@ -174,8 +174,8 @@ function createSale(realm, session, data) {
   if (settings && settings.notificationSales !== false) {
     createNotification(realm, {
       type: 'sale',
-      title: 'تم البيع',
-      message: `فاتورة #${invoiceNo} - ${total} ج.م`,
+      title: 'ØªÙ… Ø§Ù„Ø¨ÙŠØ¹',
+      message: `ÙØ§ØªÙˆØ±Ø© #${invoiceNo} - ${total} Ø¬.Ù…`,
       referenceId: sale._id,
       referenceType: 'sale'
     })
@@ -211,7 +211,7 @@ function removeSale(realm, id) {
         const pm = sale.paymentMethod === 'card' ? 'card' : 'cash'
         const reversalAmount = Math.min(sale.paid || 0, sale.total || 0)
         if (reversalAmount > 0) {
-          updateTreasury(realm, -reversalAmount, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
+          updateTreasury(realm, -reversalAmount, 'Ø¥Ù„ØºØ§Ø¡ ÙØ§ØªÙˆØ±Ø© #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
         }
       }
       if (sale.paymentMethod === 'credit' && sale.customerName) {

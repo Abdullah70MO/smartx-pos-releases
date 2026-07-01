@@ -11,10 +11,10 @@ function dashboardSummary(realm) {
   const monthReturns = realm.objects('Return').filtered('createdAt >= $0', startOfMonth)
   const todayTotal = todaySales.reduce((sum, s) => sum + (s.total || 0), 0) - todayReturns.reduce((sum, r) => sum + (r.refundAmount || 0) + (r.tax || 0), 0)
   const todayProfit = todaySales.reduce((sum, s) => {
-    const cost = s.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
-    return sum + (s.total - (s.tax || 0)) - cost
+    const cost = s.items.reduce((c, item) => c + ((item.cost || 0) * (item.quantity || 0)), 0)
+    return sum + ((s.total || 0) - (s.tax || 0)) - cost
   }, 0) - todayReturns.reduce((sum, r) => {
-    const cost = r.items.reduce((c, item) => c + (item.cost * item.quantity), 0)
+    const cost = r.items.reduce((c, item) => c + ((item.cost || 0) * (item.quantity || 0)), 0)
     return sum + (r.refundAmount || 0) + (r.tax || 0) - cost
   }, 0)
 
@@ -23,7 +23,7 @@ function dashboardSummary(realm) {
     sale.items.forEach(item => {
       const existing = productSalesMap.get(item.productId) || { name: item.name, quantity: 0, revenue: 0 }
       existing.quantity += item.quantity
-      existing.revenue += item.quantity * item.unitPrice
+      existing.revenue += (item.quantity || 0) * (item.unitPrice || 0)
       productSalesMap.set(item.productId, existing)
     })
   })
@@ -40,13 +40,15 @@ function dashboardSummary(realm) {
   const thirtyDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
   const expiringProducts = realm.objects('Product').filtered('active == true AND expiryDate != ""')
   const nearExpiry = Array.from(expiringProducts).filter(p => {
+    if (!p.expiryDate) return false
     const d = new Date(p.expiryDate + 'T23:59:59')
+    if (isNaN(d.getTime())) return false
     return d > now && d <= thirtyDaysFromNow
-  }).sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
+  }).sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || ''))
 
   const recentSales = realm.objects('Sale').sorted('createdAt', true).slice(0, 6)
 
-  const totalInventoryValue = realm.objects('StockBatch').reduce((sum, b) => sum + (b.quantity * b.cost), 0)
+  const totalInventoryValue = realm.objects('StockBatch').reduce((sum, b) => sum + ((b.quantity || 0) * (b.cost || 0)), 0)
 
   return {
     todaySales: todayTotal,
@@ -58,8 +60,8 @@ function dashboardSummary(realm) {
     grossProfit: todayProfit,
     totalProducts: realm.objects('Product').filtered('active == true').length,
     totalInventoryValue,
-    expensesMonth: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
-    expensesToday: todayExpenses.reduce((sum, e) => sum + e.amount, 0),
+    expensesMonth: monthExpenses.reduce((sum, e) => sum + (e.amount || 0), 0),
+    expensesToday: todayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0),
     recentSales: Array.from(recentSales).map(s => ({
       _id: s._id, invoiceNo: s.invoiceNo, total: s.total,
       cashierName: s.cashierName, createdAt: s.createdAt?.toISOString()

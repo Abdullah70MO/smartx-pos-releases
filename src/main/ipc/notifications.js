@@ -120,7 +120,9 @@ function checkAndCreateExpiryNotifications(realm) {
   const thirtyDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
   const products = realm.objects('Product').filtered('active == true AND expiryDate != ""')
   for (const p of products) {
+    if (!p.expiryDate) continue
     const d = new Date(p.expiryDate + 'T23:59:59')
+    if (isNaN(d.getTime())) continue
     if (d > now && d <= thirtyDaysFromNow) {
       const existing = realm.objects('Notification')
         .filtered('type == "expiry" AND referenceId == $0 AND read == false', p._id)[0]

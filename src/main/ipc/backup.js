@@ -11,7 +11,7 @@ async function safeBackup(backupFn) {
   try {
     return await backupFn()
   } finally {
-    await openRealm()
+    try { await openRealm() } catch (e) { console.error('Failed to reopen realm:', e) }
     unlockAfterBackup()
   }
 }
@@ -53,9 +53,9 @@ async function autoBackup(backupDir, chatId) {
   const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-')
   const filePath = path.join(backupDir, `auto-backup-${dateStr}_${timeStr}.realm`)
 
-  const r = require('realm')
-  const realmPath = getRealmPath()
-  await fs.copyFile(realmPath, filePath)
+  await safeBackup(async () => {
+    await fs.copyFile(getRealmPath(), filePath)
+  })
   const savedPath = filePath
 
   if (savedPath && chatId) {
@@ -110,7 +110,7 @@ async function resetDatabase() {
       r.create('BusinessSettings', {
         _id: 'business', currency: 'EGP', taxEnabled: true,
         calendarType: 'gregorian', timeFormat: '12', theme: 'light',
-        fontFamily: 'Cairo', printAfterPayment: true, seeded: false
+        fontFamily: 'Cairo', printAfterPayment: true, seeded: true
       }, Realm.UpdateMode.Modified)
       r.create('Counter', { _id: 'invoice', value: 1000 }, Realm.UpdateMode.Modified)
       r.create('Counter', { _id: 'purchase', value: 1 }, Realm.UpdateMode.Modified)

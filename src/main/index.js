@@ -434,7 +434,7 @@ function registerIpc() {
   handle('ai:chat', async ({ token, messages }) => (requireUser(token, 'ai.assistant'), require('./ipc/ai').chat(messages)))
 
   // Contact
-  handle('contact:getInfo', () => CONTACT_INFO)
+  handle('contact:getInfo', () => (CONTACT_INFO || []).map(c => ({ ...c, label: ({ 'APP Name': 'اسم التطبيق', 'WhatsApp': 'واتساب', 'Email': 'البريد الإلكتروني', 'Telegram': 'التليجرام' })[c.label] || c.label })))
   handle('open-external', (url) => { shell.openExternal(url); return true })
 
   // App

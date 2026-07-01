@@ -189,7 +189,7 @@ export default function LicensePage() {
             </button>
             {showContact && (
               <div style={{ background:'var(--bg2)', padding:'18px', borderRadius:'16px', textAlign:'center', border:'1px solid var(--outline)', marginTop:'8px' }}>
-                {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'WhatsApp' && i.label !== 'Email').map((item, i) => (
+                {(Array.isArray(contact) ? contact : []).filter(i => i.label !== 'واتساب' && i.label !== 'البريد الإلكتروني').map((item, i) => (
                   <div key={i} style={{ fontSize:'12px', color:'var(--text2)', marginBottom:'6px' }}>
                     {item.label}: {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{item.value}</a> : item.value}
                   </div>

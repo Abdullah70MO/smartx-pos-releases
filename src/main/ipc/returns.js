@@ -1,4 +1,4 @@
-const Realm = require('realm')
+﻿const Realm = require('realm')
 const crypto = require('node:crypto')
 const { returnToFifo, deductFromFifo, syncProductStock } = require('./inventoryHelpers')
 const { createNotification } = require('./notifications')
@@ -13,9 +13,9 @@ function updateTreasury(realm, amount, note, session, paymentMethod) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session?.userId || '')[0]
     if (activeShift) {
       const available = activeShift.startingBalance + (activeShift.cashTotal || 0) + (activeShift.creditPaidTotal || 0) - activeShift.expensesTotal - activeShift.withdrawalsTotal
-      if (available + amount < 0) throw new Error('الرصيد غير كافٍ في الوردية')
+      if (available + amount < 0) throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„ÙˆØ±Ø¯ÙŠØ©')
     } else if (treasury.balance + amount < 0) {
-      throw new Error('الرصيد غير كافٍ في الخزينة')
+      throw new Error('Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ÙƒØ§ÙÙ ÙÙŠ Ø§Ù„Ø®Ø²ÙŠÙ†Ø©')
     }
   }
   treasury.balance += amount
@@ -39,7 +39,7 @@ function listReturns(realm, filter, page, pageSize) {
     results = realm.objects('Return').sorted('createdAt', true)
   }
   if (filter?.from) {
-    const from = new Date(filter.from)
+    const from = new Date(filter.from + 'T00:00:00')
     if (!isNaN(from)) results = results.filtered('createdAt >= $0', from)
   }
   if (filter?.to) {
@@ -99,16 +99,16 @@ function createReturn(realm, session, data) {
     })
 
     const sale = realm.objectForPrimaryKey('Sale', data.saleId)
-    if (!sale) throw new Error('الفاتورة غير موجودة')
+    if (!sale) throw new Error('Ø§Ù„ÙØ§ØªÙˆØ±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©')
 
     data.items.forEach(item => {
       const saleItem = sale.items.find(i => i.productId === item.productId)
-      if (!saleItem) throw new Error(`المنتج ${item.name} غير موجود في الفاتورة`)
+      if (!saleItem) throw new Error(`Ø§Ù„Ù…Ù†ØªØ¬ ${item.name} ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ ÙÙŠ Ø§Ù„ÙØ§ØªÙˆØ±Ø©`)
       const alreadyReturned = returnedQtyMap.get(item.productId) || 0
       const remaining = saleItem.quantity - alreadyReturned
       if (item.quantity > remaining) {
-        if (remaining <= 0) throw new Error(`تم إرجاع المنتج "${item.name}" بالفعل`)
-        throw new Error(`الكمية المطلوب إرجاعها من "${item.name}" (${item.quantity}) تتجاوز المتبقي (${remaining})`)
+        if (remaining <= 0) throw new Error(`ØªÙ… Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù…Ù†ØªØ¬ "${item.name}" Ø¨Ø§Ù„ÙØ¹Ù„`)
+        throw new Error(`Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ø¥Ø±Ø¬Ø§Ø¹Ù‡Ø§ Ù…Ù† "${item.name}" (${item.quantity}) ØªØªØ¬Ø§ÙˆØ² Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ (${remaining})`)
       }
       const product = realm.objectForPrimaryKey('Product', item.productId)
       if (product) {
@@ -156,7 +156,7 @@ function createReturn(realm, session, data) {
     if (refundAmount > 0) {
       if (activeShift && !isCreditReturn) {
         const fullAmount = refundAmount + (sale.tax > 0 ? returnTaxAmount : 0)
-        updateTreasury(realm, -fullAmount, 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
+        updateTreasury(realm, -fullAmount, 'Ù…Ø±ØªØ¬Ø¹ ÙØ§ØªÙˆØ±Ø© #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
         activeShift.totalSales -= fullAmount
         if (data.paymentMethod === 'card') activeShift.cardTotal -= refundAmount
         else activeShift.cashTotal -= refundAmount
@@ -165,7 +165,7 @@ function createReturn(realm, session, data) {
           else activeShift.cashTotal -= returnTaxAmount
         }
       } else if (data.paymentMethod !== 'credit') {
-        updateTreasury(realm, -refundAmount, 'مرتجع فاتورة #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
+        updateTreasury(realm, -refundAmount, 'Ù…Ø±ØªØ¬Ø¹ ÙØ§ØªÙˆØ±Ø© #' + data.invoiceNo, session, data.paymentMethod || sale.paymentMethod || 'cash')
       }
       if (activeShift && sale.paymentMethod === 'credit') {
         activeShift.totalSales -= refundAmount
@@ -173,7 +173,7 @@ function createReturn(realm, session, data) {
       }
     } else if (sale.tax > 0 && saleTaxRate > 0 && activeShift && !isCreditReturn) {
       const taxReturn = returnTaxAmount
-      updateTreasury(realm, -taxReturn, 'ضريبة مرتجع فاتورة #' + data.invoiceNo, session, 'cash')
+      updateTreasury(realm, -taxReturn, 'Ø¶Ø±ÙŠØ¨Ø© Ù…Ø±ØªØ¬Ø¹ ÙØ§ØªÙˆØ±Ø© #' + data.invoiceNo, session, 'cash')
       activeShift.totalSales -= taxReturn
       activeShift.cashTotal -= taxReturn
     }
@@ -209,8 +209,8 @@ function createReturn(realm, session, data) {
   if (settings && settings.notificationReturns !== false) {
     createNotification(realm, {
       type: 'return',
-      title: 'مرتجع منتجات',
-      message: `مرتجع فاتورة #${ret.invoiceNo} - ${ret.subtotal + ret.tax} ج.م`,
+      title: 'Ù…Ø±ØªØ¬Ø¹ Ù…Ù†ØªØ¬Ø§Øª',
+      message: `Ù…Ø±ØªØ¬Ø¹ ÙØ§ØªÙˆØ±Ø© #${ret.invoiceNo} - ${ret.subtotal + ret.tax} Ø¬.Ù…`,
       referenceId: ret._id,
       referenceType: 'return'
     })
@@ -251,13 +251,13 @@ function removeReturn(realm, id, session) {
       if (activeShift && !isCreditReturn) {
         const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
         const fullAmount = retRefundAmount + retTax
-        updateTreasury(realm, fullAmount, 'إلغاء مرتجع #' + ret.invoiceNo, session, pm)
+        updateTreasury(realm, fullAmount, 'Ø¥Ù„ØºØ§Ø¡ Ù…Ø±ØªØ¬Ø¹ #' + ret.invoiceNo, session, pm)
         activeShift.totalSales += fullAmount
         if (ret.paymentMethod === 'card') activeShift.cardTotal += fullAmount
         else activeShift.cashTotal += fullAmount
       } else if (ret.paymentMethod !== 'credit' && retRefundAmount > 0) {
         const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
-        updateTreasury(realm, retRefundAmount, 'إلغاء مرتجع #' + ret.invoiceNo, session, pm)
+        updateTreasury(realm, retRefundAmount, 'Ø¥Ù„ØºØ§Ø¡ Ù…Ø±ØªØ¬Ø¹ #' + ret.invoiceNo, session, pm)
       }
       if (activeShift && sale && sale.paymentMethod === 'credit' && retRefundAmount > 0) {
         activeShift.totalSales += retRefundAmount
