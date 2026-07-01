@@ -95,7 +95,8 @@ function removeProduct(realm, id) {
     if (product) {
       const batches = realm.objects('StockBatch').filtered('productId == $0', id)
       realm.delete(batches)
-      realm.delete(product)
+      product.active = false
+      product.updatedAt = new Date()
     }
   })
   return true

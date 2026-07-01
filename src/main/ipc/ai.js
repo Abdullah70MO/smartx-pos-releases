@@ -1,10 +1,12 @@
 const https = require('node:https')
-const config = require('../config')
+let config
+try { config = require('../config') } catch { config = null }
 const { openRealm } = require('../database')
 
 const MODEL = 'groq/compound'
 
 function groqChat(messages, tools) {
+  if (!config?.groqApiKey) return Promise.reject(new Error('مفتاح Groq API غير موجود. تواصل مع مدير النظام.'))
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: MODEL,
@@ -35,7 +37,14 @@ function groqChat(messages, tools) {
         } catch { reject(new Error('فشل تحليل رد المساعد')) }
       })
     })
-    req.on('error', reject)
+    req.on('error', e => {
+      if (e.code === 'ENOTFOUND' || e.code === 'ECONNREFUSED' || e.code === 'ECONNRESET' || e.code === 'ERR_NETWORK')
+        reject(new Error('لا يوجد اتصال بالإنترنت. المساعد يحتاج إنترنت للرد.'))
+      else if (e.code === 'ETIMEDOUT')
+        reject(new Error('انتهت مهلة الاتصال. تحقق من اتصالك بالإنترنت.'))
+      else
+        reject(e)
+    })
     req.write(body)
     req.end()
   })
@@ -350,9 +359,9 @@ async function callTool(name, args) {
     case 'get_employee_salary': {
       const emp = realm.objects('Employee').filtered('name == $0', args.name)[0]
       if (!emp) return JSON.stringify({ خطأ: 'لم يتم العثور على موظف بهذا الاسم' })
-      const lr = require('./employees').listSalaryPayments(emp._id)
+      const lr = require('./employees').listSalaryPayments(realm, emp._id)
       const lastPayment = lr[0] || null
-      const advances = require('./employees').listAdvances(emp._id)
+      const advances = require('./employees').listAdvances(realm, emp._id)
       const totalAdvances = advances.filter(a => a.type === 'advance' && !a.deducted).reduce((s, a) => s + a.amount, 0)
       const totalDeductions = advances.filter(a => a.type === 'deduction').reduce((s, a) => s + a.amount, 0)
       return JSON.stringify({

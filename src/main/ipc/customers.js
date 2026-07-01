@@ -32,7 +32,7 @@ function saveCustomer(realm, data) {
       commercialReg: data.commercialReg || '',
       taxReg: data.taxReg || '',
       address: data.address || '',
-      totalDebt: isNew ? Number(data.previousDebt || 0) : (realm.objectForPrimaryKey('CreditCustomer', data._id)?.totalDebt || 0),
+      totalDebt: isNew ? (isFinite(Number(data.previousDebt)) ? Number(data.previousDebt) : 0) : (realm.objectForPrimaryKey('CreditCustomer', data._id)?.totalDebt || 0),
       totalPaid: isNew ? 0 : (realm.objectForPrimaryKey('CreditCustomer', data._id)?.totalPaid || 0),
       notes: data.notes || '',
       createdAt: data._id && realm.objectForPrimaryKey('CreditCustomer', data._id)

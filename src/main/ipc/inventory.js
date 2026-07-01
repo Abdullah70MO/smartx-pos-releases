@@ -141,6 +141,7 @@ function saveAdjustment(realm, user, data) {
     if (product) {
       const oldStock = product.stock || 0
       revertAdjustment(realm, adjustment)
+      oldStock = product.stock || 0
       const qty = Number(data.quantity)
       let newStock
       if (data.type === 'add') {
@@ -271,6 +272,44 @@ function createInventory(realm, session, data) {
       const lossAmount = diff < 0 ? Math.abs(diff) * avgCost : 0
       totalLoss += lossAmount
 
+      let adjId = ''
+      let expId = ''
+      if (diff !== 0) {
+        if (diff > 0) {
+          addBatch(realm, item.productId, diff, avgCost)
+        } else {
+          deductFromFifo(realm, item.productId, -diff)
+          if (lossAmount > 0) {
+            const expense = realm.create('Expense', {
+              _id: crypto.randomUUID(),
+              amount: lossAmount,
+              category: 'تسويات مخزون',
+              note: 'جرد مخزون - ' + (item.productName || product.name) + ' (نقص ' + Math.abs(diff) + ')',
+              date: now,
+              paymentMethod: 'cash',
+              shiftId: '',
+              isInventoryLoss: true,
+              createdAt: now
+            })
+            expId = expense._id
+          }
+        }
+        const adj = realm.create('InventoryAdjustment', {
+          _id: crypto.randomUUID(),
+          productId: item.productId,
+          productName: item.productName || product.name,
+          type: diff > 0 ? 'add' : 'remove',
+          quantity: Math.abs(diff),
+          oldStock: sysQty,
+          newStock: actQty,
+          reason: 'جرد مخزون',
+          createdBy: session.name,
+          createdAt: now,
+          expenseId: expId
+        })
+        adjId = adj._id
+      }
+
       items.push({
         productId: item.productId,
         productName: item.productName || product.name,
@@ -281,8 +320,8 @@ function createInventory(realm, session, data) {
         difference: diff,
         cost: avgCost,
         lossAmount,
-        adjustmentId: '',
-        expenseId: ''
+        adjustmentId: adjId,
+        expenseId: expId
       })
     }
 

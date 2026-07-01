@@ -227,12 +227,13 @@ function removePurchaseReturn(realm, id) {
       const treasuryType = pm === 'card' ? 'bank' : 'main'
       const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
       if (treasury) {
-        treasury.balance -= retRefund
+        if (treasury.balance < retRefund) throw new Error('رصيد الخزينة غير كافٍ')
+        treasury.balance += -retRefund
         treasury.updatedAt = new Date()
         realm.create('TreasuryTransaction', {
           _id: crypto.randomUUID(),
           treasuryId: treasury._id, treasuryName: treasury.name,
-          type: 'purchase', amount: retRefund,
+          type: 'purchaseReturn', amount: -retRefund,
           note: 'إلغاء مرتجع مشتريات #' + ret.invoiceNo, refType: 'purchaseReturn', refId: ret._id,
           paymentMethod: pm,
           createdBy: 'system', createdAt: new Date()
@@ -242,7 +243,7 @@ function removePurchaseReturn(realm, id) {
     if (ret.supplierId && retRefund > 0) {
       const supplier = realm.objectForPrimaryKey('Supplier', ret.supplierId)
       if (supplier) {
-        supplier.totalPaid = (supplier.totalPaid || 0) + retRefund
+        supplier.totalPaid = Math.max(0, (supplier.totalPaid || 0) + retRefund)
         supplier.updatedAt = new Date()
       }
     }

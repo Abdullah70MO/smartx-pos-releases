@@ -37,32 +37,34 @@ function listCustomerPayments(realm, customerId) {
 }
 
 function createCustomerPayment(realm, user, { customerId, customerName, amount, note, paymentMethod }) {
+  const parsedAmount = Number(amount)
+  if (isNaN(parsedAmount) || parsedAmount <= 0) throw new Error('مبلغ غير صالح')
   let payment
   realm.write(() => {
     payment = realm.create('CustomerPayment', {
       _id: crypto.randomUUID(),
-      customerId, customerName: customerName || '', amount: Number(amount),
+      customerId, customerName: customerName || '', amount: parsedAmount,
       note: note || '', paymentMethod: paymentMethod || 'cash',
       createdBy: user.name, createdAt: new Date()
     })
     const customer = realm.objectForPrimaryKey('CreditCustomer', customerId)
     if (customer) {
-      customer.totalPaid = (customer.totalPaid || 0) + Number(amount)
+      customer.totalPaid = (customer.totalPaid || 0) + parsedAmount
       customer.updatedAt = new Date()
     }
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', user.userId)[0]
     if (activeShift) {
       if (paymentMethod === 'card') {
-        activeShift.cardTotal = (activeShift.cardTotal || 0) + Number(amount)
-        updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'card')
+        activeShift.cardTotal = (activeShift.cardTotal || 0) + parsedAmount
+        updateTreasury(realm, parsedAmount, 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'card')
       } else if (paymentMethod === 'credit') {
-        activeShift.creditPaidTotal = (activeShift.creditPaidTotal || 0) + Number(amount)
+        activeShift.creditPaidTotal = (activeShift.creditPaidTotal || 0) + parsedAmount
       } else {
-        activeShift.cashTotal = (activeShift.cashTotal || 0) + Number(amount)
-        updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'cash')
+        activeShift.cashTotal = (activeShift.cashTotal || 0) + parsedAmount
+        updateTreasury(realm, parsedAmount, 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, 'cash')
       }
     } else {
-      updateTreasury(realm, Number(amount), 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
+      updateTreasury(realm, parsedAmount, 'تسديد من عميل - ' + (customerName || ''), user.name, payment._id, paymentMethod)
     }
   })
   const settings = realm.objectForPrimaryKey('BusinessSettings', 'business')
@@ -78,7 +80,7 @@ function createCustomerPayment(realm, user, { customerId, customerName, amount, 
   return { _id: payment._id, customerId: payment.customerId, customerName: payment.customerName, amount: payment.amount, note: payment.note, paymentMethod: payment.paymentMethod, createdBy: payment.createdBy, createdAt: payment.createdAt?.toISOString() }
 }
 
-function removeCustomerPayment(realm, id) {
+function removeCustomerPayment(realm, user, id) {
   realm.write(() => {
     const payment = realm.objectForPrimaryKey('CustomerPayment', id)
     if (payment) {
@@ -87,9 +89,7 @@ function removeCustomerPayment(realm, id) {
         customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - payment.amount)
         customer.updatedAt = new Date()
       }
-      const activeShift = realm.objects('Shift').filtered('isActive == true').length > 0
-        ? realm.objects('Shift').filtered('isActive == true').sorted('startedAt', true)[0]
-        : null
+      const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', user?.userId || '')[0]
       if (activeShift && payment.paymentMethod === 'card' && (activeShift.cardTotal || 0) >= payment.amount) {
         activeShift.cardTotal = (activeShift.cardTotal || 0) - payment.amount
         updateTreasury(realm, -payment.amount, 'إلغاء تسديد عميل - ' + (payment.customerName || ''), 'system', payment._id, 'card')

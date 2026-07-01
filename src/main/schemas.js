@@ -512,6 +512,7 @@ const EmployeeSchema = {
     emergencyPhone:   { type: 'string', default: '' },
     notes:            { type: 'string', default: '' },
     workHours:        { type: 'int', default: 12 },
+    autoAttendance:   { type: 'bool', default: true },
     active:           { type: 'bool', default: true },
     createdAt:        'date',
     updatedAt:        'date'
@@ -650,9 +651,10 @@ const SCHEMAS = [
 //   47    (unused)
 //   48    Added BusinessSettings.showQR (non-breaking default)
 //   49    Added BusinessSettings.telegramBotToken, telegramChatId (non-breaking defaults)
+//   50    Added Employee.autoAttendance (bool, default true) — previously only in changelog
 // When adding a breaking change (rename/type change/delete field):
 //   1. Increment SCHEMA_VERSION
 //   2. Add a case in the migration function in database.js
-const SCHEMA_VERSION = 49
+const SCHEMA_VERSION = 50
 
 module.exports = { SCHEMAS, SCHEMA_VERSION }

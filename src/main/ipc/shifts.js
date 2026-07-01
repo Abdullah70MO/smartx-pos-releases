@@ -69,10 +69,10 @@ function endShift(realm, session, endingCashBalance, endingCardBalance) {
     shift.cardEndingBalance = Number(endingCardBalance) || 0
 
     if ((Number(endingCashBalance) || 0) > 0) {
-      updateTreasuryBalance(realm, 'main', Number(endingCashBalance), 'إيداع نهاية وردية')
+      updateTreasuryBalance(realm, 'main', Number(endingCashBalance) || 0, 'إيداع نهاية وردية')
     }
     if ((Number(endingCardBalance) || 0) > 0) {
-      updateTreasuryBalance(realm, 'bank', Number(endingCardBalance), 'إيداع نهاية وردية (بطاقة)')
+      updateTreasuryBalance(realm, 'bank', Number(endingCardBalance) || 0, 'إيداع نهاية وردية (بطاقة)')
     }
   })
 
@@ -158,7 +158,7 @@ function getShiftSales(realm, cashierId) {
 }
 
 function updateTreasuryBalance(realm, treasuryType, amount, note) {
-  if (amount === 0) return
+  if (!amount || isNaN(amount) || amount === 0) return
   const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0]
   if (!treasury) return
   treasury.balance += amount
@@ -167,7 +167,7 @@ function updateTreasuryBalance(realm, treasuryType, amount, note) {
     _id: crypto.randomUUID(),
     treasuryId: treasury._id,
     treasuryName: treasury.name,
-      type: 'settlement',
+    type: amount > 0 ? 'settlement' : 'shift_withdrawal',
     amount,
     note: note || '',
     refType: 'shift',

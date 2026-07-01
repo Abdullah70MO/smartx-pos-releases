@@ -119,7 +119,7 @@ function createSale(realm, session, data) {
       items: fifoItems,
       subtotal, discount, tax, total,
       paymentMethod: data.paymentMethod || 'cash',
-      paid: data.paid != null ? Number(data.paid) : total,
+      paid: data.paid != null ? (Number(data.paid) || total) : total,
       cashierId: session.userId,
       cashierName: session.name,
       customerName: data.customerName || '',
@@ -162,9 +162,9 @@ function createSale(realm, session, data) {
     const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
     if (activeShift) {
       activeShift.totalSales += total
-      if (data.paymentMethod === 'cash') activeShift.cashTotal += total
-      else if (data.paymentMethod === 'card') activeShift.cardTotal += total
-      else if (data.paymentMethod === 'credit') activeShift.creditPaidTotal += paidVal
+      activeShift.cashTotal += data.cashAmount || 0
+      activeShift.cardTotal += data.cardAmount || 0
+      activeShift.creditPaidTotal += data.creditAmount || 0
       activeShift.invoiceCount += 1
     }
   })
@@ -207,9 +207,9 @@ function removeSale(realm, id) {
           addBatch(realm, item.productId, remaining, cost)
         }
       })
-      if ((sale.paid || 0) > 0 || sale.total > 0) {
+      if ((sale.paid || 0) > 0 && sale.paymentMethod !== 'credit') {
         const pm = sale.paymentMethod === 'card' ? 'card' : 'cash'
-        const reversalAmount = sale.paymentMethod === 'credit' ? (sale.paid || 0) : Math.min(sale.paid || 0, sale.total || 0)
+        const reversalAmount = Math.min(sale.paid || 0, sale.total || 0)
         if (reversalAmount > 0) {
           updateTreasury(realm, -reversalAmount, 'إلغاء فاتورة #' + sale.invoiceNo, { userId: 'system' }, sale._id, 'sale', pm)
         }
@@ -217,10 +217,8 @@ function removeSale(realm, id) {
       if (sale.paymentMethod === 'credit' && sale.customerName) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
         if (customer) {
-          customer.totalDebt -= sale.total
-          customer.totalPaid -= (sale.paid + (sale.previousCredit || 0))
-          if (customer.totalDebt < 0) customer.totalDebt = 0
-          if (customer.totalPaid < 0) customer.totalPaid = 0
+          customer.totalDebt = Math.max(0, (customer.totalDebt || 0) - sale.total)
+          customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - (sale.paid + (sale.previousCredit || 0)))
         }
       }
       const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', sale.cashierId)[0]

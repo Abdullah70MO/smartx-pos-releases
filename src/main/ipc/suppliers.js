@@ -34,7 +34,7 @@ function saveSupplier(realm, data) {
       taxReg: data.taxReg || '',
       address: data.address || '',
       notes: data.notes || '',
-      totalPurchases: isNew ? Number(data.previousBalance || 0) : (realm.objectForPrimaryKey('Supplier', data._id)?.totalPurchases || 0),
+      totalPurchases: isNew ? (isFinite(Number(data.previousBalance)) ? Number(data.previousBalance) : 0) : (realm.objectForPrimaryKey('Supplier', data._id)?.totalPurchases || 0),
       totalPaid: isNew ? 0 : (realm.objectForPrimaryKey('Supplier', data._id)?.totalPaid || 0),
       createdAt: data._id && realm.objectForPrimaryKey('Supplier', data._id)
         ? realm.objectForPrimaryKey('Supplier', data._id).createdAt

@@ -121,6 +121,7 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
   }
   realm.write(() => {
     const invoiceNo = getNextInvoice(realm)
+    items.forEach(i => getOrCreateProduct(realm, i))
     purchase = realm.create('Purchase', {
       _id: crypto.randomUUID(),
       invoiceNo, supplierName: supplierName || '', supplierPhone: supplierPhone || '',
@@ -141,7 +142,7 @@ function createPurchase(realm, user, { items, totalCost, supplierName, supplierP
       createdBy: user.name, createdAt: new Date()
     })
     items.forEach(i => {
-      const product = getOrCreateProduct(realm, i)
+      const product = realm.objectForPrimaryKey('Product', i.productId)
       const qty = Number(i.quantity) || 0
       const cost = Number(i.cost) || 0
       addBatch(realm, product._id, qty, cost, purchase._id)
@@ -182,6 +183,7 @@ function savePurchase(realm, user, data) {
       const oldPaid = purchase.paid || 0
       const oldItemsMap = {}
       purchase.items.forEach(i => { oldItemsMap[i.productId] = Number(i.quantity) || 0 })
+      data.items.forEach(i => { if (!i.productId) getOrCreateProduct(realm, i) })
       const newItemsMap = {}
       data.items.forEach(i => { newItemsMap[i.productId] = { qty: Number(i.quantity) || 0, cost: Number(i.cost) || 0, name: i.name } })
       const allProductIds = [...new Set([...Object.keys(oldItemsMap), ...Object.keys(newItemsMap)])]
@@ -256,6 +258,7 @@ function savePurchase(realm, user, data) {
           prevDebt = Math.max(0, -credit)
         }
       }
+      data.items.forEach(i => getOrCreateProduct(realm, i))
       purchase = realm.create('Purchase', {
         _id: crypto.randomUUID(),
         invoiceNo, supplierName: data.supplierName || '', supplierPhone: data.supplierPhone || '',
@@ -276,7 +279,7 @@ function savePurchase(realm, user, data) {
         createdBy: user.name, createdAt: new Date()
       })
       data.items.forEach(i => {
-        const product = getOrCreateProduct(realm, i)
+        const product = realm.objectForPrimaryKey('Product', i.productId)
         const qty = Number(i.quantity) || 0
         const cost = Number(i.cost) || 0
         addBatch(realm, product._id, qty, cost, purchase._id)
@@ -309,7 +312,7 @@ function flattenPurchase(p) {
       productId: i.productId, name: i.name,
       quantity: i.quantity, cost: i.cost, subtotal: i.subtotal
     })),
-    totalCost: p.totalCost, discount: p.discount || 0, netCost: p.netCost || p.totalCost,
+    totalCost: p.totalCost, discount: p.discount || 0, netCost: p.netCost != null ? p.netCost : p.totalCost,
     paid: p.paid, previousCredit: p.previousCredit || 0, previousDebt: p.previousDebt || 0,
     paymentMethod: p.paymentMethod,
     paymentStatus: p.paymentStatus || 'credit',
@@ -318,24 +321,42 @@ function flattenPurchase(p) {
   }
 }
 
-function removePurchase(realm, id) {
+function removePurchase(realm, id, session) {
+  let found = false
   realm.write(() => {
     const purchase = realm.objectForPrimaryKey('Purchase', id)
-    if (purchase) {
-      const productIds = [...new Set(purchase.items.map(i => i.productId))]
-      removeBatchesByRef(realm, purchase._id)
-      productIds.forEach(pid => syncProductStock(realm, pid))
-      const remNetCost = (purchase.totalCost - (purchase.discount || 0))
-      if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -remNetCost)
-      const paidAmount = purchase.paid || 0
-      if (paidAmount > 0) {
-        updateTreasury(realm, paidAmount, 'إلغاء مشتريات #' + purchase.invoiceNo, 'system', purchase._id, purchase.paymentMethod)
-        if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -paidAmount, true)
+    if (!purchase) return
+    found = true
+    purchase.items.forEach(item => {
+      if (!item.productId) return
+      const batches = realm.objects('StockBatch').filtered('refId == $0 AND productId == $1', purchase._id, item.productId)
+      const remaining = Array.from(batches).reduce((s, b) => s + b.quantity, 0)
+      const original = Number(item.quantity) || 0
+      if (remaining < original && remaining > 0) {
+        const sampleBatch = Array.from(batches)[0]
+        realm.create('StockBatch', {
+          _id: crypto.randomUUID(),
+          productId: item.productId,
+          quantity: original - remaining,
+          cost: sampleBatch.cost,
+          refId: 'compensated-' + purchase._id,
+          createdAt: new Date()
+        })
       }
-      realm.delete(purchase)
+    })
+    const productIds = [...new Set(purchase.items.map(i => i.productId))]
+    removeBatchesByRef(realm, purchase._id)
+    productIds.forEach(pid => syncProductStock(realm, pid))
+    const remNetCost = (purchase.totalCost - (purchase.discount || 0))
+    if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -remNetCost)
+    const paidAmount = purchase.paid || 0
+    if (paidAmount > 0) {
+      updateTreasury(realm, paidAmount, 'إلغاء مشتريات #' + purchase.invoiceNo, session?.name || 'system', purchase._id, purchase.paymentMethod)
+      if (purchase.supplierId) updateSupplierBalance(realm, purchase.supplierId, -paidAmount, true)
     }
+    realm.delete(purchase)
   })
-  return true
+  return found
 }
 
 module.exports = { listPurchases, createPurchase, savePurchase, removePurchase }

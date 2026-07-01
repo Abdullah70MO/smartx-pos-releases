@@ -36,17 +36,19 @@ function saveTreasury(realm, data, session) {
 function removeTreasury(realm, id) {
   realm.write(() => {
     const t = realm.objectForPrimaryKey('Treasury', id)
-    if (t) {
-      realm.delete(realm.objects('TreasuryTransaction').filtered('treasuryId == $0', id))
-      realm.delete(t)
-    }
+    if (!t) return
+    if (t.type === 'main' || t.type === 'bank') throw new Error('لا يمكن حذف الخزينة ' + (t.type === 'main' ? 'الرئيسية' : 'البنك'))
+    const activeShift = realm.objects('Shift').filtered('isActive == true').length
+    if (activeShift > 0) throw new Error('لا يمكن حذف خزينة أثناء وجود وردية نشطة')
+    realm.delete(realm.objects('TreasuryTransaction').filtered('treasuryId == $0', id))
+    realm.delete(t)
   })
   return true
 }
 
 function addToTreasury(realm, data, session) {
   const amount = Number(data.amount)
-  if (amount <= 0) throw new Error('المبلغ يجب أن يكون أكبر من صفر')
+  if (isNaN(amount) || amount <= 0) throw new Error('المبلغ يجب أن يكون رقماً صحيحاً أكبر من صفر')
   realm.write(() => {
     const t = realm.objectForPrimaryKey('Treasury', data.treasuryId)
     if (!t) throw new Error('الخزينة غير موجودة')
@@ -74,7 +76,7 @@ function addToTreasury(realm, data, session) {
 
 function withdrawFromTreasury(realm, data, session) {
   const amount = Number(data.amount)
-  if (amount <= 0) throw new Error('المبلغ يجب أن يكون أكبر من صفر')
+  if (isNaN(amount) || amount <= 0) throw new Error('المبلغ يجب أن يكون رقماً صحيحاً أكبر من صفر')
   realm.write(() => {
     const t = realm.objectForPrimaryKey('Treasury', data.treasuryId)
     if (!t) throw new Error('الخزينة غير موجودة')
@@ -133,7 +135,7 @@ function withdrawFromTreasury(realm, data, session) {
 
 function transferBetweenTreasuries(realm, data, session) {
   const amount = Number(data.amount)
-  if (amount <= 0) throw new Error('المبلغ يجب أن يكون أكبر من صفر')
+  if (isNaN(amount) || amount <= 0) throw new Error('المبلغ يجب أن يكون رقماً صحيحاً أكبر من صفر')
   if (data.fromTreasuryId === data.toTreasuryId) throw new Error('لا يمكن التحويل إلى نفس الخزينة')
   realm.write(() => {
     const from = realm.objectForPrimaryKey('Treasury', data.fromTreasuryId)

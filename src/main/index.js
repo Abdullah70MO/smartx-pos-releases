@@ -316,7 +316,10 @@ function registerIpc() {
     try { logActivity(r, session, { action: 'دفعة مورد', details: payment.supplierName + ' - ' + payment.amount }) } catch {}
     return result
   })
-  handle('supplierPayments:remove', async ({ token, id }) => (requireUser(token, 'suppliers.payments'), removeSupplierPayment(await openRealm(), id)))
+  handle('supplierPayments:remove', async ({ token, id }) => {
+    const r = await openRealm(); const session = requireUser(token, 'suppliers.payments', r)
+    return removeSupplierPayment(r, session, id)
+  })
 
   // Customer Payments
   handle('customerPayments:list', async ({ token, customerId }) => (requireUser(token, 'customers.payments'), listCustomerPayments(await openRealm(), customerId)))
@@ -326,7 +329,10 @@ function registerIpc() {
     try { logActivity(r, session, { action: 'دفعة عميل', details: payment.customerName + ' - ' + payment.amount }) } catch {}
     return result
   })
-  handle('customerPayments:remove', async ({ token, id }) => (requireUser(token, 'customers.payments'), removeCustomerPayment(await openRealm(), id)))
+  handle('customerPayments:remove', async ({ token, id }) => {
+    const r = await openRealm(); const session = requireUser(token, 'customers.payments', r)
+    return removeCustomerPayment(r, session, id)
+  })
 
   // Employees
   handle('employees:list', async ({ token, query, page, pageSize }) => (requireUser(token, 'employees.view'), listEmployees(await openRealm(), query, page, pageSize)))
@@ -373,7 +379,7 @@ function registerIpc() {
   })
   handle('purchases:remove', async ({ token, id }) => {
     const r = await openRealm(); const session = requireUser(token, 'purchases.delete', r)
-    const result = removePurchase(r, id)
+    const result = removePurchase(r, id, session)
     try { logActivity(r, session, { action: 'حذف فاتورة شراء', details: id }) } catch {}
     return result
   })
@@ -413,7 +419,7 @@ function registerIpc() {
   handle('treasury:withdraw', async ({ token, data }) => {
     const r = await openRealm(); const session = requireUser(token, 'treasury.manage', r)
     const result = withdrawFromTreasury(r, data, session)
-    try { logActivity(r, session, { action: data.category ? 'سحب تشغيلي' : 'سحب شخصي', details: data.amount + ' - ' + data.personName }) } catch {}
+    try { logActivity(r, session, { action: data.withdrawCategory ? 'سحب تشغيلي' : 'سحب شخصي', details: data.amount + ' - ' + data.personName }) } catch {}
     return result
   })
   handle('treasury:transfer', async ({ token, data }) => {
@@ -425,7 +431,7 @@ function registerIpc() {
   handle('treasury:transactions', async ({ token, treasuryId, limit }) => (requireUser(token, 'treasury.view'), listTransactions(await openRealm(), { treasuryId, limit })))
 
   // AI Assistant
-  handle('ai:chat', async ({ token, messages }) => (requireUser(token, 'dashboard.view'), require('./ipc/ai').chat(messages)))
+  handle('ai:chat', async ({ token, messages }) => (requireUser(token, 'ai.assistant'), require('./ipc/ai').chat(messages)))
 
   // Contact
   handle('contact:getInfo', () => CONTACT_INFO)
@@ -559,6 +565,7 @@ async function seedDatabase() {
     })
   } catch (e) {
     console.error('Seed error:', e)
+    try { dialog.showErrorBox('خطأ في تهيئة قاعدة البيانات', 'حدث خطأ أثناء تهيئة البيانات. قد لا تعمل بعض الميزات بشكل صحيح.\n\n' + e.message) } catch {}
   }
 }
 
@@ -588,12 +595,15 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    openRealm().then(r => {
-      const activeShifts = r.objects('Shift').filtered('isActive == true')
-      r.write(() => { activeShifts.forEach(s => { s.isActive = false; s.endedAt = new Date() }) })
-      closeRealm()
-    }).catch(() => {})
     stopPeriodicCheck()
-    app.quit()
+    openRealm().then(r => {
+      try {
+        const activeShifts = r.objects('Shift').filtered('isActive == true')
+        if (activeShifts.length) {
+          r.write(() => { activeShifts.forEach(s => { s.isActive = false; s.endedAt = new Date() }) })
+        }
+      } catch (e) { console.error('Error closing shifts:', e) }
+      closeRealm()
+    }).catch(() => {}).finally(() => app.quit())
   }
 })

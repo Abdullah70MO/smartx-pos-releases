@@ -122,10 +122,10 @@ function createReturn(realm, session, data) {
     const returnSubtotal = Number(data.subtotal) || 0
     const returnTaxAmount = saleTaxRate > 0 ? (returnSubtotal * saleTaxRate / 100) : 0
 
-    let refundAmount = Number(data.subtotal)
+    let refundAmount = Number(data.subtotal) || 0
     let totalPaidForSale = Number(sale.paid || 0)
     if (sale.paymentMethod === 'credit') {
-      refundAmount = data.cashRefund ? Math.min(Number(data.subtotal), totalPaidForSale) : 0
+      refundAmount = data.cashRefund ? Math.min(Number(data.subtotal) || 0, totalPaidForSale) : 0
     }
 
     ret = realm.create('Return', {
@@ -243,7 +243,7 @@ function removeReturn(realm, id, session) {
           syncProductStock(realm, product._id)
         }
       })
-      const retRefundAmount = ret.refundAmount != null ? Number(ret.refundAmount) : Number(ret.subtotal)
+      const retRefundAmount = ret.refundAmount != null ? Number(ret.refundAmount) || 0 : Number(ret.subtotal) || 0
       const retTax = Number(ret.tax || 0)
       const activeShift = realm.objects('Shift').filtered('cashierId == $0 AND isActive == true', session.userId)[0]
       const isCreditReturn = ret.paymentMethod === 'credit' || (sale && sale.paymentMethod === 'credit')
@@ -251,39 +251,13 @@ function removeReturn(realm, id, session) {
       if (activeShift && !isCreditReturn) {
         const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
         const fullAmount = retRefundAmount + retTax
-        const treasuryType = pm === 'card' ? 'bank' : 'main'
-        const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
-        if (treasury) {
-          treasury.balance += fullAmount
-          treasury.updatedAt = new Date()
-          realm.create('TreasuryTransaction', {
-            _id: crypto.randomUUID(),
-            treasuryId: treasury._id, treasuryName: treasury.name,
-            type: 'sale', amount: fullAmount,
-            note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
-            paymentMethod: pm,
-            createdBy: 'system', createdAt: new Date()
-          })
-        }
+        updateTreasury(realm, fullAmount, 'إلغاء مرتجع #' + ret.invoiceNo, session, pm)
         activeShift.totalSales += fullAmount
         if (ret.paymentMethod === 'card') activeShift.cardTotal += fullAmount
         else activeShift.cashTotal += fullAmount
       } else if (ret.paymentMethod !== 'credit' && retRefundAmount > 0) {
         const pm = ret.paymentMethod || sale?.paymentMethod || 'cash'
-        const treasuryType = pm === 'card' ? 'bank' : 'main'
-        const treasury = realm.objects('Treasury').filtered('type == $0', treasuryType)[0] || realm.objects('Treasury').filtered('type == "main"')[0]
-        if (treasury) {
-          treasury.balance += retRefundAmount
-          treasury.updatedAt = new Date()
-          realm.create('TreasuryTransaction', {
-            _id: crypto.randomUUID(),
-            treasuryId: treasury._id, treasuryName: treasury.name,
-            type: 'sale', amount: retRefundAmount,
-            note: 'إلغاء مرتجع #' + ret.invoiceNo, refType: 'return', refId: ret._id,
-            paymentMethod: pm,
-            createdBy: 'system', createdAt: new Date()
-          })
-        }
+        updateTreasury(realm, retRefundAmount, 'إلغاء مرتجع #' + ret.invoiceNo, session, pm)
       }
       if (activeShift && sale && sale.paymentMethod === 'credit' && retRefundAmount > 0) {
         activeShift.totalSales += retRefundAmount
@@ -293,14 +267,14 @@ function removeReturn(realm, id, session) {
       if (sale && sale.paymentMethod === 'credit' && sale.customerName) {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', sale.customerName)[0]
         if (customer) {
-          customer.totalDebt = (customer.totalDebt || 0) + Number(ret.subtotal) + Number(ret.tax || 0)
+          customer.totalDebt = (customer.totalDebt || 0) + (Number(ret.subtotal) || 0) + Number(ret.tax || 0)
           customer.totalPaid = Math.max(0, (customer.totalPaid || 0) + retRefundAmount)
           customer.updatedAt = new Date()
         }
       }
       if (ret.customerName && ret.paymentMethod === 'credit' && sale && sale.paymentMethod !== 'credit') {
         const customer = realm.objects('CreditCustomer').filtered('name == $0', ret.customerName)[0]
-        const creditAmount = Number(ret.subtotal) + Number(ret.tax || 0)
+        const creditAmount = (Number(ret.subtotal) || 0) + Number(ret.tax || 0)
         if (customer) {
           customer.totalPaid = Math.max(0, (customer.totalPaid || 0) - creditAmount)
           customer.updatedAt = new Date()
